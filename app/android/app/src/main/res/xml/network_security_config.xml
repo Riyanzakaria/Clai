@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext HANYA untuk loopback (127.0.0.1 / localhost) — TIDAK untuk host lain.
+
+  Mengapa ini ada (akar "Source error" v4–v4.2, terbukti dari logcat emulator
+  2026-10-23: "Cleartext HTTP traffic to 127.0.0.1 not permitted"):
+  just_audio menyajikan StreamAudioSource (dan UriAudioSource ber-header, bila
+  useProxyForRequestHeaders aktif) lewat server proxy HTTP lokal di 127.0.0.1.
+  Sejak targetSdk 28+, Android memblokir HTTP cleartext secara bawaan — termasuk
+  ke loopback — sehingga ExoPlayer tidak pernah bisa mengambil satu byte pun
+  dari proxy: setiap pemutaran mati sebagai ExoPlaybackException TYPE_SOURCE
+  generik ("(0) Source error") sebelum permintaan apa pun keluar perangkat.
+  Izin di sini dibatasi domain loopback saja; seluruh lalu lintas luar tetap
+  wajib HTTPS (base-config false).
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

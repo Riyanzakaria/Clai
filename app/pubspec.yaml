@@ -1,0 +1,38 @@
+name: clai
+description: "Clai — an open-source music player for Android. No account, no ads, no telemetry: your library, playlists, and listening history live only on your phone."
+publish_to: 'none'
+version: 1.0.0+2013
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  just_audio: ^0.10.4
+  audio_service: ^0.18.17
+  audio_session: ^0.2.0
+  dio: ^5.9.0
+  crypto: ^3.0.7
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  permission_handler: ^12.0.1
+  google_fonts: ^6.3.2
+  uuid: ^4.5.1
+  share_plus: ^11.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  sqflite_common_ffi: ^2.3.6
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/logo/

@@ -1,0 +1,1059 @@
+{
+  "@@locale": "id",
+  "appTitle": "Clai",
+  "navHome": "Beranda",
+  "navSearch": "Cari",
+  "navLibrary": "Koleksi",
+  "offlineBarText": "Mode offline — hanya unduhan & file lokal",
+  "eqTitle": "Equalizer",
+  "eqChecking": "Memeriksa dukungan perangkat…",
+  "eqUnavailable": "Equalizer tidak tersedia di perangkat ini — efek Equalizer Android menolak dibuat pada sesi pemain yang sedang hidup. Detail teknisnya tercatat di Log insiden (Pengaturan → Diagnosis Lokal).",
+  "eqSubtitle": "Membentuk frekuensi audio Clai saja (menempel ke sesi pemain, bukan audio sistem).",
+  "eqWaitingSession": "Mulai putar lagu agar EQ dapat diterapkan ke sesi audio; setelan tersimpan dan diterapkan otomatis saat lagu mulai.",
+  "eqPreset": "Preset",
+  "eqCustom": "Kustom",
+  "eqBandLabel": "{freq} — {db} dB",
+  "@eqBandLabel": {
+    "placeholders": {
+      "db": {},
+      "freq": {}
+    }
+  },
+  "ocrModelTitle": "Model pembaca teks (Tangkap gambar)",
+  "ocrModelInstalled": "Terpasang · {size}{versionPart} — membaca gambar bekerja offline.",
+  "@ocrModelInstalled": {
+    "placeholders": {
+      "size": {},
+      "versionPart": {}
+    }
+  },
+  "ocrModelVersionPart": " · {version}",
+  "@ocrModelVersionPart": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "commonDownloadingPct": "Mengunduh… {pct}%",
+  "@commonDownloadingPct": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrModelVerifying": "Memeriksa keutuhan berkas (checksum)…",
+  "ocrModelNotDownloaded": "Belum diunduh. Diunduh sekali dari GitHub Releases (±4 MB), tersimpan di perangkat, lalu Tangkap gambar bekerja offline. Tangkap lewat tautan tidak membutuhkannya.",
+  "ocrModelDeleteTitle": "Hapus model pembaca teks?",
+  "ocrModelDeleteBody": "Tangkap gambar akan menawarkan unduhan lagi saat berikutnya dipakai. Lagu, antrean, dan unduhan lagu tidak terpengaruh.",
+  "commonCancel": "Batal",
+  "commonDelete": "Hapus",
+  "commonRetry": "Coba lagi",
+  "commonDownload": "Unduh",
+  "updateCheck": "Periksa pembaruan",
+  "commonChecking": "Memeriksa…",
+  "updateInstalling": "Menyerahkan ke pemasang sistem…",
+  "updateTapToCheck": "Ketuk untuk memeriksa rilis terbaru.",
+  "updateInstalledLabel": "Terpasang: {label} · {status}",
+  "@updateInstalledLabel": {
+    "placeholders": {
+      "label": {},
+      "status": {}
+    }
+  },
+  "updateDownloadTag": "Unduh {tag}",
+  "@updateDownloadTag": {
+    "placeholders": {
+      "tag": {}
+    }
+  },
+  "updateDownloadSub": "APK diunduh di dalam aplikasi, lalu dipasang lewat konfirmasi sistem Android.",
+  "updateInstall": "Pasang pembaruan",
+  "updateInstallSub": "Berkas sudah terunduh. Pemasangan menampilkan konfirmasi sistem — itu batas Android, bukan pilihan Clai.",
+  "updateAutoCheck": "Periksa otomatis",
+  "updateAutoCheckSub": "Paling sering sekali sehari, hanya permintaan publik ke GitHub — tanpa data pengguna.",
+  "updateAutoDownload": "Perbarui otomatis (unduh di latar)",
+  "updateAutoDownloadSub": "Rilis baru diunduh sendiri; pemasangannya tetap lewat konfirmasi sistem Android.",
+  "updateWifiOnly": "Unduh hanya via Wi-Fi",
+  "updateWifiOnlySub": "Unduhan otomatis menunggu Wi-Fi; unduhan manual tetap bisa memakai data seluler.",
+  "updateInstallPermTitle": "Izin pasang belum diberikan",
+  "updateInstallPermSub": "Android mewajibkan izin \"pasang aplikasi tak dikenal\" sebelum Clai bisa memasang pembaruannya sendiri.",
+  "updateBannerTitle": "Clai {version} tersedia",
+  "@updateBannerTitle": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "updateBannerReady": "Sudah terunduh — tinggal dipasang lewat konfirmasi sistem.",
+  "updateBannerDefault": "Unduh di dalam aplikasi, pasang lewat konfirmasi sistem.",
+  "commonInstall": "Pasang",
+  "commonLater": "Nanti saja",
+  "settingsTitle": "Pengaturan",
+  "groupPlayback": "Pemutaran",
+  "groupPlaybackSum": "Kualitas, Putar Otomatis, Acak Cerdas, transisi",
+  "groupAudio": "Audio",
+  "groupAudioSum": "Equalizer & normalisasi kenyaringan",
+  "groupDownloads": "Unduhan & Offline",
+  "groupDownloadsSum": "Mode offline & lagu terunduh",
+  "groupAppearance": "Tampilan",
+  "groupAppearanceSum": "Aksen warna dari sampul lagu",
+  "groupDriving": "Berkendara",
+  "groupDrivingSum": "Layar besar & kendali sederhana saat menyetir",
+  "groupCapture": "Tangkap",
+  "groupCaptureSum": "Tautan/gambar dari aplikasi lain jadi antrean",
+  "groupBackground": "Jalan di Latar",
+  "groupBackgroundSum": "Izin notifikasi & baterai",
+  "groupData": "Data & Penyimpanan",
+  "groupDataSum": "Cache aliran & riwayat putar",
+  "groupUpdates": "Pembaruan",
+  "groupUpdatesSum": "Versi terpasang & rilis baru dari GitHub",
+  "groupListenBrainzSum": "Scrobble opsional dengan token milikmu",
+  "groupDiagnostics": "Diagnosis",
+  "groupDiagnosticsSum": "Uji rantai putar & log insiden di perangkat",
+  "groupAbout": "Tentang",
+  "groupAboutSum": "Versi, lisensi, dan cara Clai bekerja",
+  "setQuality": "Kualitas streaming",
+  "qualityLow": "Rendah · ≤70 kbps",
+  "qualityNormal": "Normal · ≤160 kbps",
+  "qualityHigh": "Tinggi · terbaik tersedia (sumber maks ±256 kbps)",
+  "setAutoplay": "Putar Otomatis",
+  "setAutoplaySub": "Menyambung lagu terkait saat antrean habis.",
+  "setSmartShuffle": "Acak Cerdas (Smart Shuffle)",
+  "setSmartShuffleSub": "Mengurut ulang Lanjutan saja; tidak menambah lagu baru.",
+  "setAutoResume": "Lanjut otomatis setelah interupsi",
+  "setAutoResumeSub": "Mis. sesudah panggilan telepon selesai.",
+  "setTransition": "Mode transisi",
+  "setTransitionSub": "Berlaku mulai batas lagu berikutnya.",
+  "transitionSnack": "Mode baru berlaku di lagu berikutnya.",
+  "setCrossfadeDur": "Durasi crossfade",
+  "crossfadeDurVal": "{secs} detik — rentang 1–12 detik.",
+  "@crossfadeDurVal": {
+    "placeholders": {
+      "secs": {}
+    }
+  },
+  "playbackFootnote": "Gapless menyambung lagu tanpa jeda. Crossfade memudarkan ujung lagu sambil awal lagu berikut masuk (equal-power, tanpa jeda sunyi). Alih mode tidak pernah memotong lagu yang sedang berbunyi (ADR-002).",
+  "setNormalization": "Normalisasi kenyaringan",
+  "setNormalizationSub": "Samakan keras lagu dari pengukuran putar nyata.",
+  "normMicSnack": "Tanpa izin mikrofon, Visualizer Android tidak boleh mengukur — gain semua lagu tetap netral. Izinnya hanya untuk mengukur level, tidak merekam.",
+  "audioFootnote": "Keras lagu diukur dari pemutaran nyata (Visualizer), disimpan per lagu, dan dipakai mulai putaran berikutnya — lagu yang belum pernah terukur memakai gain netral.",
+  "setOfflineMode": "Mode offline",
+  "setOfflineModeSub": "Hanya lagu terunduh & file lokal yang diputar.",
+  "setManageDownloads": "Kelola unduhan",
+  "setManageDownloadsSub": "Daftar, progres, putar, dan hapus lagu terunduh.",
+  "downloadsFootnote": "Menyalakan mode offline menyaring antrean berjalan tanpa memotong lagu yang sedang berbunyi; sambungan Putar Otomatis menjadi \"terbatas — offline\".",
+  "setDynamicAccent": "Aksen cover dinamis",
+  "setDynamicAccentSub": "Warna sampul mewarnai latar Player & kartu Beranda.",
+  "appearanceFootnote": "Nuansa diambil dari warna khas sampul yang sedang tampil dan tetap gelap; tombol putar & indikator status selalu Volt.",
+  "languageTitle": "Bahasa",
+  "languageSub": "Bawaan sistem atau pilihan manual.",
+  "languageSystem": "Sistem",
+  "captureLinkTitle": "Tangkap tautan/teks",
+  "captureLinkSub": "Tempel tautan playlist/lagu atau kata kunci.",
+  "captureHint": "Tempel tautan atau ketik kata kunci…",
+  "captureAction": "Tangkap",
+  "setBgStatus": "Status izin latar",
+  "bgStatusLine": "Notifikasi: {notif} · Baterai: {battery}",
+  "@bgStatusLine": {
+    "placeholders": {
+      "battery": {},
+      "notif": {}
+    }
+  },
+  "bgPermGranted": "Diizinkan",
+  "bgPermNotYet": "Belum",
+  "bgBatteryExempt": "Diabaikan optimasi",
+  "bgBatteryNotYet": "Belum diizinkan",
+  "setAllow": "Izinkan",
+  "setAllowSub": "Minta kedua izin lewat dialog sistem.",
+  "setXiaomi": "Khusus Xiaomi / HyperOS",
+  "setXiaomiSub": "Aktifkan \"Mulai otomatis\", baterai \"Tanpa batasan\".",
+  "setOtherBrands": "Merek lain",
+  "setOtherBrandsSub": "Samsung: jangan masukkan Clai ke \"Aplikasi tidur\".",
+  "backgroundFootnote": "Bila putar latar masih dibunuh sistem walau sudah diizinkan di Xiaomi/HyperOS: buka Info aplikasi Clai, aktifkan \"Mulai otomatis\" dan setel Baterai ke \"Tanpa batasan\" — dua sakelar itu hanya ada di halaman sistem, Android tidak mengizinkan aplikasi mengubahnya untukmu. Oppo/Vivo: izinkan aktivitas latar di pengelola baterai merek.",
+  "setClearCache": "Hapus cache aliran",
+  "setClearCacheSub": "URL aliran dibuang; diambil ulang saat diputar.",
+  "cacheClearedSnack": "Cache aliran dihapus.",
+  "setClearHistory": "Hapus riwayat putar",
+  "setClearHistorySub": "Riwayat hanya hidup di perangkat ini dan milikmu.",
+  "historyClearedSnack": "Riwayat putar dihapus.",
+  "setDiagTitle": "Diagnostik Putar",
+  "setDiagSub": "Uji rantai putar dan salin laporannya.",
+  "setLogTitle": "Log insiden (di perangkat)",
+  "setLogCount": "{count} catatan — tidak dikirim ke mana pun.",
+  "@setLogCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aboutVersion": "Clai 1.0.0",
+  "aboutBody": "Pemutar musik sumber terbuka (GPL-3.0) yang dibangun clean-room: tanpa kode atau aset dari layanan lain. Katalog dan lagu berasal dari layanan musik pihak ketiga lewat API tidak resmi — dinyatakan terbuka di README repo; arsitektur provider memungkinkan sumber lain ditambahkan tanpa menyentuh player. Kamu juga bisa menempel tautan playlist publik dari aplikasi musik lain: daftar lagunya dibaca, lalu dicocokkan ke katalog di sini — tanpa akun. Lirik dari LRCLIB; pengayaan sampul dari MusicBrainz/Cover Art Archive; scrobble opsional ke ListenBrainz dengan token milikmu sendiri. Semua data pribadimu — koleksi, riwayat, unduhan — hanya tersimpan di HP-mu.",
+  "logTitle": "Log insiden",
+  "logEmpty": "Belum ada insiden tercatat.",
+  "groupListenBrainz": "ListenBrainz",
+  "drvMode": "Mode Berkendara",
+  "drvModeSub": "Permukaan sentuh raksasa + kendali audio. Menyalakan membuka layarnya.",
+  "drvScheme": "Skema kendali",
+  "drvSchemeSub": "Tombol media standar (bawaan) / pola tekan satu tombol (1× putar-jeda, 2× berikutnya, 3× sebelumnya) / perintah suara.",
+  "drvSchemeButtons": "Tombol media",
+  "drvSchemePatterns": "Pola tekan",
+  "drvSchemeVoice": "Perintah suara",
+  "drvAnnounce": "Pengumuman suara",
+  "drvAnnounceSub": "Judul lagu berikutnya dibacakan TTS sebelum diputar (bawaan mati).",
+  "drvSpeedVolume": "Volume ikut kecepatan",
+  "drvSpeedVolumeSub": "Perlu izin lokasi. Volume hanya bergerak di antara dua titik di bawah; GPS buruk = volume membeku.",
+  "drvVolStop": "Volume saat berhenti",
+  "drvVolFast": "Volume tercepat",
+  "drvVolFastSub": "{pct}% — plafon, tidak pernah dilampaui.",
+  "@drvVolFastSub": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "drvVolPct": "{pct}%",
+  "@drvVolPct": {
+    "placeholders": {
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "drvAnchor": "Kecepatan jangkar",
+  "drvAnchorSub": "{kmh} km/jam — pada kecepatan ini volume mencapai titik tercepat.",
+  "@drvAnchorSub": {
+    "placeholders": {
+      "kmh": {
+        "type": "int"
+      }
+    }
+  },
+  "drvVehicles": "Perangkat kendaraan (Bluetooth)",
+  "drvVehiclesHint": "Ketuk untuk memuat perangkat terpasang — yang ditandai memicu Mode Berkendara otomatis saat tersambung.",
+  "drvVehiclesNone": "Tidak ada perangkat Bluetooth terpasang di perangkat ini.",
+  "drvVehiclesCount": "{count} perangkat terpasang.",
+  "@drvVehiclesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "drvMarkVehicle": "Tandai sebagai kendaraan",
+  "lbTitle": "Kirim riwayat dengar ke ListenBrainz",
+  "lbSub": "Opsional dan mati secara default. Yang dikirim: judul, artis, album, dan waktu dengar — ke akun ListenBrainz milikmu sendiri.",
+  "lbTokenLabel": "Token pengguna ListenBrainz",
+  "lbTokenHint": "Dari listenbrainz.org → Settings → User Token",
+  "lbTokenValid": "Token valid — tersimpan.",
+  "lbTokenInvalid": "Token tidak valid atau jaringan bermasalah.",
+  "lbSaveCheck": "Simpan & periksa token",
+  "lbSafeTitle": "Kegagalan kirim tidak mengganggu putar",
+  "lbSafeSub": "Scrobble dikirim di latar sesudah lagu selesai didengar (≥30 detik). Token hanya tersimpan di perangkat ini.",
+  "greetMorning": "Selamat pagi",
+  "greetAfternoon": "Selamat siang",
+  "greetEvening": "Selamat sore",
+  "greetNight": "Selamat malam",
+  "homeBgCardTitle": "Agar musik tidak dibunuh sistem",
+  "homeBgCardSub": "Izin jalan di latar belum lengkap. Tanpa itu, sebagian ponsel menghentikan putar saat layar mati.",
+  "homeSetupNow": "Atur sekarang",
+  "homeEmptyTitle": "Mau dengar apa hari ini?",
+  "homeEmptySub": "Cari lagu pertamamu — sesudahnya biar Putar Otomatis yang menyambung.",
+  "homeSearchSong": "Cari lagu",
+  "homeUpNext": "Antrian Berikutnya",
+  "homeOpenQueue": "Buka Antrian",
+  "homeRecent": "Terakhir Diputar",
+  "homePlayAgain": "Putar Lagi",
+  "homeYourCollection": "Koleksi Kamu",
+  "homeSavedSongs": "Lagu Tersimpan",
+  "songCount": "{count} lagu",
+  "@songCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shelfBecauseArtist": "Karena kamu sering memutar {artist}",
+  "@shelfBecauseArtist": {
+    "placeholders": {
+      "artist": {}
+    }
+  },
+  "shelfRarelyPlayed": "Tersimpan tapi jarang diputar",
+  "jelajahTitle": "Jelajah",
+  "jelajahYtmHome": "Beranda",
+  "jelajahCharts": "Tangga Lagu",
+  "jelajahArtists": "Artis",
+  "jelajahLoadFail": "Jelajah tidak dapat dimuat saat ini.",
+  "jelajahShelfFail": "Rak {source} gagal dimuat.",
+  "@jelajahShelfFail": {
+    "placeholders": {
+      "source": {}
+    }
+  },
+  "jelajahLoading": "Memuat rak penemuan…",
+  "jelajahShelfTitle": "Jelajah • {title}",
+  "@jelajahShelfTitle": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "sleepCardTitle": "Lanjutkan dari semalam",
+  "sleepCardSub": "{title} — {artist} · dari {pos}",
+  "@sleepCardSub": {
+    "placeholders": {
+      "artist": {},
+      "pos": {},
+      "title": {}
+    }
+  },
+  "sleepCardResume": "Lanjutkan",
+  "sleepContextLabel": "Lanjut Besok",
+  "playerNowPlaying": "Sedang Diputar",
+  "playerEmpty": "Belum ada lagu yang diputar.",
+  "playerBuffering": "Buffering…",
+  "commonLoading": "Memuat…",
+  "playerLyrics": "Lirik",
+  "queueTitle": "Antrian",
+  "playerTimer": "Timer",
+  "playerVoice": "Suara",
+  "playerAutoplayCard": "Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.",
+  "queueSmartShuffleNote": "Acak Cerdas — mengurut ulang Lanjutan (artis disebar, favorit didorong). Tidak menambah lagu baru.",
+  "queueEmpty": "Antrean kosong. Putar sebuah lagu untuk memulai.",
+  "queueNowPlaying": "Sedang Diputar",
+  "queueUpNext": "Berikutnya",
+  "queueContinuation": "Lanjutan — {label}",
+  "@queueContinuation": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "queueContextFallback": "konteks",
+  "queueCountLine": "{count} trek",
+  "@queueCountLine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "queueCountLineDur": "{count} trek · {duration}{totalPart}",
+  "@queueCountLineDur": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "duration": {},
+      "totalPart": {}
+    }
+  },
+  "queueTotalPart": "{plus} total",
+  "@queueTotalPart": {
+    "placeholders": {
+      "plus": {}
+    }
+  },
+  "queueRemovedSnack": "Dihapus: {title}",
+  "@queueRemovedSnack": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "commonUndo": "Urungkan",
+  "queueClear": "Kosongkan antrean",
+  "queueFilterHint": "Saring antrean ini…",
+  "queueAutoplayOff": "Putar Otomatis mati di Pengaturan — konteks habis berarti berhenti.",
+  "queueAutoplayHeader": "Putar Otomatis — karena kamu memutar {seed}",
+  "@queueAutoplayHeader": {
+    "placeholders": {
+      "seed": {}
+    }
+  },
+  "queueAutoplayLimited": "terbatas — offline: sambungan hanya dari lagu yang sudah kamu unduh.",
+  "queuePreparing": "Menyiapkan sambungan dari lagu-lagu benih sesi ini…",
+  "queueContinuationReady": "Sambungan disiapkan dari lagu-lagu benih sesi ini.",
+  "queueContinuationPending": "Sambungan belum tersedia (jaringan lambat?). Musik tetap menyambung begitu sambungan siap.",
+  "queueAutoBadge": "AUTO",
+  "ctxPlayNext": "Putar Berikutnya",
+  "ctxAddToQueue": "Tambah ke Antrian",
+  "ctxStartRadio": "Mulai Radio Lagu",
+  "ctxRemoveFromCollection": "Hapus dari Koleksi",
+  "ctxSaveToCollection": "Simpan ke Koleksi",
+  "ctxAddToPlaylist": "Tambah ke Playlist",
+  "ctxDeleteDownload": "Hapus unduhan",
+  "ctxOpenAlbum": "Buka Album",
+  "ctxOpenArtist": "Buka Artis",
+  "ctxShare": "Bagikan",
+  "ctxShareText": "Dengarkan \"{title}\" — {artist} di Clai",
+  "@ctxShareText": {
+    "placeholders": {
+      "artist": {},
+      "title": {}
+    }
+  },
+  "ctxRemoveFromQueue": "Hapus dari Antrian",
+  "ctxNewPlaylist": "Playlist baru",
+  "ctxPlaylistName": "Nama playlist",
+  "ctxAlreadyInPlaylist": "Sudah ada di playlist",
+  "ctxAlreadyInPlaylistBody": "Lagu ini sudah ada di playlist itu. Tetap tambahkan sebagai duplikat?",
+  "ctxSkip": "Lewati",
+  "ctxAddAnyway": "Tetap tambahkan",
+  "commonSave": "Simpan",
+  "searchHint": "Cari lagu, album, artis…",
+  "searchSpotifyOnlySnack": "Baru tautan PLAYLIST Spotify yang didukung — tempel tautan playlist publiknya.",
+  "searchSourceBroken": "Sumber sedang bermasalah — bentuk datanya berubah. Ini bukan salah koneksimu.",
+  "searchNetworkError": "Tidak dapat menjangkau sumber. Periksa koneksimu.",
+  "searchSpotifyCardTitle": "Buka playlist Spotify",
+  "searchSpotifyCardSub": "Tempel tautan playlist publik Spotify di bidang cari di atas — tanpa akun, lagu dicocokkan ke katalog.",
+  "searchEmpty": "Ketik untuk mencari di katalog.\nHasil muncul sambil kamu mengetik.",
+  "searchRecent": "Terakhir dicari",
+  "searchClearAll": "Hapus semua",
+  "searchNoResults": "Tidak ditemukan. Coba kata kunci lain — ini bukan gagal jaringan, memang tidak ada hasilnya.",
+  "searchResultsLabel": "Hasil cari",
+  "searchSongs": "Lagu",
+  "searchAlbums": "Album",
+  "searchArtists": "Artis",
+  "searchPlaylists": "Playlist",
+  "searchAll": "Semua",
+  "collectionTitle": "Koleksi",
+  "collectionSortRecent": "Terbaru disimpan",
+  "collectionFilterHint": "Saring koleksimu…",
+  "collectionPlaylists": "Playlist",
+  "collectionDownloads": "Unduhan",
+  "collectionLocalFiles": "File Lokal",
+  "collectionSavedCount": "{count} lagu tersimpan",
+  "@collectionSavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionEmptyPlaylists": "Belum ada playlist. Buat satu dengan tombol + di bawah.",
+  "collectionEmptySaved": "Belum ada lagu tersimpan. Ketuk hati pada lagu mana pun — dari baris lagu atau Player.",
+  "collectionNewPlaylistName": "Nama playlist baru",
+  "contentUnavailable": "Konten tidak tersedia.",
+  "contentLoadFail": "Tidak dapat memuat halaman ini dari sumber.",
+  "contentShuffle": "Acak",
+  "contentShuffleContext": "{title} (acak)",
+  "@contentShuffleContext": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "contentPopular": "Lagu populer",
+  "contentDiscography": "Diskografi",
+  "contentSimilar": "Artis serupa",
+  "contentCountLine": "{count} lagu · {duration}",
+  "@contentCountLine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "duration": {}
+    }
+  },
+  "plRemovedSnack": "Dihapus dari playlist: {title}",
+  "@plRemovedSnack": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "plRename": "Ganti nama",
+  "plNewName": "Nama baru",
+  "plDelete": "Hapus playlist",
+  "plDeleteTitle": "Hapus playlist?",
+  "plDeleteBody": "Playlist dihapus permanen dari perangkat ini. Lagu-lagunya sendiri tidak ikut terhapus.",
+  "plEmpty": "Playlist ini masih kosong. Tambahkan lagu dari menu konteks lagu mana pun.",
+  "spTitle": "Playlist Spotify",
+  "spUnavailable": "Playlist tidak tersedia.",
+  "spLoadFail": "Tidak dapat memuat playlist Spotify. Periksa koneksimu.",
+  "spMeta": "Metadata: Spotify (tanpa akun) • Audio: hasil pencocokan katalog",
+  "spPlayMatched": "Putar yang cocok",
+  "spMatching": "Mencocokkan… {matched} dari {total} lagu",
+  "@spMatching": {
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "spMatched": "{matched} dari {total} lagu tercocokkan",
+  "@spMatched": {
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "spNoneMatched": "Belum ada lagu yang tercocokkan.",
+  "spSkippedItems": "{count} item non-lagu (mis. episode) dilewati.",
+  "@spSkippedItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "spHuge": "Playlist sangat besar — ditampilkan 1000 lagu pertama.",
+  "spContext": "Spotify • {name}",
+  "@spContext": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "spOwnerLine": "{owner} • {count} lagu",
+  "@spOwnerLine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "owner": {}
+    }
+  },
+  "spNotFound": "Lagu ini tidak ditemukan di katalog.",
+  "spNotFoundRetry": "Lagu ini tidak ditemukan di katalog — ketuk label \"Tak cocok\" untuk mencoba lagi.",
+  "spMatchingThis": "Sedang mencocokkan lagu ini…",
+  "spNoMatch": "Tak cocok",
+  "spPlayWhileMatching": "Pencocokan sedang berjalan — putar lagi sesaat.",
+  "localTitle": "File Lokal",
+  "localScan": "Pindai file lokal",
+  "localRescan": "Pindai ulang",
+  "localSub": "Pindai folder musik perangkatmu. File lokal setara dengan lagu streaming di antrean & playlist.",
+  "localDenied": "Izin audio ditolak. File lokal tidak dapat dipindai tanpa izin itu.",
+  "localNone": "Tidak ada berkas audio ≥ 30 detik ditemukan di perangkat.",
+  "localCount": "{count} berkas audio di perangkat",
+  "@localCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dlTitle": "Unduhan",
+  "dlEmpty": "Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun — lagu terunduh bisa diputar tanpa jaringan.",
+  "dlFailed": "Unduhan gagal.",
+  "dlRetry": "Ulangi",
+  "dlProgressOf": "{done} / {tot}",
+  "@dlProgressOf": {
+    "placeholders": {
+      "done": {},
+      "tot": {}
+    }
+  },
+  "dlProgressDone": "{done} diunduh…",
+  "@dlProgressDone": {
+    "placeholders": {
+      "done": {}
+    }
+  },
+  "dlFootnote": "Berkas tinggal di penyimpanan privat aplikasi. Unduhan bisa dijeda dan dilanjutkan dari byte terakhir; pembatalan penuh menghapus berkas sebagian.",
+  "capGateTitle": "Model pembaca teks belum diunduh",
+  "capGateBody": "Tangkap dari gambar membaca daftar lagu dari tangkapan layar atau foto. Model pembacanya (±4 MB) sengaja tidak ikut di dalam APK agar aplikasi tetap ramping — unduh sekali dari GitHub Releases, sesudah itu membaca gambar bekerja offline penuh. Tangkap lewat tautan tidak membutuhkannya sama sekali.",
+  "capVerifying": "Memeriksa keutuhan berkas…",
+  "capDownloadModel": "Unduh model",
+  "capRetryDownload": "Coba unduh lagi",
+  "capTitle": "Tangkapan",
+  "capFromOtherApp": "Tangkapan dari aplikasi lain",
+  "capFrom": "Dari: {label}",
+  "@capFrom": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "capNotFound": "Tidak ditemukan.",
+  "capPlayAll": "Putar semua yang ditemukan ({count})",
+  "@capPlayAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "capAddAll": "Tambah semua ke antrean",
+  "capMatching": "Mencocokkan… item muncul satu per satu.",
+  "capMatchingShort": "Mencocokkan…",
+  "capImageList": "Gambar daftar lagu",
+  "lyrTitle": "Lirik",
+  "lyrNoTrack": "Tidak ada lagu yang sedang diputar.",
+  "lyrInstrumental": "Lagu ini instrumental — memang tidak ada liriknya.",
+  "lyrNotFound": "Lirik tidak ditemukan di LRCLIB untuk lagu ini.",
+  "lyrNetError": "Tidak dapat memeriksa lirik — koneksi bermasalah.",
+  "lyrSource": "Sumber lirik: LRCLIB (lrclib.net) — tersimpan lokal sesudah ditemukan.",
+  "lyrPlainNote": "Lirik tersedia tanpa sinkronisasi waktu.",
+  "lyrTrackLine": "{title} — {artist}",
+  "@lyrTrackLine": {
+    "placeholders": {
+      "artist": {},
+      "title": {}
+    }
+  },
+  "sleepTitle": "Timer tidur",
+  "sleepSubOff": "Musik berhenti sendiri — lalu bisa dilanjutkan besok dari posisi yang sama.",
+  "sleepSubMinutes": "Timer aktif — {remaining} lagi. Saat berbunyi, volume memudar 5 detik lalu musik jeda.",
+  "@sleepSubMinutes": {
+    "placeholders": {
+      "remaining": {}
+    }
+  },
+  "sleepSubEndOfSong": "Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar 5 detik).",
+  "sleepMinutes": "{m} menit",
+  "@sleepMinutes": {
+    "placeholders": {
+      "m": {
+        "type": "int"
+      }
+    }
+  },
+  "sleepEndOfSong": "Akhir lagu ini",
+  "sleepCancel": "Batalkan timer",
+  "sleepRemaining": "Sisa {time}",
+  "@sleepRemaining": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "voiceTitle": "Antrean Suara",
+  "voiceHintIdle": "Ketuk mikrofon, atau ketik perintah di bawah.",
+  "voiceListening": "Mendengarkan… ketuk mikrofon untuk berhenti.",
+  "voiceMicDenied": "Izin mikrofon ditolak — ketik perintah di bawah.",
+  "voiceExamples": "Coba: \"putar [judul lagu]\", \"tambah [judul] setelah ini\", \"lewati\", \"jeda\", \"lanjut\".",
+  "voiceInputHint": "Ketik perintah (simulasi suara)…",
+  "voiceSend": "Kirim",
+  "voiceSearching": "Mencari…",
+  "voiceWhichOne": "Yang mana maksudmu?",
+  "drvExit": "Keluar",
+  "drvSwipeHint": "Usap kiri/kanan di mana saja untuk berikutnya/sebelumnya.",
+  "drvNoSong": "Tidak ada lagu",
+  "drvAnnounceSubShort": "Judul lagu berikutnya dibacakan sebelum diputar.",
+  "drvSpeedVolumeNote": "Volume bergerak hanya di antara dua titik yang kamu kalibrasi di Pengaturan.",
+  "vcDisconnected": "Pengenal suara terputus — ketik perintah di bawah.",
+  "vcFailed": "Pengenal suara gagal ({error}) — ketik perintah di bawah.",
+  "@vcFailed": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "vcAnswerChoice": "Jawab \"yang pertama\" atau \"yang kedua\", atau \"batal\".",
+  "vcCancelled": "Baik, dibatalkan.",
+  "vcUnclear": "Maaf, saya kurang jelas — bisa diulangi?",
+  "vcStopped": "Baik, saya berhenti mendengarkan.",
+  "vcUnknown": "Maaf, perintah tidak dikenali. Coba: putar [judul lagu].",
+  "vcSkipped": "Dilewati.",
+  "vcPaused": "Dijeda.",
+  "vcResumed": "Dilanjutkan.",
+  "vcSayTitle": "Sebut judul lagunya — misalnya: putar [judul lagu].",
+  "vcNotFound": "Tidak ditemukan lagu untuk \"{query}\".",
+  "@vcNotFound": {
+    "placeholders": {
+      "query": {}
+    }
+  },
+  "vcNoMatch": "Tidak ditemukan lagu yang cocok untuk \"{query}\".",
+  "@vcNoMatch": {
+    "placeholders": {
+      "query": {}
+    }
+  },
+  "vcWhich": "Maksudmu {t1} — {a1}, atau {t2} — {a2}?",
+  "@vcWhich": {
+    "placeholders": {
+      "a1": {},
+      "a2": {},
+      "t1": {},
+      "t2": {}
+    }
+  },
+  "vcSearchFailed": "Pencarian gagal — periksa jaringan lalu coba lagi.",
+  "vcPlaying": "Memutar {title} — {artist}.",
+  "@vcPlaying": {
+    "placeholders": {
+      "artist": {},
+      "title": {}
+    }
+  },
+  "vcAddedNext": "Menambahkan {title} — {artist} setelah lagu ini.",
+  "@vcAddedNext": {
+    "placeholders": {
+      "artist": {},
+      "title": {}
+    }
+  },
+  "vcAddedQueue": "Menambahkan {title} — {artist} ke antrean.",
+  "@vcAddedQueue": {
+    "placeholders": {
+      "artist": {},
+      "title": {}
+    }
+  },
+  "vcContextLabel": "Suara",
+  "diagTitle": "Diagnostik Putar",
+  "diagIntro": "Menguji rantai putar per mata rantai (resolusi → unduh → ExoPlayer polos → +header → muxed → jalur aplikasi → pipa lokal) untuk lagu Song & item Video, lengkap dengan galat natif dari logcat proses. Hasilnya satu laporan teks — salin & kirim ke pengembang bila lagu tidak bunyi.",
+  "diagRun": "Jalankan Diagnostik",
+  "diagRunning": "Berjalan…",
+  "diagCopy": "Salin Laporan",
+  "diagCopied": "Laporan disalin.",
+  "diagEmpty": "Belum ada laporan. Ketuk \"Jalankan Diagnostik\".",
+  "updNoReleases": "Belum ada rilis resmi yang diterbitkan.",
+  "updBadShape": "Bentuk data rilis tidak dikenal.",
+  "updVersionUnreadable": "Versi terpasang tidak terbaca di perangkat ini.",
+  "updAvailableMsg": "Versi {version} tersedia.",
+  "@updAvailableMsg": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "updUpToDate": "Clai sudah versi terbaru.",
+  "updCheckFailedHttp": "Pemeriksaan gagal (HTTP {code}).",
+  "@updCheckFailedHttp": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "updCheckFailed": "Tidak dapat memeriksa pembaruan. Periksa koneksimu.",
+  "updNoApk": "Rilis {tag} tidak membawa berkas APK.",
+  "@updNoApk": {
+    "placeholders": {
+      "tag": {}
+    }
+  },
+  "updWaitingWifi": "Pembaruan tersedia — unduhan otomatis menunggu Wi-Fi.",
+  "updAlreadyDownloaded": "Pembaruan sudah terunduh — siap dipasang.",
+  "updDownloadDone": "Unduhan selesai — siap dipasang.",
+  "updDownloadFailed": "Unduhan gagal. Coba lagi saat koneksi stabil.",
+  "updFollowSystem": "Ikuti konfirmasi sistem untuk menyelesaikan pemasangan.",
+  "updInstallPermMsg": "Android belum mengizinkan Clai memasang aplikasi. Izinkan \"pasang aplikasi tak dikenal\" untuk Clai, lalu coba lagi.",
+  "updInstallFailed": "Pemasangan gagal di sistem. Berkas unduhan tetap tersimpan — coba lagi.",
+  "ocrMsgInstalled": "Model terpasang — Tangkap gambar bekerja offline.",
+  "ocrMsgNotDownloaded": "Model pembaca teks belum diunduh (sekali saja, ±4 MB).",
+  "ocrMsgDeleted": "Model dihapus. Tangkap gambar akan menawarkannya lagi.",
+  "ocrMsgContacting": "Menghubungi GitHub Releases…",
+  "ocrErrFeed": "Umpan rilis tidak dapat dibaca (HTTP {code}).",
+  "@ocrErrFeed": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "ocrErrNoModel": "Rilis tidak membawa model OCR.",
+  "ocrErrManifestEmpty": "Manifest model kosong.",
+  "ocrErrManifestUnknown": "Manifest model tidak dikenal.",
+  "ocrErrAssetMissing": "Aset model {file} tidak ada di rilis.",
+  "@ocrErrAssetMissing": {
+    "placeholders": {
+      "file": {}
+    }
+  },
+  "ocrMsgDownloading": "Mengunduh model ({version})…",
+  "@ocrMsgDownloading": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "ocrMsgChecksumFail": "Checksum tidak cocok — berkas dibuang sebelum sempat dipakai. Coba unduh lagi.",
+  "ocrMsgInstalledReady": "Model terpasang — Tangkap gambar siap dipakai, termasuk offline.",
+  "ocrMsgDownloadFailed": "Unduhan gagal. Periksa koneksimu lalu coba lagi.",
+  "capSvcModelMissing": "Model pembaca teks belum diunduh.",
+  "capSvcNoText": "Tidak ada teks terbaca dari gambar ini.",
+  "capSvcNoLines": "Tidak ada baris teks terbaca dari gambar.",
+  "capSvcModelMissingLong": "Model pembaca teks belum diunduh. Unduh sekali (panel di atas atau Pengaturan → Tangkap), sesudah itu gambar dibaca offline.",
+  "capSvcTitleUnreadable": "Judul halaman tidak dapat dibaca.",
+  "capSvcSpotifySummary": "Playlist Spotify: {name}",
+  "@capSvcSpotifySummary": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "capSvcYtSummary": "Daftar putar: {title}",
+  "@capSvcYtSummary": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "capSvcNoAudioMatch": "Tidak tercocokkan ke audio.",
+  "capSvcMatchFailed": "Pencocokan gagal.",
+  "capSvcPlaylistNotFound": "Playlist tidak ditemukan atau tidak publik.",
+  "capSvcMetaUnreadable": "Metadata lagu tidak dapat dibaca.",
+  "capSvcPlaylistLoadFail": "Playlist tidak dapat dimuat.",
+  "capSvcVideoMetaUnreadable": "Metadata video tidak dapat dibaca.",
+  "capSvcNotFound": "Tidak ditemukan.",
+  "capSvcNoGoodMatch": "Tidak ada yang cukup cocok.",
+  "capSvcSearchFailed": "Pencarian gagal.",
+  "spErrServerTime": "Waktu server Spotify tidak terbaca.",
+  "spErrTokenRejected": "Token web Spotify ditolak — skema token mungkin sudah dirotasi Spotify.",
+  "spErrUnreachable": "Tidak dapat menjangkau Spotify: {type}",
+  "@spErrUnreachable": {
+    "placeholders": {
+      "type": {}
+    }
+  },
+  "spErrHashRotated": "Skema kueri Spotify berubah (hash persisted ditolak) — fitur playlist Spotify perlu diperbarui.",
+  "spErrHttp": "Spotify menjawab HTTP {code}.",
+  "@spErrHttp": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "spErrShape": "Bentuk respons Spotify berubah.",
+  "spErrQueryRejected": "Spotify menolak kueri: {msg}",
+  "@spErrQueryRejected": {
+    "placeholders": {
+      "msg": {}
+    }
+  },
+  "spErrShapeV2": "Bentuk respons Spotify berubah (playlistV2 hilang).",
+  "noticeOfflineHidden": "Mode offline: {count} lagu streaming disembunyikan dari antrean.",
+  "@noticeOfflineHidden": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticePrepareFail": "Tidak dapat menyiapkan pemutaran {what}. Periksa koneksi lalu ketuk putar lagi.",
+  "@noticePrepareFail": {
+    "placeholders": {
+      "what": {}
+    }
+  },
+  "noticeQueueEnded": "Antrean habis — tidak ada sambungan tersedia.",
+  "noticeOfflineNonePlayable": "Mode offline aktif — tidak ada lagu yang bisa diputar offline dalam daftar ini.",
+  "noticeOfflineSkipped": "Mode offline: {count} lagu dilewati (belum diunduh).",
+  "@noticeOfflineSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeOfflineNotDownloaded": "Mode offline aktif — \"{title}\" belum diunduh.",
+  "@noticeOfflineNotDownloaded": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "noticeSkippedUnplayable": "Melewatkan \"{title}\" — tidak dapat diputar dari sumber.",
+  "@noticeSkippedUnplayable": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "noticeAutoStop": "Berhenti otomatis: 3 lagu gagal berturut-turut.",
+  "noticeTryingOtherPath": "Mencoba jalur putar lain untuk \"{title}\"…",
+  "@noticeTryingOtherPath": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "dlErrFileMissing": "Berkas unduhan tidak ditemukan di perangkat.",
+  "dlErrTimeout": "Waktu unduh habis.",
+  "dlErrNoConnection": "Tidak ada koneksi.",
+  "dlErrSourceRefused": "Sumber menolak unduhan (HTTP {code}).",
+  "@dlErrSourceRefused": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "drvAnnounceNext": "Berikutnya: {title} — {artist}",
+  "@drvAnnounceNext": {
+    "placeholders": {
+      "artist": {},
+      "title": {}
+    }
+  },
+  "startupStarting": "Memulai…",
+  "startupDb": "Menyiapkan basis data…",
+  "startupSource": "Menyiapkan sumber musik…",
+  "startupPlayer": "Menyiapkan pemutar…",
+  "startupPrefs": "Memulihkan preferensi…",
+  "startupServices": "Menyiapkan layanan…",
+  "startupFailedTitle": "Clai gagal mulai",
+  "startupFailedStep": "Langkah yang gagal: {step}",
+  "@startupFailedStep": {
+    "placeholders": {
+      "step": {}
+    }
+  },
+  "startupRetry": "Coba Lagi",
+  "startupReportCopied": "Laporan tersalin — tempel & kirim ke pengembang.",
+  "capSvcFromLink": "{title} (dari tautan)",
+  "@capSvcFromLink": {
+    "placeholders": {
+      "title": {}
+    }
+  },
+  "ctxPreviousSession": "Sesi sebelumnya",
+  "@ctxPreviousSession": {},
+  "notifLike": "Sukai",
+  "notifUnlike": "Sudah disukai",
+  "dlErrCorrupt": "Berkas unduhan rusak (checksum tidak cocok).",
+  "dlErrQuotaFull": "Kuota unduhan penuh — hapus unduhan lama atau naikkan kuota di Pengaturan.",
+  "dlErrStorageFull": "Penyimpanan perangkat penuh.",
+  "dlPause": "Jeda",
+  "dlResume": "Lanjutkan",
+  "dlPauseAll": "Jeda Semua",
+  "dlResumeAll": "Lanjutkan Semua",
+  "dlRedownload": "Unduh Ulang",
+  "dlPausedState": "Dijeda · {done} dari {total}",
+  "@dlPausedState": {
+    "placeholders": {
+      "done": {},
+      "total": {}
+    }
+  },
+  "dlUsageLine": "Terpakai {used}",
+  "@dlUsageLine": {
+    "placeholders": {
+      "used": {}
+    }
+  },
+  "dlQuotaLabel": "Kuota unduhan",
+  "dlQuotaUnlimited": "Tanpa batas",
+  "dlQuotaGb": "{gb} GB",
+  "@dlQuotaGb": {
+    "placeholders": {
+      "gb": {
+        "type": "int"
+      }
+    }
+  },
+  "setDataSaver": "Mode hemat data",
+  "setDataSaverSub": "Streaming selalu kualitas Rendah saat aktif; kualitas Tinggi dicegah di jaringan seluler.",
+  "setDataSaverCellularBlock": "Kualitas Tinggi dicegah: mode hemat data aktif dan perangkat memakai jaringan seluler.",
+  "setFocusBehavior": "Saat aplikasi lain berbunyi sebentar",
+  "focusDuck": "Turunkan volume (duck)",
+  "focusPause": "Jeda, lanjut otomatis sesudahnya",
+  "setHistoryRetention": "Simpan riwayat putar selama",
+  "histDays": "{days} hari",
+  "@histDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "histForever": "Selamanya",
+  "playerBitrate": "{kbps} kbps",
+  "@playerBitrate": {
+    "placeholders": {
+      "kbps": {
+        "type": "int"
+      }
+    }
+  },
+  "a11yPlay": "Putar",
+  "a11yPause": "Jeda",
+  "a11yNext": "Lagu berikutnya",
+  "a11yPrevious": "Lagu sebelumnya",
+  "a11yShuffle": "Acak",
+  "a11yRepeat": "Ulangi",
+  "a11yLike": "Sukai",
+  "a11yUnlike": "Batalkan suka",
+  "a11yClosePlayer": "Tutup pemutar",
+  "a11yOpenPlayer": "Buka pemutar",
+  "a11yTrackOptions": "Opsi lagu",
+  "a11ySeek": "Posisi putar",
+  "a11ySettings": "Pengaturan",
+  "a11ySort": "Urutkan",
+  "contentSave": "Simpan ke Koleksi",
+  "contentSaved": "Tersimpan di Koleksi",
+  "contentDownloadAll": "Unduh Semua",
+  "contentShare": "Bagikan",
+  "contentFromCache": "Menampilkan salinan tersimpan — sumber sedang tak terjangkau.",
+  "collectionAlbums": "Album",
+  "collectionArtists": "Artis",
+  "collectionEmptyAlbums": "Belum ada album tersimpan. Simpan dari halaman album.",
+  "collectionEmptyArtists": "Belum ada artis tersimpan. Simpan dari halaman artis.",
+  "searchSuggestions": "Saran",
+  "eqPresetFlat": "Datar",
+  "eqPresetBass": "Bass",
+  "eqPresetVocal": "Vokal",
+  "eqPresetAcoustic": "Akustik",
+  "eqNamedPresets": "Preset Clai",
+  "setSamsung": "Samsung",
+  "setSamsungSub": "Pengaturan → Baterai → Batas penggunaan latar → jangan masukkan Clai ke aplikasi tidur/tidur nyenyak.",
+  "setOppo": "Oppo / vivo",
+  "setOppoSub": "Aktifkan mulai-otomatis (autostart) untuk Clai dan kunci aplikasi di layar terbaru (recents) agar tidak dibersihkan sistem.",
+  "setHuawei": "Huawei / Honor",
+  "setHuaweiSub": "Pengaturan → Baterai → Peluncuran aplikasi → Clai → kelola manual: aktifkan mulai-otomatis, peluncuran sekunder, dan jalan di latar.",
+  "bgAutostartNote": "Status mulai-otomatis (autostart) tidak dapat dideteksi aplikasi secara otomatis di Android — periksa manual sesuai merek perangkatmu di bawah.",
+  "noticeRegionUnavailable": "Konten ini tidak tersedia di wilayahmu.",
+  "diagGatesTitle": "Gerbang kualitas sesi ini (PRD Bab 3)",
+  "diagGateCold": "Mulai dingin terakhir: {ms} ms",
+  "@diagGateCold": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "diagGateTap": "Ketuk→bunyi: median {median} ms · p95 {p95} ms · {n} sampel",
+  "@diagGateTap": {
+    "placeholders": {
+      "median": {
+        "type": "int"
+      },
+      "n": {
+        "type": "int"
+      },
+      "p95": {
+        "type": "int"
+      }
+    }
+  },
+  "diagGateFail": "Percobaan putar: {attempts} · gagal {failures} ({pct}%)",
+  "@diagGateFail": {
+    "placeholders": {
+      "attempts": {
+        "type": "int"
+      },
+      "failures": {
+        "type": "int"
+      },
+      "pct": {}
+    }
+  },
+  "diagGateNone": "Belum ada sampel sesi ini.",
+  "a11yClose": "Tutup",
+  "contentDownloadQueued": "{count} lagu diantrekan untuk diunduh.",
+  "@contentDownloadQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contentPlaylistCopied": "Playlist disalin ke koleksimu.",
+  "queueDragReorder": "Seret untuk mengurutkan",
+  "ocrMsgNotPublished": "Model belum tersedia — unduhan aktif setelah rilis resmi pertama Clai diterbitkan.",
+  "ocrMsgNoModelInRelease": "Rilis terbaru belum membawa model pembaca teks — unduhan aktif setelah model diterbitkan di rilis.",
+  "ocrCheckAgain": "Periksa Lagi",
+  "artistNotFound": "Artis tidak ditemukan",
+  "contentDownloaded": "Terunduh",
+  "contentDownloadingCount": "{done}/{total}",
+  "@contentDownloadingCount": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
+}

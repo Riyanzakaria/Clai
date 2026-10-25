@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 96">
+  <!-- Lockup resmi: mark + wordmark. Wordmark diset Space Grotesk SemiBold (600).
+       Untuk produksi, wordmark dirender dari font terbundel; berkas ini referensi proporsi. -->
+  <g transform="translate(0,0)">
+    <path d="M 71.64 29.53 A 30 30 0 1 0 71.64 66.47" fill="none" stroke="#B8F135" stroke-width="13" stroke-linecap="round"/>
+    <path d="M 42 35 L 64 48 L 42 61 Z" fill="#B8F135" stroke="#B8F135" stroke-width="5" stroke-linejoin="round"/>
+  </g>
+  <text x="112" y="63" font-family="Space Grotesk, sans-serif" font-weight="600" font-size="52" fill="#F4F6F1" letter-spacing="-0.5">Clai</text>
+</svg>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cacat A (build 2008): ikon aksi kustom notifikasi media (D-32
+     toggleLike) dirujuk HANYA lewat string dari Dart
+     ('drawable/ic_clai_heart'). Penyingkat sumber daya rilis membuang
+     keduanya dari APK 2007 -> getIdentifier = 0 -> PlaybackStateCompat
+     melempar "You must specify an icon resource id to build a
+     CustomAction" -> seluruh state sesi gugur -> notifikasi media tidak
+     pernah terbit. Aturan keep ini menahan keduanya di semua build. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_clai_heart,@drawable/ic_clai_heart_fill" />
