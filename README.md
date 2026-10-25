@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Riyanzakaria/clai/releases/latest/download/clai.apk"><img alt="Download clai.apk" src="https://img.shields.io/badge/Download-clai.apk-B8F135?style=for-the-badge&logo=android&logoColor=black"></a>
+  <a href="https://github.com/Riyanzakaria/clai/releases/latest/download/clai.apk"><img alt="Download clai.apk" src="gambar/download-button.png" width="420"></a>
 </p>
 
 <p align="center">
