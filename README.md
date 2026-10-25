@@ -42,6 +42,8 @@
   <img src="gambar/hero.png" width="860" alt="Clai — home, player, and synced lyrics">
 </p>
 
+<a id="download"></a>
+
 ## ⬇️ Download
 
 **[Download clai.apk](https://github.com/Riyanzakaria/clai/releases/latest/download/clai.apk)** — always the latest version, straight from [GitHub Releases](https://github.com/Riyanzakaria/clai/releases).
@@ -51,6 +53,8 @@
 3. Done — from then on, updates arrive inside the app.
 
 **Requirements:** Android 10 or newer. No account, no sign-up, and permissions are only ever asked when you open the feature that needs them.
+
+<a id="why-clai"></a>
 
 ## ✨ Why Clai
 
@@ -62,6 +66,8 @@ Streaming a song is easy — every app does that. These are the things Clai does
 - **Continue Tomorrow** — the sleep timer doesn't just stop the music; it bookmarks your exact position, and tomorrow Home offers to resume the same queue where you drifted off.
 - **Voice Queue** — say *"play …"* or *"pause"* (Indonesian & English), on-device. Ambiguous matches are read back for confirmation, never guessed.
 - **A real Car Mode** — a giant-touch surface you can swipe anywhere, voice commands, spoken announcements, and speed-following volume between two limits *you* calibrate.
+
+<a id="features"></a>
 
 ## 🎧 Features
 
@@ -78,6 +84,8 @@ Streaming a song is easy — every app does that. These are the things Clai does
 - 📊 **Optional ListenBrainz scrobbling** — off by default; bring your own token.
 - 🎨 **Dynamic cover accent** — the player and Home card take a muted tint from the current cover.
 - 🌐 **Indonesian & English UI** — follows your system language, switchable any time in Settings.
+
+<a id="screenshots"></a>
 
 ## 📱 Screenshots
 
@@ -112,6 +120,8 @@ Streaming a song is easy — every app does that. These are the things Clai does
   </tr>
 </table>
 
+<a id="the-honest-part"></a>
+
 ## 🤝 The honest part
 
 - **Unofficial API.** Clai plays from YouTube Music through its unofficial internal API (InnerTube) — outside the source's official terms, so the source **can change or break at any time**. Failures are surfaced honestly in the app, and a replaceable provider layer keeps the player independent of any single source.
@@ -119,6 +129,8 @@ Streaming a song is easy — every app does that. These are the things Clai does
 - **Clean-room.** Clai contains no code, icons, artwork, or assets from Spotify or any other player, and is not affiliated with or endorsed by YouTube, Google, or Spotify.
 - **Your data stays yours.** No accounts, no analytics, no telemetry, no ads. Everything personal is stored locally on your device.
 - **GPL-3.0.** Anyone may use, study, and modify Clai; distributed derivatives must stay open source under the same license.
+
+<a id="whats-coming"></a>
 
 ## 🗺️ What's coming
 
