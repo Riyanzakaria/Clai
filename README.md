@@ -1,5 +1,7 @@
-<!-- Storefront README for github.com/Riyanzakaria/clai — v2 (visual-first rewrite,
+<!-- Storefront README for github.com/Riyanzakaria/Clai — v2 (visual-first rewrite,
      owner verdict 25 Oct 2026: v1 too text-dense, raw screenshots).
+     v2.1 (owner decision 25 Oct 20:30): restrained emoji markers (one per section
+     heading + feature bullets, Spotube/Seal style) and a big download button badge.
      Rules that still bind: English only; about the APP, never the project (no phases,
      no process, no internal codenames); every claim provable against build 2013 / 1.0.0.
      Images: framed presentation files live in repo-rapi/gambar-rapi/ locally and are
@@ -24,6 +26,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Riyanzakaria/clai/releases/latest/download/clai.apk"><img alt="Download clai.apk" src="https://img.shields.io/badge/Download-clai.apk-B8F135?style=for-the-badge&logo=android&logoColor=black"></a>
+</p>
+
+<p align="center">
   <a href="#download">Download</a> ·
   <a href="#why-clai">Why Clai</a> ·
   <a href="#features">Features</a> ·
@@ -36,7 +42,7 @@
   <img src="gambar/hero.png" width="860" alt="Clai — home, player, and synced lyrics">
 </p>
 
-## Download
+## ⬇️ Download
 
 **[Download clai.apk](https://github.com/Riyanzakaria/clai/releases/latest/download/clai.apk)** — always the latest version, straight from [GitHub Releases](https://github.com/Riyanzakaria/clai/releases).
 
@@ -46,7 +52,7 @@
 
 **Requirements:** Android 10 or newer. No account, no sign-up, and permissions are only ever asked when you open the feature that needs them.
 
-## Why Clai
+## ✨ Why Clai
 
 Streaming a song is easy — every app does that. These are the things Clai does that the big players don't:
 
@@ -57,23 +63,23 @@ Streaming a song is easy — every app does that. These are the things Clai does
 - **Voice Queue** — say *"play …"* or *"pause"* (Indonesian & English), on-device. Ambiguous matches are read back for confirmation, never guessed.
 - **A real Car Mode** — a giant-touch surface you can swipe anywhere, voice commands, spoken announcements, and speed-following volume between two limits *you* calibrate.
 
-## Features
+## 🎧 Features
 
-- **Full queue control** — play next, add to queue, drag to reorder, swipe to remove, undo, clear. Your manual queue always outranks everything else.
-- **Track Radio** — an endless station from any song, from any track's menu.
-- **Crossfade (1–12 s) and gapless** transitions, loudness normalization, and a 5-band equalizer with presets.
-- **Honest interruptions** — if another app pauses your music, it resumes afterwards; if *you* paused it, it stays paused.
-- **Offline downloads** with a downloads manager — and an offline mode that tells the truth instead of pretending everything still works.
-- **Home & Explore** — resume where you left off, personal shelves from your own listening, trending community playlists, quick picks, and video charts.
-- **Search and pages** for songs, albums, artists, and playlists, with filters, discographies, and similar artists.
-- **Your library lives on your phone** — liked songs, history, your own playlists (create/edit/reorder), and local files treated as first-class citizens next to streamed tracks.
-- **Spotify playlists in, music out** — paste a public Spotify link (no account needed); Clai reads the track list and matches every song to playable audio, and says so on the page itself.
-- **Synced lyrics** from LRCLIB (plain lyrics as fallback, cached on-device), with cover-art enrichment via MusicBrainz / Cover Art Archive.
-- **Optional ListenBrainz scrobbling** — off by default; bring your own token.
-- **Dynamic cover accent** — the player and Home card take a muted tint from the current cover.
-- **Indonesian & English UI** — follows your system language, switchable any time in Settings.
+- 🎛️ **Full queue control** — play next, add to queue, drag to reorder, swipe to remove, undo, clear. Your manual queue always outranks everything else.
+- 📻 **Track Radio** — an endless station from any song, from any track's menu.
+- 🎚️ **Crossfade (1–12 s) and gapless** transitions, loudness normalization, and a 5-band equalizer with presets.
+- ⏸️ **Honest interruptions** — if another app pauses your music, it resumes afterwards; if *you* paused it, it stays paused.
+- 📥 **Offline downloads** with a downloads manager — and an offline mode that tells the truth instead of pretending everything still works.
+- 🏠 **Home & Explore** — resume where you left off, personal shelves from your own listening, trending community playlists, quick picks, and video charts.
+- 🔎 **Search and pages** for songs, albums, artists, and playlists, with filters, discographies, and similar artists.
+- 📚 **Your library lives on your phone** — liked songs, history, your own playlists (create/edit/reorder), and local files treated as first-class citizens next to streamed tracks.
+- 🔗 **Spotify playlists in, music out** — paste a public Spotify link (no account needed); Clai reads the track list and matches every song to playable audio, and says so on the page itself.
+- 🎤 **Synced lyrics** from LRCLIB (plain lyrics as fallback, cached on-device), with cover-art enrichment via MusicBrainz / Cover Art Archive.
+- 📊 **Optional ListenBrainz scrobbling** — off by default; bring your own token.
+- 🎨 **Dynamic cover accent** — the player and Home card take a muted tint from the current cover.
+- 🌐 **Indonesian & English UI** — follows your system language, switchable any time in Settings.
 
-## Screenshots
+## 📱 Screenshots
 
 <table align="center">
   <tr>
@@ -106,7 +112,7 @@ Streaming a song is easy — every app does that. These are the things Clai does
   </tr>
 </table>
 
-## The honest part
+## 🤝 The honest part
 
 - **Unofficial API.** Clai plays from YouTube Music through its unofficial internal API (InnerTube) — outside the source's official terms, so the source **can change or break at any time**. Failures are surfaced honestly in the app, and a replaceable provider layer keeps the player independent of any single source.
 - **Lossy in, lossy out.** The source streams Opus/AAC up to roughly 256 kbps. There is no lossless tier to unlock, and Clai will not fake one. Your own files (FLAC included) are played as-is.
@@ -114,23 +120,23 @@ Streaming a song is easy — every app does that. These are the things Clai does
 - **Your data stays yours.** No accounts, no analytics, no telemetry, no ads. Everything personal is stored locally on your device.
 - **GPL-3.0.** Anyone may use, study, and modify Clai; distributed derivatives must stay open source under the same license.
 
-## What's coming
+## 🗺️ What's coming
 
 - **In 1.1.0** — home-screen widgets and long-press shortcuts, a swipeable mini player, honest data-usage estimates (with a data-saver offer on mobile data), *"Why this song?"* labels on Autoplay picks, a *"Don't play things like this"* block, undo-skip, and a sleep timer that fades out instead of cutting off.
 - **In 2.0.0** — your listening stats and a "Clai Wrapped" computed entirely on your phone, library export/import in open formats (JSON/M3U), Clai Connect on your home network, and an open plug-in system for new music sources.
 - **Later** — an iOS build installed by sideloading (AltStore/SideStore), plus podcasts and audiobooks. The App Store is not a realistic door for this kind of app, and this page won't pretend otherwise. Desktop and Android TV are **not** planned — Clai is a phone app by decision, not by limitation.
 
-## For developers
+## 🛠️ For developers
 
 Clai is built with **Flutter** and **ExoPlayer** (via `just_audio` / `audio_service`), in the **Volt** design language — near-black `#0A0A0E`, one lime accent `#B8F135`, spring-physics motion. Sources sit behind a single provider contract — the player never talks to a source directly — and personal data lives in a local database on the device.
 
 Found a bug? Reports that include the app's built-in incident log (in Settings) are dramatically easier to fix.
 
-## Credits
+## 🙏 Credits
 
 Lyrics by [LRCLIB](https://lrclib.net) · cover art via [MusicBrainz](https://musicbrainz.org) / [Cover Art Archive](https://coverartarchive.org) · optional scrobbling to [ListenBrainz](https://listenbrainz.org)
 
-## License
+## 📜 License
 
 [GNU General Public License v3.0](LICENSE)
 
