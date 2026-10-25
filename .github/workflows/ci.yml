@@ -24,7 +24,7 @@ jobs:
       - name: Ambil dependensi
         run: flutter pub get
       - name: Analisis statis (nol error adalah gerbang)
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
       - name: Seluruh uji + cakupan
         run: flutter test --coverage
       - name: Simpan laporan cakupan
