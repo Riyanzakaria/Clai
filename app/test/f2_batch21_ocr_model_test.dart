@@ -71,10 +71,12 @@ void main() {
     late List<int> goodBytes;
     late String goodSha;
     var corrupt = false;
+    var manifestOctet = false;
     late Directory support;
 
     setUp(() async {
       corrupt = false;
+      manifestOctet = false;
       goodBytes = List<int>.generate(8192, (i) => (i * 7 + 13) % 251);
       goodSha = sha256.convert(goodBytes).toString();
       support = await Directory.systemTemp.createTemp('clai-ocr-ctl');
@@ -102,7 +104,11 @@ void main() {
             ],
           }));
         } else if (path == '/assets/clai-ocr-model.json') {
-          req.response.headers.contentType = ContentType.json;
+          // manifestOctet: sajikan persis seperti aset GitHub Releases asli
+          // (application/octet-stream) — bentuk yang membunuh unduhan di
+          // rilis 1.0.0 (cast String→Map pada get<Map<...>>).
+          req.response.headers.contentType =
+              manifestOctet ? ContentType.binary : ContentType.json;
           req.response.write(jsonEncode({
             'lang': 'eng',
             'file': 'eng.traineddata',
@@ -171,6 +177,22 @@ void main() {
       corrupt = false;
       await c.download();
       expect(c.status, OcrModelStatus.ready);
+    });
+
+    test(
+        'manifes octet-stream (aset rilis asli) tetap terpasang — regresi 1.0.0',
+        () async {
+      manifestOctet = true;
+      final c = ctl();
+      await c.download();
+      expect(c.status, OcrModelStatus.ready,
+          reason:
+              'unduhan tidak boleh mati pada cast String→Map lagi (insiden pemilik)');
+      expect(c.modelVersion, 'uji-eng');
+      expect(
+          await File('${support.path}/ocr-model/tessdata/eng.traineddata')
+              .exists(),
+          isTrue);
     });
 
     test('hapus model → kembali belum-diunduh yang jujur', () async {

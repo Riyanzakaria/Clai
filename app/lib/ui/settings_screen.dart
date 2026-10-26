@@ -68,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
             context.l10n.groupDiagnosticsSum, const _DiagnosisPage()),
         _group(context, ClaiIcons.info, context.l10n.groupAbout,
             context.l10n.groupAboutSum, const _AboutPage()),
-        const SizedBox(height: 24),
+        SizedBox(height: bottomChromeClearance(context)),
       ]),
     );
   }
@@ -98,7 +98,10 @@ class _GroupPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
-      body: ListView(children: [...children, const SizedBox(height: 32)]),
+      body: ListView(children: [
+        ...children,
+        SizedBox(height: bottomChromeClearance(context)),
+      ]),
     );
   }
 }
@@ -450,28 +453,9 @@ class _CaptureLinkTile extends StatelessWidget {
       title: Text(context.l10n.captureLinkTitle, style: const TextStyle(color: ClaiColors.ink)),
       subtitle: Text(context.l10n.captureLinkSub, style: const TextStyle(color: ClaiColors.inkSecondary)),
       trailing: ClaiIcon(ClaiIcons.link, color: ClaiColors.inkFaint),
-      onTap: () async {
-        final ctrl = TextEditingController();
-        final input = await showDialog<String>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(context.l10n.captureLinkTitle),
-            content: TextField(
-              controller: ctrl,
-              autofocus: true,
-              decoration: InputDecoration(hintText: context.l10n.captureHint),
-              onSubmitted: (v) => Navigator.of(ctx).pop(v),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.commonCancel)),
-              FilledButton(onPressed: () => Navigator.of(ctx).pop(ctrl.text), child: Text(context.l10n.captureAction)),
-            ],
-          ),
-        );
-        if (input != null && input.trim().isNotEmpty && context.mounted) {
-          openCaptureSheet(context, text: input.trim());
-        }
-      },
+      // Dialognya kini implementasi bersama di capture_sheet.dart
+      // (dipakai juga pintu Tangkap di layar Cari, butir 6 F2.5).
+      onTap: () => openCaptureTextInput(context),
     );
   }
 }
@@ -679,6 +663,7 @@ class _LogScreen extends StatelessWidget {
                   subtitle: Text('${e.at.toIso8601String()}\n${e.detail}', style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 12)),
                   isThreeLine: true,
                 ),
+              SizedBox(height: bottomChromeClearance(context)),
             ]),
     );
   }

@@ -23,6 +23,7 @@ import 'services/gate_metrics.dart';
 import 'services/listenbrainz_service.dart';
 import 'services/loudness_estimator.dart';
 import 'services/observability.dart';
+import 'services/track_metadata_healer.dart';
 
 /// Cap waktu niat mulai proses (B-01: metrik mulai dingin Bab 3). main()
 /// menyentuhnya pertama kali agar inisialisasi malasnya terjadi sedini
@@ -251,6 +252,20 @@ class _ClaiBootstrapAppState extends State<ClaiBootstrapApp> {
           }
         };
         handler!.artworkEnricher = (t) => enrich.coverFor(t);
+        // Lapisan penyembuhan metadata (Ronde Cacat Metadata): trek yang
+        // mulai diputar dengan artis kosong / tanpa sampul diselesaikan
+        // sekali dari provider (resolve by ID); hasilnya ditempel handler
+        // ke antrean + DB. Gagal = putar jalan terus dengan rekam apa
+        // adanya; tidak pernah menunggu pemutaran.
+        final healer =
+            TrackMetadataHealer(db!, resolveById: provider!.resolveTrackById);
+        handler!.trackStartedListeners.add((t) {
+          if (TrackMetadataHealer.needsHeal(t)) {
+            unawaited(healer.healIfNeeded(t).then((h) {
+              if (h != null) unawaited(handler!.refreshTrackMetadata(h));
+            }));
+          }
+        });
         // Lanjut Besok (F2 Batch 2): estimator RMS mulai mendengarkan
         // peristiwa Visualizer; sampel hanya diakumulasi saat sakelar
         // normalisasi nyala (cek di dalam estimator).

@@ -22,6 +22,7 @@ import 'services/voice_service.dart';
 import 'services/sleep_service.dart';
 import 'services/library_controller.dart';
 import 'services/listenbrainz_service.dart';
+import 'services/track_metadata_healer.dart';
 import 'services/local_files.dart';
 import 'services/lyrics_service.dart';
 import 'services/ocr_model_service.dart';
@@ -65,6 +66,13 @@ final listenBrainzServiceProvider = Provider<ListenBrainzService>(
 );
 final enrichmentServiceProvider = Provider<EnrichmentService>(
   (ref) => EnrichmentService(ref.watch(appDbProvider)),
+);
+
+/// Lapisan penyembuhan metadata (Ronde Cacat Metadata): rekam trek ber-artis
+/// kosong / tanpa sampul diselesaikan sekali dari provider saat ditampilkan.
+final trackMetadataHealerProvider = Provider<TrackMetadataHealer>(
+  (ref) => TrackMetadataHealer(ref.watch(appDbProvider),
+      resolveById: ref.watch(ytMusicProvider).resolveTrackById),
 );
 
 /// Layanan F2 Batch 2: unduhan/offline (butuh provider musik + DB).
@@ -258,16 +266,90 @@ double bottomChromeClearance(BuildContext context) =>
     MediaQuery.paddingOf(context).bottom +
     2;
 
+/// Kunci navigator AKAR aplikasi (MaterialApp). Dipakai juga oleh
+/// [sheetHostContext].
+final GlobalKey<NavigatorState> claiRootNavigatorKey =
+    GlobalKey<NavigatorState>();
+
+/// Konteks di dalam overlay navigator aplikasi (MaterialApp ClaiApp) —
+/// tuan rumah untuk SEMUA lembar modal dan rute yang wajib menutupi
+/// seluruh cangkang (Player, Antrean, lembar-lembar).
+///
+/// Kenapa tidak `useRootNavigator: true`? Aplikasi ini punya DUA
+/// MaterialApp: ProviderScope Riverpod tinggal di dalam `home`
+/// MaterialApp bootstrap (bootstrap.dart), DI BAWAH navigator ClaiApp
+/// tapi DI ATASNYA tidak ada scope. Flag `useRootNavigator` mengangkat
+/// rute ke navigator BOOTSTRAP — di luar ProviderScope — sehingga
+/// widget pemakai Riverpod di sana melempar "No ProviderScope found"
+/// dan tampil sebagai kotak abu-abu ErrorWidget pada build profile
+/// (terbukti di emulator, Ronde Tambahan 2015: Player, Tangkap, dan
+/// layar Antrean abu-abu penuh; lembar konteks selamat hanya karena
+/// isinya tidak membaca provider). Dari konteks overlay ini,
+/// `Navigator.of` menuju navigator ClaiApp — tetap di dalam scope,
+/// tetap menutupi cangkang.
+BuildContext claiRootContext(BuildContext fallback) =>
+    claiRootNavigatorKey.currentState?.overlay?.context ?? fallback;
+
 class ClaiApp extends ConsumerStatefulWidget {
   const ClaiApp({super.key});
   @override
   ConsumerState<ClaiApp> createState() => _ClaiAppState();
 }
 
-class _ClaiAppState extends ConsumerState<ClaiApp> {
-  int _tab = 0;
+class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  final _navKey = GlobalKey<NavigatorState>();
+  final _navKey = claiRootNavigatorKey;
+
+  /// Navigator DALAM cangkang (Ronde Tambahan 2015, Butir 4): rute konten
+  /// yang didorong dari tab (playlist, halaman konten, radio, Pengaturan
+  /// + sub-halamannya) hidup di sini — DI BAWAH lapisan chrome melayang —
+  /// sehingga navbar + mini player tetap tampil & interaktif di atasnya,
+  /// ala Spotify. Yang tetap di navigator AKAR (menutupi penuh seperti
+  /// sebelumnya): Player (lembar modal), layar Antrean, dan semua lembar
+  /// modal/dialog — pembuka mereka memakai rootNavigator secara eksplisit.
+  final _shellNavKey = GlobalKey<NavigatorState>();
+
+  /// Tab aktif sebagai ValueNotifier: halaman akar navigator dalam dan
+  /// bilah navigasi sama-sama mendengarkannya, jadi ganti tab tidak
+  /// bergantung pada pembangunan ulang pohon navigator.
+  final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0);
+
+  /// Audit UX 2017: petunjuk geser mini player satu-kali (pref
+  /// `ui.miniSwipeHintSeen`). Default true = tersembunyi sampai pref
+  /// terbaca di initState, supaya tidak berkedip bagi pengguna yang
+  /// sudah pernah menutupnya.
+  bool _miniSwipeHintSeen = true;
+
+  Future<void> _loadMiniSwipeHint() async {
+    final seen =
+        await ref.read(appDbProvider).pref<bool>('ui.miniSwipeHintSeen') ??
+            false;
+    if (mounted && seen != _miniSwipeHintSeen) {
+      setState(() => _miniSwipeHintSeen = seen);
+    }
+  }
+
+  /// Mengubur petunjuk geser untuk selamanya: tombol tutup ATAU geser
+  /// pertama yang berhasil (keduanya membuktikan petunjuk tak lagi perlu).
+  void _dismissMiniSwipeHint() {
+    if (_miniSwipeHintSeen) return;
+    setState(() => _miniSwipeHintSeen = true);
+    ref
+        .read(appDbProvider)
+        .setPref('ui.miniSwipeHintSeen', true)
+        .catchError((_) {});
+  }
+
+  /// Ganti tab ala cangkang: tumpukan rute dalam selalu dipulangkan ke
+  /// akar dulu (mengetuk tab dari halaman yang didorong menampilkan tab
+  /// itu, bukan mengganti isi di balik halaman).
+  void _goTab(int index) {
+    final nav = _shellNavKey.currentState;
+    if (nav != null && nav.canPop()) {
+      nav.popUntil((route) => route.isFirst);
+    }
+    _tabNotifier.value = index;
+  }
 
   void _openCapture(Map map) {
     final kind = map['kind'] as String?;
@@ -281,9 +363,40 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
     }
   }
 
+  /// Tarik berbagi yang menunggu di sisi natif ('initialShared'
+  /// mengembalikan + menghapusnya, jadi tarikan ganda aman). Dipanggil
+  /// sekali sesudah bingkai pertama (jalur dingin) dan SETIAP aplikasi
+  /// kembali ke depan. Inilah perbaikan cacat berbagi hangat F2.5: bila
+  /// activity dihancurkan sistem saat aplikasi di latar (umum di ROM
+  /// agresif seperti HyperOS, sementara proses + layanan musik tetap
+  /// hidup), instance MainActivity yang baru menampung berbagi hangat
+  /// sebagai pendingShare dengan sink EventChannel yang sudah mati —
+  /// sebelumnya tak ada penarik sesudah initState, jadi berbagi itu
+  /// hilang diam-diam dan aplikasi hanya tampil ke depan (laporan
+  /// pemilik di build 2014). Kini setiap 'resumed' menariknya.
+  Future<void> _pullPendingShare() async {
+    try {
+      final pending = await CaptureService.takePendingShare();
+      if (pending != null) _openCapture(pending);
+    } catch (_) {}
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _pullPendingShare();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _tabNotifier.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadMiniSwipeHint();
     final handler = ref.read(audioHandlerProvider);
     // Cacat A (2008): izin notifikasi diminta pada MOMEN YANG BENAR —
     // pemutaran aktif pertama (sekali per pemasangan). Tanpa izin
@@ -365,6 +478,12 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
     sleep.onPostFireInteraction = () {
       ref.read(appDbProvider).setPref('sleep.last', null);
     };
+    // F2.5: peredupan bentang akhir timer tidur — layanan memberi tahu
+    // kapan rampa harus mulai/batal; mode akhir-lagu dipicu handler dari
+    // posisi trek (gerbang keadaan terpasang dibaca lewat kait ini).
+    sleep.onFadeStart = (remaining) => handler.beginSleepFade(remaining);
+    sleep.onFadeCancel = () => handler.cancelSleepFade();
+    handler.sleepEndOfSongArmed = () => sleep.active?.mode == 'endOfSong';
     // D-32: suka dari notifikasi/layar kunci — sakelar suka trek berjalan
     // lewat LibraryController yang sama dengan UI; keadaan suka disinkronkan
     // balik ke handler agar ikon notifikasi selalu jujur.
@@ -404,27 +523,12 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
     shareEvents.receiveBroadcastStream().listen((event) {
       if (event is Map) _openCapture(event.cast<String, Object?>());
     }, onError: (_) {});
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        const shareCh = MethodChannel('clai/share');
-        final initial = await shareCh.invokeMapMethod<String, Object?>(
-          'initialShared',
-        );
-        if (initial != null) _openCapture(initial);
-      } catch (_) {}
-    });
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pullPendingShare());
   }
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      HomeScreen(
-        onGoSearch: () => setState(() => _tab = 1),
-        onGoCollection: () => setState(() => _tab = 2),
-      ),
-      const SearchScreen(),
-      const CollectionScreen(),
-    ];
     final localeOverride = ref.watch(localeOverrideProvider);
     return MaterialApp(
       title: 'Clai',
@@ -444,29 +548,66 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
           // Daftarkan instance aktif untuk service/handler (teks pengguna
           // yang dihasilkan di luar pohon widget).
           setCurrentL10n(AppLocalizations.of(context));
-          return Scaffold(
-            key: _scaffoldKey,
-            // Pola shell yang benar (v4.4.1): resize eksplisit — saat keyboard
-            // membuka, body menyusut dan chrome bawah (Positioned bottom: 0)
-            // menempel tepat di atas keyboard, tidak tertutup & tidak melompat.
-            // Biaya per-frame animasi inset ditekan RepaintBoundary pada chrome
-            // dan pada baris daftar (SongRow).
-            resizeToAvoidBottomInset: true,
-            body: Stack(
-              children: [
-                Positioned.fill(
-                  child: SafeArea(
-                    bottom: false,
-                    child: IndexedStack(index: _tab, children: screens),
+          // Butir 4: tombol Kembali sistem — navigator akar hanya punya
+          // rute cangkang ini, jadi delegasikan ke navigator dalam:
+          // pulangkan rute kontennya bila ada; di akar tab, keluar
+          // aplikasi seperti sebelumnya.
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              final nav = _shellNavKey.currentState;
+              if (nav != null && nav.canPop()) {
+                nav.pop();
+              } else {
+                SystemNavigator.pop();
+              }
+            },
+            child: Scaffold(
+              key: _scaffoldKey,
+              // Pola shell yang benar (v4.4.1): resize eksplisit — saat keyboard
+              // membuka, body menyusut dan chrome bawah (Positioned bottom: 0)
+              // menempel tepat di atas keyboard, tidak tertutup & tidak melompat.
+              // Biaya per-frame animasi inset ditekan RepaintBoundary pada chrome
+              // dan pada baris daftar (SongRow).
+              resizeToAvoidBottomInset: true,
+              body: Stack(
+                children: [
+                  Positioned.fill(
+                    child: SafeArea(
+                      bottom: false,
+                      child: Navigator(
+                        key: _shellNavKey,
+                        onGenerateRoute: (settings) => MaterialPageRoute(
+                          settings: settings,
+                          builder: (_) => ValueListenableBuilder<int>(
+                            valueListenable: _tabNotifier,
+                            builder: (context, tab, _) => IndexedStack(
+                              index: tab,
+                              children: [
+                                HomeScreen(
+                                  onGoSearch: () => _goTab(1),
+                                  onGoCollection: () => _goTab(2),
+                                ),
+                                const SearchScreen(),
+                                CollectionScreen(
+                                  onGoSearch: () => _goTab(1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: RepaintBoundary(child: _bottomChrome(context)),
-                ),
-              ],
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: RepaintBoundary(child: _bottomChrome(context)),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -500,12 +641,6 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
   /// lukisan scrim.
   Widget _bottomChrome(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final clusterHeight =
-        kChromeTopGap +
-        kMiniPlayerHeight +
-        kMiniPlayerBottomMargin +
-        kNavBarHeight +
-        bottomInset;
     final handler = ref.read(audioHandlerProvider);
     return StreamBuilder<MediaItem?>(
       stream: handler.mediaItem.stream,
@@ -515,9 +650,19 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
         return CoverAccentBuilder(
           key: ValueKey('chrome-accent-${item?.id}'),
           artworkUrl: item?.artUri?.toString(),
-          builder: (context, tonal) => SizedBox(
-            height: clusterHeight,
-            child: Stack(
+          // Audit UX 2017 (perbaikan A-6, revisi 2): gugus chrome TIDAK
+          // lagi dikunci ke SizedBox setinggi kartu+nav+inset — bilah
+          // petunjuk geser satu-kali dan bilah offline hidup di kolom yang
+          // sama, dan tinggi terkunci membuat bilah yang muncul meluap ke
+          // atas Stack lalu terpotong habis (terbukti di instal segar
+          // 26 Okt 2026: tiga layar, nol bilah; Clip.none saja hanya
+          // memperbaiki lukisan, bukan hit-test — tombol tutup tetap
+          // mati). Stack kini mengukur dirinya dari kolom (anak
+          // non-posisi), jadi bilah yang muncul benar-benar menambah
+          // tinggi gugus ke atas, dapat diketuk, dan kartu/nav tetap
+          // pada jarak yang sama dari bawah karena induknya
+          // Positioned(bottom: 0).
+          builder: (context, tonal) => Stack(
               children: [
                 Positioned(
                   left: 0,
@@ -537,11 +682,8 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
                     ),
                   ),
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Column(
+                // Kolom non-posisi: Stack mengukur dirinya dari kolom ini.
+                Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const SizedBox(height: kChromeTopGap),
@@ -585,15 +727,66 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
                           );
                         },
                       ),
-                      const MiniPlayer(),
+                      // Audit UX 2017: petunjuk geser mini player SATU
+                      // KALI — gestur geser tidak terlihat sama sekali
+                      // bagi pengguna baru. Bilah ramping pola bilah
+                      // offline, tepat di atas kartu; geometri chrome
+                      // yang dikunci tak berubah (tinggi nol saat tiada).
+                      StreamBuilder(
+                        stream: ref.read(audioHandlerProvider).mediaItem.stream,
+                        initialData:
+                            ref.read(audioHandlerProvider).mediaItem.valueOrNull,
+                        builder: (context, snap) {
+                          if (snap.data == null || _miniSwipeHintSeen) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                              decoration: BoxDecoration(
+                                color: ClaiColors.surface2,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  ClaiIcon(
+                                    ClaiIcons.next,
+                                    size: 18,
+                                    color: ClaiColors.accent,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      context.l10n.miniSwipeHint,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: ClaiColors.inkSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: ClaiIcon(
+                                      ClaiIcons.close,
+                                      size: 18,
+                                      color: ClaiColors.inkSecondary,
+                                    ),
+                                    tooltip: context.l10n.a11yClose,
+                                    onPressed: _dismissMiniSwipeHint,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      MiniPlayer(onSwipeCommitted: _dismissMiniSwipeHint),
                       _navBar(context),
                       SizedBox(height: bottomInset),
                     ],
                   ),
-                ),
               ],
             ),
-          ),
         );
       },
     );
@@ -608,17 +801,23 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
     final s = context.l10n;
     return SizedBox(
       height: kNavBarHeight,
-      child: Row(
-        children: [
-          _navDestination(0, ClaiIcons.home, ClaiIcons.homeFill, s.navHome),
-          _navDestination(1, ClaiIcons.search, ClaiIcons.search, s.navSearch),
-          _navDestination(
-            2,
-            ClaiIcons.library,
-            ClaiIcons.libraryFill,
-            s.navLibrary,
-          ),
-        ],
+      child: ValueListenableBuilder<int>(
+        valueListenable: _tabNotifier,
+        builder: (context, tab, _) => Row(
+          children: [
+            _navDestination(
+                0, ClaiIcons.home, ClaiIcons.homeFill, s.navHome, tab),
+            _navDestination(
+                1, ClaiIcons.search, ClaiIcons.search, s.navSearch, tab),
+            _navDestination(
+              2,
+              ClaiIcons.library,
+              ClaiIcons.libraryFill,
+              s.navLibrary,
+              tab,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -628,15 +827,16 @@ class _ClaiAppState extends ConsumerState<ClaiApp> {
     ClaiIconData icon,
     ClaiIconData selectedIcon,
     String label,
+    int activeTab,
   ) {
-    final selected = _tab == index;
+    final selected = activeTab == index;
     return Expanded(
       child: Semantics(
         button: true,
         selected: selected,
         label: label,
         child: InkWell(
-          onTap: () => setState(() => _tab = index),
+          onTap: () => _goTab(index),
           child: Padding(
             padding: const EdgeInsets.only(top: kNavBarTopPad),
             child: Column(

@@ -527,7 +527,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () => Navigator.of(context).push(
+                          onPressed: () => Navigator.of(claiRootContext(context)).push(
                             MaterialPageRoute(
                               builder: (_) => const QueueScreen(),
                             ),

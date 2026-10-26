@@ -1,7 +1,7 @@
 name: clai
 description: "Clai — an open-source music player for Android. No account, no ads, no telemetry: your library, playlists, and listening history live only on your phone."
 publish_to: 'none'
-version: 1.0.0+2013
+version: 1.1.0+2018
 
 environment:
   sdk: ^3.9.0

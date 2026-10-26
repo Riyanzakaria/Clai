@@ -29,6 +29,23 @@ class OcrModelManifest {
       required this.version});
 }
 
+/// Urai manifest model OCR dari badan TEKS polos. Aset rilis GitHub
+/// disajikan sebagai application/octet-stream, sehingga badan respons
+/// tiba sebagai String apa pun label JSON-nya — penguraian dari teks
+/// (bukan cast Map pada hasil Dio) membuatnya kebal content-type.
+/// Null bila badan kosong / bukan JSON / bukan objek JSON.
+OcrModelManifest? parseOcrModelManifestBody(String? body) {
+  if (body == null || body.trim().isEmpty) return null;
+  Object? decoded;
+  try {
+    decoded = jsonDecode(body);
+  } catch (_) {
+    return null;
+  }
+  if (decoded is! Map) return null;
+  return parseOcrModelManifest(decoded.cast<String, dynamic>());
+}
+
 /// Urai manifest model OCR. Null bila bentuknya tidak dikenal — pemanggil
 /// menyatakannya sebagai galat umpan, bukan mengarang nilai.
 OcrModelManifest? parseOcrModelManifest(Map<String, dynamic> json) {
@@ -238,10 +255,20 @@ class OcrModelController extends ChangeNotifier {
         message = l10n.ocrMsgNoModelInRelease;
         return;
       }
-      final man = await _dio.get<Map<String, dynamic>>(manifestAsset.url,
-          options: Options(headers: {'User-Agent': 'Clai'}));
-      if (man.data == null) throw StateError(l10n.ocrErrManifestEmpty);
-      final manifest = parseOcrModelManifest(man.data!);
+      // Manifes diambil sebagai TEKS POLOS lalu diurai manual: aset rilis
+      // disajikan sebagai application/octet-stream sehingga Dio membiarkan
+      // badan respons sebagai String dan get<Map<String, dynamic>> meledak
+      // pada cast (insiden HP pemilik atas rilis 1.0.0, 25 Okt 2026:
+      // "type 'String' is not a subtype of type 'Map<String, dynamic>?").
+      // ResponseType.plain + jsonDecode = kebal content-type.
+      final man = await _dio.get<String>(manifestAsset.url,
+          options: Options(
+              headers: {'User-Agent': 'Clai'},
+              responseType: ResponseType.plain));
+      if (man.data == null || man.data!.trim().isEmpty) {
+        throw StateError(l10n.ocrErrManifestEmpty);
+      }
+      final manifest = parseOcrModelManifestBody(man.data);
       if (manifest == null) throw StateError(l10n.ocrErrManifestUnknown);
       ({String name, String url, int size})? modelAsset;
       for (final a in release.assets) {

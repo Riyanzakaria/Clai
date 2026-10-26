@@ -24,6 +24,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offlineBarText => 'Offline mode — downloads & local files only';
 
   @override
+  String get miniSwipeHint => 'Swipe the player card to change tracks';
+
+  @override
   String get eqTitle => 'Equalizer';
 
   @override
@@ -368,6 +371,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureAction => 'Capture';
 
   @override
+  String get searchCaptureTitle => 'Capture a song list';
+
+  @override
+  String get searchCaptureSub =>
+      'Paste a link or text (including a Spotify playlist) or pick an image — the songs are matched for you.';
+
+  @override
+  String get capturePickImage => 'Pick an image from the gallery';
+
+  @override
   String get setBgStatus => 'Background permission status';
 
   @override
@@ -446,7 +459,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aboutVersion => 'Clai 1.0.0';
+  String get aboutVersion => 'Clai 1.0.1';
 
   @override
   String get aboutBody =>
@@ -812,12 +825,78 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ctxShare => 'Share';
 
   @override
-  String ctxShareText(Object artist, Object title) {
-    return 'Listen to \"$title\" — $artist on Clai';
+  String ctxShareCredit(Object url) {
+    return 'Shared via Clai — get the app: $url';
   }
 
   @override
+  String radioPageTitle(Object title) {
+    return 'Radio — $title';
+  }
+
+  @override
+  String get radioGeneratedFrom => 'Radio generated from this song';
+
+  @override
+  String get radioEmpty => 'No radio could be built from this song yet.';
+
+  @override
+  String get radioLoadFailed =>
+      'Couldn\'t load this song\'s radio. Check your connection and try again.';
+
+  @override
   String get ctxRemoveFromQueue => 'Remove from Queue';
+
+  @override
+  String get queueSelect => 'Select';
+
+  @override
+  String queueSelectedCount(Object count) {
+    return '$count selected';
+  }
+
+  @override
+  String get queueBulkRemove => 'Remove';
+
+  @override
+  String get queueBulkPlaylist => 'To Playlist';
+
+  @override
+  String get queueBulkSave => 'Save';
+
+  @override
+  String get queueSelectAll => 'Select All';
+
+  @override
+  String get queueUnselectAll => 'Clear All';
+
+  @override
+  String bulkQueueAdded(Object count) {
+    return '$count songs added to the queue.';
+  }
+
+  @override
+  String bulkSaved(Object count) {
+    return '$count songs saved to your Collection.';
+  }
+
+  @override
+  String get bulkSavedNone =>
+      'All of these songs are already in your Collection.';
+
+  @override
+  String bulkPlaylistAdded(Object count) {
+    return '$count songs added to the playlist.';
+  }
+
+  @override
+  String get bulkPlaylistNone =>
+      'All of these songs are already in that playlist.';
+
+  @override
+  String bulkRemovedFromQueue(Object count) {
+    return '$count songs removed from the queue.';
+  }
 
   @override
   String get ctxNewPlaylist => 'New playlist';
@@ -874,6 +953,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchClearAll => 'Clear all';
 
   @override
+  String get searchClearQuery => 'Clear search';
+
+  @override
   String get searchNoResults =>
       'Not found. Try another keyword — this isn\'t a network failure, there simply are no results.';
 
@@ -921,6 +1003,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get collectionEmptyPlaylists =>
       'No playlists yet. Create one with the + button below.';
+
+  @override
+  String get collectionGoSearch => 'Search songs';
 
   @override
   String get collectionEmptySaved =>
@@ -1182,12 +1267,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sleepSubMinutes(Object remaining) {
-    return 'Timer active — $remaining left. When it fires, the volume fades for 5 seconds, then the music pauses.';
+    return 'Timer active — $remaining left. The volume fades out smoothly over the final stretch, then the music pauses.';
   }
 
   @override
   String get sleepSubEndOfSong =>
-      'Timer active — music stops at the end of the current song (fades for 5 seconds).';
+      'Timer active — music stops at the end of the current song (fading over its final stretch).';
 
   @override
   String sleepMinutes(int m) {

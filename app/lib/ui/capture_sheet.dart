@@ -10,7 +10,7 @@ import '../services/ocr_model_service.dart';
 
 Future<void> openCaptureSheet(BuildContext context, {String? text, String? imageUri}) {
   return showModalBottomSheet<void>(
-    context: context,
+    context: claiRootContext(context),
     isScrollControlled: true,
     backgroundColor: ClaiColors.surface1,
     shape: const RoundedRectangleBorder(
@@ -19,6 +19,43 @@ Future<void> openCaptureSheet(BuildContext context, {String? text, String? image
         heightFactor: 0.85,
         child: CaptureSheet(text: text, imageUri: imageUri)),
   );
+}
+
+/// Lembar masukan teks Tangkap (dialog tempel tautan/teks) — SATU
+/// implementasi untuk semua pintu: Pengaturan ("Tangkap tautan/teks")
+/// dan pintu Tangkap terpadu di layar Cari (butir 6 F2.5). Teks yang
+/// dikirim (termasuk tautan playlist Spotify) mengalir ke lembar
+/// Tangkapan yang sama lewat [openCaptureSheet].
+Future<void> openCaptureTextInput(BuildContext context) async {
+  final l10n = context.l10n;
+  final ctrl = TextEditingController();
+  final input = await showDialog<String>(
+    // Audit UX 2017: dialog memakai konteks AKAR seperti semua lembar
+    // lain (openCaptureSheet di atas) — dari konten cangkang, konteks
+    // pemanggil menaruh dialog di navigator dalam: penghalangnya tidak
+    // menutupi chrome melayang dan ganti tab bisa membuangnya diam-diam.
+    context: claiRootContext(context),
+    builder: (ctx) => AlertDialog(
+      title: Text(l10n.captureLinkTitle),
+      content: TextField(
+        controller: ctrl,
+        autofocus: true,
+        decoration: InputDecoration(hintText: l10n.captureHint),
+        onSubmitted: (v) => Navigator.of(ctx).pop(v),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.commonCancel)),
+        FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+            child: Text(l10n.captureAction)),
+      ],
+    ),
+  );
+  if (input != null && input.trim().isNotEmpty && context.mounted) {
+    openCaptureSheet(context, text: input.trim());
+  }
 }
 
 /// Lembar hasil tangkapan (F2 Batch 2): tiap item berstatus ditemukan / tidak

@@ -25,7 +25,7 @@ Widget harness({
           section: 'manual',
           items: items,
           itemIndices: [for (var i = 0; i < items.length; i++) i],
-          rowBuilder: (ctx, t, handle) => SizedBox(
+          rowBuilder: (ctx, t, engineIndex, handle) => SizedBox(
             height: 56,
             child: Row(children: [Expanded(child: Text(t.title)), handle]),
           ),

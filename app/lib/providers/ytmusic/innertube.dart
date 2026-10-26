@@ -141,6 +141,45 @@ String? _extractVideoId(Map<String, dynamic> m) {
   return v;
 }
 
+/// Nama artis bersih dari byline sumber mentah (segmen berpisah " • ").
+///
+/// Dua bentuk sumber terbukti merusak nama artis (Ronde Cacat Metadata,
+/// bukti hidup 25 Okt 2026):
+/// 1. Byline panel/daftar PENUH "Artis • Album • Tahun" (longBylineText) —
+///    yang benar sebagai nama artis hanya segmen pertamanya. Utuh apa adanya,
+///    string ini sempat menjadi JUDUL RAK personal di HP pemilik
+///    ("Karena kamu sering memutar sombr • I Barely Know Her • 2025").
+/// 2. Byline berisi kata kategori SAJA ("Song"/"Video"/"Episode") — artis
+///    memang tidak dibawa item itu; kembalikan '' (jujur kosong, diisi
+///    lapisan pewarisan/penyembuhan), BUKAN kata kategorinya — kata itu
+///    sempat tersimpan harfiah sebagai nama artis ("back to friends" →
+///    artis "Song").
+String artistNameFromByline(String byline) {
+  final segs = byline
+      .split('•')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty)
+      .toList();
+  if (segs.isEmpty) return '';
+  if (segs.length == 1 &&
+      const {'Song', 'Video', 'Episode'}.contains(segs.first)) {
+    return '';
+  }
+  // Ekor statistik item video ("… • 552K views • 8.1K likes", "… • 3.8M
+  // plays") bukan bagian nama — 366 baris katalog pentasan membawa bentuk
+  // ini. Buang selama masih ada segmen di depannya.
+  final statTail =
+      RegExp(r'^[\d.,]+\s*[KMB]?\+?\s+(views|likes|plays)$', caseSensitive: false);
+  while (segs.length > 1 && statTail.hasMatch(segs.last)) {
+    segs.removeLast();
+  }
+  // "Artis • Album • Tahun" (atau "Artis • Tahun"): nama artisnya segmen awal.
+  if (segs.length >= 2 && RegExp(r'^(19|20)\d{2}$').hasMatch(segs.last)) {
+    return segs.first;
+  }
+  return segs.join(' • ');
+}
+
 /// Mengurai satu musicResponsiveListItemRenderer / playlistVideoRenderer menjadi Track (ytmusic).
 Track? parseTrackItem(Object? node, {String providerId = 'ytmusic'}) {
   final m = asMap(node);
@@ -173,11 +212,11 @@ Track? parseTrackItem(Object? node, {String providerId = 'ytmusic'}) {
       if (duration != null) segs.removeLast();
     }
     if (segs.length >= 2 && const {'Song', 'Video', 'Episode'}.contains(segs.first)) segs.removeAt(0);
-    artists = segs.join(' • ');
+    artists = artistNameFromByline(segs.join(' • '));
   } else if (m.containsKey('title')) {
     // playlistVideoRenderer
     title = runsText(m['title']) ?? '';
-    artists = runsText(m['shortBylineText']) ?? runsText(m['longBylineText']) ?? '';
+    artists = artistNameFromByline(runsText(m['shortBylineText']) ?? runsText(m['longBylineText']) ?? '');
     duration = parseDurationText(simpleText(m['lengthText']));
   }
   videoId ??= _extractVideoId(m);
@@ -204,7 +243,7 @@ Track? parsePanelTrackItem(Object? node, {String providerId = 'ytmusic'}) {
   final videoId = (m['videoId'] as String?) ?? _extractVideoId(m);
   final title = runsText(m['title']) ?? '';
   if (videoId == null || title.isEmpty) return null;
-  final artists = runsText(m['longBylineText']) ?? runsText(m['shortBylineText']) ?? '';
+  final artists = artistNameFromByline(runsText(m['longBylineText']) ?? runsText(m['shortBylineText']) ?? '');
   final artistIds = <String>[];
   for (final src in [m['longBylineText'], m['shortBylineText']]) {
     for (final r in asList(asMap(src)?['runs'])) {
@@ -280,6 +319,28 @@ List<Track> fillDurations(List<Track> tracks, List<Track> source) {
         t.copyWith(duration: byId[t.id])
       else
         t,
+  ];
+}
+
+/// Wariskan konteks halaman ke trek yang sumber per-treknya tidak membawa
+/// metadata sendiri (Ronde Cacat Metadata, bukti hidup 25 Okt 2026): item
+/// daftar trek halaman ALBUM tidak punya kolom byline sama sekali (kosong di
+/// sumber) dan tanpa thumbnail — artis hanya hidup di strapline header,
+/// sampul di thumbnail header. v4.4 hanya mewariskan sampul sehingga baris
+/// album tersimpan dengan artist_names KOSONG permanen (ubin huruf + tanpa
+/// nama artis di rak/mini player). Hanya kolom yang KOSONG yang diisi;
+/// metadata per-trek yang ada selalu menang.
+List<Track> inheritPageArtist(List<Track> tracks,
+    {String? artist, List<String> artistIds = const [], String? artworkUrl}) {
+  final hasArtist = artist != null && artist.trim().isNotEmpty;
+  if (!hasArtist && artworkUrl == null) return tracks;
+  return [
+    for (final t in tracks)
+      t.copyWith(
+        artistNames: hasArtist && t.artistNames.trim().isEmpty ? artist : null,
+        artistIds: t.artistIds.isEmpty && artistIds.isNotEmpty ? artistIds : null,
+        artworkUrl: t.artworkUrl ?? artworkUrl,
+      ),
   ];
 }
 

@@ -31,7 +31,10 @@ class DownloadsScreen extends ConsumerWidget {
 
 /// Isi layar unduhan — dipakai juga sebagai tab Koleksi (tanpa AppBar sendiri).
 class DownloadsBody extends ConsumerWidget {
-  const DownloadsBody({super.key});
+  /// Audit UX 2017: jalan keluar dari keadaan kosong menuju tab Cari
+  /// (hanya disambungkan tuan rumah tab Koleksi; layar mandiri = null).
+  final VoidCallback? onGoSearch;
+  const DownloadsBody({super.key, this.onGoSearch});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final svc = ref.watch(downloadServiceProvider);
@@ -44,6 +47,9 @@ class DownloadsBody extends ConsumerWidget {
           ? EmptyState(
               icon: ClaiIcons.download,
               message: context.l10n.dlEmpty,
+              actionLabel:
+                  onGoSearch == null ? null : context.l10n.collectionGoSearch,
+              onAction: onGoSearch,
             )
           : ListView(children: [
               Padding(
@@ -184,7 +190,7 @@ class DownloadsBody extends ConsumerWidget {
                       ]),
                     ),
                 },
-              const SizedBox(height: 32),
+              SizedBox(height: bottomChromeClearance(context)),
             ]);
   }
 }

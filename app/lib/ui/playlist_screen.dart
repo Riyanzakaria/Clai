@@ -85,6 +85,10 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                     ]),
                   ),
                   Expanded(child: ReorderableListView(
+                    // Butir 4: daftar kini hidup di bawah chrome melayang
+                    // cangkang — baris terakhir wajib bisa keluar dari
+                    // balik gugus mini player + nav.
+                    padding: EdgeInsets.only(bottom: bottomChromeClearance(context)),
                     buildDefaultDragHandles: false,
                     onReorder: (o, n) async {
                       final to = n > o ? n - 1 : n;
@@ -103,8 +107,9 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                             await lib.removeFromPlaylistAt(widget.playlistId, i);
                             _load();
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(context.l10n.plRemovedSnack(removed.title)),
+                              ScaffoldMessenger.of(context).showSnackBar(claiSnackAboveChrome(
+                                context,
+                                context.l10n.plRemovedSnack(removed.title),
                                 action: SnackBarAction(label: context.l10n.commonUndo, onPressed: () async {
                                   await lib.addToPlaylist(widget.playlistId, removed, allowDuplicate: true);
                                   _load();

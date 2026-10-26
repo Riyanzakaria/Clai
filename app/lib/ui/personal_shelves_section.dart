@@ -5,6 +5,7 @@ import '../l10n/l10n.dart';
 
 import '../app.dart';
 import '../core/tokens.dart';
+import '../services/track_metadata_healer.dart';
 import '../domain/models.dart';
 import 'widgets.dart';
 
@@ -26,6 +27,7 @@ class PersonalArtistRail extends ConsumerStatefulWidget {
 class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
   String? _topArtist;
   List<Track> _artistTracks = [];
+  bool _healedOnce = false;
 
   @override
   void initState() {
@@ -40,8 +42,9 @@ class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
     List<Track> artistTracks = [];
     if (artists.isNotEmpty && artists.first.count >= 3) {
       top = artists.first.artistNames;
-      artistTracks =
-          (await db.tracksByArtists([top], limit: 10)).take(10).toList();
+      artistTracks = (await db.tracksByArtists([
+        top,
+      ], limit: 10)).take(10).toList();
       if (artistTracks.isEmpty) top = null;
     }
     if (mounted) {
@@ -49,6 +52,15 @@ class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
         _topArtist = top;
         _artistTracks = artistTracks;
       });
+    }
+    // Penyembuhan metadata (Ronde Cacat Metadata): kartu rak yang artisnya
+    // kosong / tanpa sampul diselesaikan sekali dari provider, lalu rak
+    // dimuat ulang SEKALI — rekam lama sembuh di tempat, tanpa hapus data.
+    if (!_healedOnce && artistTracks.any(TrackMetadataHealer.needsHeal)) {
+      _healedOnce = true;
+      final healer = ref.read(trackMetadataHealerProvider);
+      final healed = await Future.wait(artistTracks.map(healer.healIfNeeded));
+      if (healed.any((h) => h != null) && mounted) await _load();
     }
   }
 
@@ -71,10 +83,12 @@ class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
 class PersonalShelvesSection extends ConsumerStatefulWidget {
   const PersonalShelvesSection({super.key});
   @override
-  ConsumerState<PersonalShelvesSection> createState() => _PersonalShelvesSectionState();
+  ConsumerState<PersonalShelvesSection> createState() =>
+      _PersonalShelvesSectionState();
 }
 
-class _PersonalShelvesSectionState extends ConsumerState<PersonalShelvesSection> {
+class _PersonalShelvesSectionState
+    extends ConsumerState<PersonalShelvesSection> {
   List<Track> _forgotten = [];
 
   @override
@@ -86,8 +100,11 @@ class _PersonalShelvesSectionState extends ConsumerState<PersonalShelvesSection>
   Future<void> _load() async {
     final db = ref.read(appDbProvider);
     final liked = await db.likedWithPlayCounts();
-    final forgotten =
-        liked.where((e) => e.plays == 0).map((e) => e.track).take(5).toList();
+    final forgotten = liked
+        .where((e) => e.plays == 0)
+        .map((e) => e.track)
+        .take(5)
+        .toList();
     if (mounted) {
       setState(() {
         _forgotten = forgotten;
@@ -100,18 +117,31 @@ class _PersonalShelvesSectionState extends ConsumerState<PersonalShelvesSection>
     if (_forgotten.isEmpty) return const SizedBox.shrink();
     final handler = ref.read(audioHandlerProvider);
     final title = context.l10n.shelfRarelyPlayed;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
           padding: const EdgeInsets.fromLTRB(16, 26, 16, 6),
-          child: Text(title,
-              style: const TextStyle(
-                  fontSize: 17, fontWeight: FontWeight.w600, color: ClaiColors.ink))),
-      for (final t in _forgotten)
-        SongRow(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: ClaiColors.ink,
+            ),
+          ),
+        ),
+        for (final t in _forgotten)
+          SongRow(
             track: t,
             onTap: () => handler.playTracks(
-                _forgotten, _forgotten.indexWhere((x) => x.key == t.key),
-                kind: 'search', label: title)),
-    ]);
+              _forgotten,
+              _forgotten.indexWhere((x) => x.key == t.key),
+              kind: 'search',
+              label: title,
+            ),
+          ),
+      ],
+    );
   }
 }

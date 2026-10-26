@@ -14,9 +14,22 @@ import 'playlist_screen.dart';
 import 'settings_screen.dart';
 import 'widgets.dart';
 
+/// U-2 (Audit UX, diterapkan build 2018): urutan untuk tab Album & Artis
+/// Koleksi — menghormati pilihan urut global yang sama seperti Playlist &
+/// Tersimpan: 'az' → judul A–Z; selain itu urutan simpan bawaan dipertahankan.
+/// Murni & diuji.
+List<SavedItemInfo> sortSavedItems(List<SavedItemInfo> items, String sort) {
+  final out = List<SavedItemInfo>.of(items);
+  if (sort == 'az') out.sort((a, b) => a.title.compareTo(b.title));
+  return out;
+}
+
 /// Koleksi (PRD 5.6): Playlist pengguna · Lagu Tersimpan · File Lokal — dengan saring lokal & urut.
 class CollectionScreen extends ConsumerStatefulWidget {
-  const CollectionScreen({super.key});
+  /// Audit UX 2017: jalan keluar dari keadaan kosong tab Koleksi menuju
+  /// tab Cari (disambungkan pemilik cangkang di app.dart; null = tanpa aksi).
+  final VoidCallback? onGoSearch;
+  const CollectionScreen({super.key, this.onGoSearch});
   @override
   ConsumerState<CollectionScreen> createState() => _CollectionScreenState();
 }
@@ -87,7 +100,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
         'albums' => _savedItemsList(lib, 'album'),
         'artists' => _savedItemsList(lib, 'artist'),
         'local' => const LocalFilesBody(),
-        'downloads' => const DownloadsBody(),
+        'downloads' => DownloadsBody(onGoSearch: widget.onGoSearch),
         _ => _playlistList(lib),
       }),
       if (_tab == 'playlists')
@@ -149,11 +162,14 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
   /// Tab Album & Artis tersimpan (PRD 5.6, Sapuan D-13) — item disimpan
   /// dari halaman konten; ketuk membuka halaman kontennya lagi.
   Widget _savedItemsList(LibraryController lib, String kind) {
-    final items = (kind == 'album' ? lib.savedAlbums : lib.savedArtists)
-        .where((e) =>
-            e.title.toLowerCase().contains(_filter) ||
-            (e.subtitle ?? '').toLowerCase().contains(_filter))
-        .toList();
+    // U-2 (build 2018): urut global kini berlaku di tab ini juga.
+    final items = sortSavedItems(
+        (kind == 'album' ? lib.savedAlbums : lib.savedArtists)
+            .where((e) =>
+                e.title.toLowerCase().contains(_filter) ||
+                (e.subtitle ?? '').toLowerCase().contains(_filter))
+            .toList(),
+        _sort);
     if (!lib.loaded) return const LoadingSkeleton();
     if (items.isEmpty) {
       return EmptyState(
@@ -161,6 +177,9 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
         message: kind == 'album'
             ? context.l10n.collectionEmptyAlbums
             : context.l10n.collectionEmptyArtists,
+        actionLabel:
+            widget.onGoSearch == null ? null : context.l10n.collectionGoSearch,
+        onAction: widget.onGoSearch,
       );
     }
     return ListView(children: [
@@ -189,11 +208,35 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
             t.title.toLowerCase().contains(_filter) || t.artistNames.toLowerCase().contains(_filter)).toList();
         if (_sort == 'az') tracks.sort((a, b) => a.title.compareTo(b.title));
         if (tracks.isEmpty) {
-          return EmptyState(icon: ClaiIcons.heart, message: context.l10n.collectionEmptySaved);
+          return EmptyState(
+            icon: ClaiIcons.heart,
+            message: context.l10n.collectionEmptySaved,
+            actionLabel: widget.onGoSearch == null
+                ? null
+                : context.l10n.collectionGoSearch,
+            onAction: widget.onGoSearch,
+          );
         }
         return ListView(children: [
+          // Audit UX 2017: kepala daftar kini punya tombol Putar bulat
+          // (pola sama seperti kepala halaman Radio/konten) — memutar
+          // seluruh daftar dari awal tanpa harus mengetuk baris tertentu.
           Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Text(context.l10n.collectionSavedCount(tracks.length), style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13))),
+              child: Row(children: [
+                Expanded(child: Text(context.l10n.collectionSavedCount(tracks.length), style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13))),
+                Semantics(
+                  button: true,
+                  label: context.l10n.a11yPlay,
+                  child: PressableScale(
+                    child: GestureDetector(
+                      onTap: () => handler.playTracks(tracks, 0, kind: 'liked', label: context.l10n.homeSavedSongs),
+                      child: Container(width: 48, height: 48,
+                          decoration: const BoxDecoration(color: ClaiColors.accent, shape: BoxShape.circle),
+                          child: ClaiIcon(ClaiIcons.play, color: ClaiColors.onAccent, size: 26)),
+                    ),
+                  ),
+                ),
+              ])),
           for (final t in tracks)
             SongRow(track: t, onTap: () => handler.playTracks(tracks, tracks.indexOf(t), kind: 'liked', label: context.l10n.homeSavedSongs)),
           SizedBox(height: bottomChromeClearance(context)),

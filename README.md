@@ -2,8 +2,12 @@
      owner verdict 25 Oct 2026: v1 too text-dense, raw screenshots).
      v2.1 (owner decision 25 Oct 20:30): restrained emoji markers (one per section
      heading + feature bullets, Spotube/Seal style) and a big download button badge.
+     v2.2 (26 Oct 2026, for the 1.1.0 release): feature list updated to what 1.1.0
+     actually ships — radio page with batch actions, queue multi-select, persistent
+     player chrome, sleep fade-out, one-song search context; the old "In 1.1.0"
+     roadmap line is gone (it promised the parked list, not the shipped one).
      Rules that still bind: English only; about the APP, never the project (no phases,
-     no process, no internal codenames); every claim provable against build 2013 / 1.0.0.
+     no process, no internal codenames); every claim provable against build 2018 / 1.1.0.
      Images: framed presentation files live in repo-rapi/gambar-rapi/ locally and are
      published to ./gambar/ (same filenames + hero.png); logo stays gambar/logo-clai.png. -->
 
@@ -71,13 +75,15 @@ Streaming a song is easy — every app does that. These are the things Clai does
 
 ## 🎧 Features
 
-- 🎛️ **Full queue control** — play next, add to queue, drag to reorder, swipe to remove, undo, clear. Your manual queue always outranks everything else.
-- 📻 **Track Radio** — an endless station from any song, from any track's menu.
+- 🎛️ **Full queue control** — play next, add to queue, drag to reorder, swipe to remove, undo, clear — plus multi-select when you want to remove, save, or send several tracks to a playlist in one go. Your manual queue always outranks everything else.
+- 📻 **Track Radio** — every track's menu opens a radio page that shows the whole station first; start it from there, or act on the full list at once: queue it all, save it all to your library, or add it all to a playlist.
+- 🧭 **The player stays put** — the mini player and navigation bar stay on screen across playlists, your library, radio, and settings; pause, resume, and swipe-to-skip work from anywhere, no detour back to Home.
 - 🎚️ **Crossfade (1–12 s) and gapless** transitions, loudness normalization, and a 5-band equalizer with presets.
+- 🌙 **Sleep timer with a fade-out** — the volume eases down to silence over the final stretch instead of stopping mid-note; Continue Tomorrow still remembers exactly where you drifted off.
 - ⏸️ **Honest interruptions** — if another app pauses your music, it resumes afterwards; if *you* paused it, it stays paused.
 - 📥 **Offline downloads** with a downloads manager — and an offline mode that tells the truth instead of pretending everything still works.
 - 🏠 **Home & Explore** — resume where you left off, personal shelves from your own listening, trending community playlists, quick picks, and video charts.
-- 🔎 **Search and pages** for songs, albums, artists, and playlists, with filters, discographies, and similar artists.
+- 🔎 **Search and pages** for songs, albums, artists, and playlists, with filters, discographies, and similar artists. Tap a song in the results and only that song is queued, with Autoplay continuing from it; tap inside an album or a playlist and the whole list plays, as a list should.
 - 📚 **Your library lives on your phone** — liked songs, history, your own playlists (create/edit/reorder), and local files treated as first-class citizens next to streamed tracks.
 - 🔗 **Spotify playlists in, music out** — paste a public Spotify link (no account needed); Clai reads the track list and matches every song to playable audio, and says so on the page itself.
 - 🎤 **Synced lyrics** from LRCLIB (plain lyrics as fallback, cached on-device), with cover-art enrichment via MusicBrainz / Cover Art Archive.
@@ -134,7 +140,6 @@ Streaming a song is easy — every app does that. These are the things Clai does
 
 ## 🗺️ What's coming
 
-- **In 1.1.0** — home-screen widgets and long-press shortcuts, a swipeable mini player, honest data-usage estimates (with a data-saver offer on mobile data), *"Why this song?"* labels on Autoplay picks, a *"Don't play things like this"* block, undo-skip, and a sleep timer that fades out instead of cutting off.
 - **In 2.0.0** — your listening stats and a "Clai Wrapped" computed entirely on your phone, library export/import in open formats (JSON/M3U), Clai Connect on your home network, and an open plug-in system for new music sources.
 - **Later** — an iOS build installed by sideloading (AltStore/SideStore), plus podcasts and audiobooks. The App Store is not a realistic door for this kind of app, and this page won't pretend otherwise. Desktop and Android TV are **not** planned — Clai is a phone app by decision, not by limitation.
 

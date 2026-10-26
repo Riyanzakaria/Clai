@@ -53,6 +53,28 @@ class CaptureService extends ChangeNotifier {
 
   static const _shareCh = MethodChannel('clai/share');
 
+  /// Ambil berbagi yang menunggu di sisi natif (metode 'initialShared':
+  /// dikembalikan sekali lalu dihapus). Dipakai jalur dingin saat mulai
+  /// dan SETIAP aplikasi kembali ke depan — perbaikan berbagi hangat
+  /// F2.5: pendingShare yatim (sink EventChannel mati / instance
+  /// MainActivity berganti) kini selalu punya penarik.
+  static Future<Map<String, Object?>?> takePendingShare() {
+    return _shareCh.invokeMapMethod<String, Object?>('initialShared');
+  }
+
+  /// Butir 6 F2.5: pilih gambar daftar lagu dari galeri lewat pemilih
+  /// foto Android (tanpa izin penyimpanan luas). Sisi natif menyalin
+  /// pilihan ke cache privat — pipa yang sama seperti berbagi gambar —
+  /// dan mengembalikan jalurnya (atau URI konten bila penyalinan tidak
+  /// mungkin); null bila pengguna membatalkan pilihan.
+  static Future<String?> pickCaptureImage() async {
+    try {
+      return await _shareCh.invokeMethod<String>('pickCaptureImage');
+    } catch (_) {
+      return null;
+    }
+  }
+
   String inputSummary = '';
   List<CaptureItem> items = [];
   bool working = false;

@@ -171,6 +171,10 @@ class YtMusicProvider implements MusicProvider {
     final two = collectTwoRow(res);
     String title = '';
     String? subtitle, artwork;
+    // Strapline header = nama artis halaman (bukti hidup Ronde Cacat
+    // Metadata: header album membawa straplineTextOne "Rachel Chinouriri"
+    // dengan run ber-browseId UC…; item treknya sendiri tanpa byline).
+    String? pageArtist, pageArtistId;
     void findHeader(Object? n) {
       if (n is Map) {
         for (final e in n.entries) {
@@ -179,6 +183,18 @@ class YtMusicProvider implements MusicProvider {
             title = simpleText(m['title']) ?? title;
             subtitle = runsText(m['subtitle']) ?? runsText(m['secondSubtitle']) ?? subtitle;
             artwork = thumbUrl(m['thumbnail'], minWidth: 200) ?? thumbUrl(m['croppedSquareThumbnailRenderer'] ?? m, minWidth: 200) ?? artwork;
+            final strap = asMap(m['straplineTextOne']);
+            final strapText = runsText(strap);
+            if (strapText != null && strapText.trim().isNotEmpty) {
+              pageArtist = strapText.trim();
+              for (final r in asList(strap?['runs'])) {
+                final id = browseIdOf(r);
+                if (id != null && id.startsWith('UC')) {
+                  pageArtistId = id;
+                  break;
+                }
+              }
+            }
           } else { findHeader(e.value); }
         }
       } else if (n is List) { for (final v in n) { findHeader(v); } }
@@ -190,10 +206,20 @@ class YtMusicProvider implements MusicProvider {
     // v4.4: item trek halaman album/playlist TIDAK membawa thumbnail sendiri di
     // respons sumber (bukti probe hidup) — warisi sampul halaman (perilaku YTM),
     // supaya baris trek tidak tampil sebagai ubin inisial padahal sampul ada.
+    // Ronde Cacat Metadata: ARTIS juga diwariskan (strapline header untuk
+    // album; judul header — nama artis itu sendiri — untuk halaman artis),
+    // karena kolom byline item album KOSONG di sumbernya. Playlist TIDAK
+    // mewariskan artis: strapline-nya adalah kurator, bukan artis trek.
     var pageTracks = tracks;
-    if ((kind == 'album' || kind == 'playlist') && artwork != null) {
-      pageTracks = [for (final t in tracks) t.artworkUrl == null ? t.copyWith(artworkUrl: artwork) : t];
-    }
+    final inheritArtist = kind == 'album'
+        ? pageArtist
+        : (kind == 'artist' ? (pageArtist ?? title) : null);
+    pageTracks = inheritPageArtist(
+      pageTracks,
+      artist: inheritArtist,
+      artistIds: [if (pageArtistId != null) pageArtistId!],
+      artworkUrl: (kind == 'album' || kind == 'playlist') ? artwork : null,
+    );
     // Cacat B (Poles Beranda): item lagu halaman ARTIS tidak membawa durasi
     // dari sumbernya sama sekali — selesaikan dari playlist lagu artis yang
     // ditautkan raknya (satu panggilan telusur tambahan, hanya bila memang
@@ -264,6 +290,29 @@ class YtMusicProvider implements MusicProvider {
     final tracks = collectTracks(res).where((t) => t.id != seed.id).toList();
     await db.cacheTracks(tracks);
     return tracks;
+  }
+
+  /// Resolusi SATU trek menurut ID-nya dari sumber — bahan lapisan
+  /// penyembuhan metadata (rekam lama yang tersimpan tanpa artis/sampul).
+  /// Panel `next` untuk videoId itu memuat item treknya sendiri dengan
+  /// byline + sampul penuh. Null bila sumber tidak menjawab / trek tidak
+  /// ditemukan — pemanggil menampilkan rekam apa adanya. Sengaja TIDAK
+  /// meng-cache panel lain: hanya trek yang diminta yang dikembalikan.
+  Future<Track?> resolveTrackById(String videoId) async {
+    try {
+      final res = await _post('next', _webRemix, {
+        'videoId': videoId,
+        'isAudioOnly': true,
+        'playlistId': 'RDAMVM$videoId',
+        'tunerSettingValue': 'AUTOMIX_SETTING_NORMAL',
+      });
+      for (final t in collectTracks(res)) {
+        if (t.id == videoId) return t;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

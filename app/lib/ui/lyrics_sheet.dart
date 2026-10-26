@@ -19,7 +19,7 @@ import '../services/lyrics_service.dart';
 /// dinyatakan terpisah dan jujur; trek berganti → lirik dimuat ulang.
 Future<void> openLyricsSheet(BuildContext context) {
   return showModalBottomSheet<void>(
-    context: context, isScrollControlled: true, backgroundColor: ClaiColors.surface1,
+    context: claiRootContext(context), isScrollControlled: true, backgroundColor: ClaiColors.surface1,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => const FractionallySizedBox(heightFactor: 0.92, child: LyricsSheet()),
   );

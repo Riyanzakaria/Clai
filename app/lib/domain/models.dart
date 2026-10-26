@@ -45,9 +45,15 @@ class Track {
   String get id => key.id;
   String get providerId => key.providerId;
 
-  Track copyWith({String? artworkUrl, Duration? duration}) => Track(
-        key: key, title: title, artistNames: artistNames, albumId: albumId,
-        albumTitle: albumTitle, artistIds: artistIds,
+  Track copyWith(
+          {String? artworkUrl,
+          Duration? duration,
+          String? artistNames,
+          List<String>? artistIds}) =>
+      Track(
+        key: key, title: title, artistNames: artistNames ?? this.artistNames,
+        albumId: albumId,
+        albumTitle: albumTitle, artistIds: artistIds ?? this.artistIds,
         duration: duration ?? this.duration, artworkUrl: artworkUrl ?? this.artworkUrl,
         isExplicit: isExplicit, playableRef: playableRef,
       );

@@ -9,7 +9,36 @@ import '../providers/music_provider.dart';
 import '../providers/spotify/spotify_web.dart';
 import 'spotify_playlist_screen.dart';
 import '../l10n/l10n.dart';
+import '../services/capture_service.dart';
+import 'capture_sheet.dart';
 import 'widgets.dart';
+
+/// Daftar konteks untuk ketukan lagu di hasil pencarian.
+///
+/// Keputusan pemilik 2026-10-26 (mutlak): mengetuk lagu di HASIL PENCARIAN
+/// menjadikan HANYA lagu itu konteks putar — bukan seluruh daftar hasil.
+/// Daftar hasil cari adalah daftar temu (lagu mirip nama, cover, versi lain),
+/// bukan urutan kurasi seperti playlist/album; menjadikannya antrean berarti
+/// antrean terisi lagu di luar selera pengguna. Kelanjutan sesudah lagu itu
+/// adalah pekerjaan Putar Otomatis (benih sesi = lagu yang diketuk), sama
+/// seperti konteks satu-lagu lain (suara, Lanjut Besok). Titik ketuk lain
+/// (playlist, album, artis, Koleksi, rak) TIDAK memakai fungsi ini — mereka
+/// tetap konteks daftar penuh.
+List<Track> searchTapTracks(Track tapped) => [tapped];
+
+/// A-3 lanjutan (build 2018): apakah seksi filter yang sedang terpilih
+/// kosong? Kasus celahnya: total hasil TIDAK kosong tetapi seksi terpilih
+/// kosong (mis. filter Album atas kata kunci acak) — dulu layar merender
+/// nol baris (hitam kosong tanpa pesan). Keadaan itu kini mendapat
+/// EmptyState baku yang sama dengan hasil total kosong.
+bool selectedSearchSectionEmpty(String category, SearchResults res) =>
+    switch (category) {
+      'songs' => res.songs.isEmpty,
+      'albums' => res.albums.isEmpty,
+      'artists' => res.artists.isEmpty,
+      'playlists' => res.playlists.isEmpty,
+      _ => res.isEmpty,
+    };
 
 /// Pencarian (PRD 5.2 + Phase 2 F-02): debounce 300 ms, token L-13, kategori, riwayat lokal,
 /// status gagal ≠ status tidak ditemukan.
@@ -21,6 +50,7 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   Timer? _debounce;
   int _token = 0;
   String _category = 'all';
@@ -98,8 +128,49 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
+  /// Butir 6 F2.5: pintu Tangkap terpadu — satu lembar pilihan dengan
+  /// dua masukan menuju pipa Tangkap yang sama: tempel tautan/teks
+  /// (dialog bersama dengan pintu Pengaturan) atau pilih gambar dari
+  /// galeri (pemilih foto Android; gerbang model OCR di lembar
+  /// Tangkapan berlaku sama).
+  Future<void> _openCaptureDoor() async {
+    final choice = await showModalBottomSheet<String>(
+      context: claiRootContext(context),
+      backgroundColor: ClaiColors.surface1,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 8),
+          ListTile(
+            leading: ClaiIcon(ClaiIcons.link, color: ClaiColors.accent),
+            title: Text(ctx.l10n.captureLinkTitle,
+                style: const TextStyle(color: ClaiColors.ink)),
+            onTap: () => Navigator.of(ctx).pop('text'),
+          ),
+          ListTile(
+            leading: ClaiIcon(ClaiIcons.album, color: ClaiColors.accent),
+            title: Text(ctx.l10n.capturePickImage,
+                style: const TextStyle(color: ClaiColors.ink)),
+            onTap: () => Navigator.of(ctx).pop('image'),
+          ),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'text') {
+      await openCaptureTextInput(context);
+    } else {
+      final picked = await CaptureService.pickCaptureImage();
+      if (picked != null && mounted) {
+        openCaptureSheet(context, imageUri: picked);
+      }
+    }
+  }
+
   @override
-  void dispose() { _debounce?.cancel(); _controller.dispose(); super.dispose(); }
+  void dispose() { _debounce?.cancel(); _controller.dispose(); _focusNode.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +180,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
         child: TextField(
           controller: _controller,
+          focusNode: _focusNode,
           onChanged: _onChanged,
           onSubmitted: (v) { if (v.trim().isNotEmpty) _run(v.trim()); },
           style: const TextStyle(color: ClaiColors.ink),
@@ -177,22 +249,37 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final res = _results;
     if (res == null) {
       // F2: pintu masuk playlist Spotify — tempel tautan publiknya di bidang Cari.
+      // Audit UX 2017: kartu ini tadinya TIDAK bisa diketuk sama sekali,
+      // padahal teksnya menyuruh menempel di bidang di atas — mengetuknya
+      // kini memfokuskan bidang cari itu (kursor + papan ketik siap tempel).
       final spotifyTile = ListTile(
         leading: Container(width: 48, height: 48, decoration: BoxDecoration(color: ClaiColors.surface2, borderRadius: BorderRadius.circular(8)),
             child: ClaiIcon(ClaiIcons.link, color: ClaiColors.accent)),
         title: Text(context.l10n.searchSpotifyCardTitle, style: const TextStyle(fontWeight: FontWeight.w600, color: ClaiColors.ink)),
         subtitle: Text(context.l10n.searchSpotifyCardSub,
             style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 12.5)),
+        onTap: () => _focusNode.requestFocus(),
+      );
+      // Butir 6 F2.5: pintu Tangkap terpadu (tautan/teks + gambar galeri).
+      final captureTile = ListTile(
+        leading: Container(width: 48, height: 48, decoration: BoxDecoration(color: ClaiColors.surface2, borderRadius: BorderRadius.circular(8)),
+            child: ClaiIcon(ClaiIcons.lyrics, color: ClaiColors.accent)),
+        title: Text(context.l10n.searchCaptureTitle, style: const TextStyle(fontWeight: FontWeight.w600, color: ClaiColors.ink)),
+        subtitle: Text(context.l10n.searchCaptureSub,
+            style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 12.5)),
+        onTap: _openCaptureDoor,
       );
       if (_history.isEmpty) {
         return ListView(children: [
           spotifyTile,
+          captureTile,
           const SizedBox(height: 24),
           EmptyState(icon: ClaiIcons.search, message: context.l10n.searchEmpty),
         ]);
       }
       return ListView(children: [
         spotifyTile,
+        captureTile,
         Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 4), child: Row(children: [
           Expanded(child: Text(context.l10n.searchRecent, style: const TextStyle(fontWeight: FontWeight.w600, color: ClaiColors.ink))),
           TextButton(onPressed: () async { await ref.read(appDbProvider).clearSearchHistory(); _loadHistory(); },
@@ -210,7 +297,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ]);
     }
     if (res.isEmpty) {
-      return EmptyState(icon: ClaiIcons.searchOff, message: context.l10n.searchNoResults);
+      // Audit UX 2017: keadaan kosong kini memberi jalan keluar satu ketuk
+      // (hapus kata kunci & kembali ke keadaan awal Cari), bukan jalan buntu.
+      return EmptyState(
+        icon: ClaiIcons.searchOff,
+        message: context.l10n.searchNoResults,
+        actionLabel: context.l10n.searchClearQuery,
+        onAction: () { _controller.clear(); _onChanged(''); },
+      );
+    }
+    if (_category != 'all' && selectedSearchSectionEmpty(_category, res)) {
+      // A-3 lanjutan (build 2018): seksi filter terpilih kosong padahal
+      // hasil lain ada — EmptyState yang sama, bukan daftar nol baris.
+      return EmptyState(
+        icon: ClaiIcons.searchOff,
+        message: context.l10n.searchNoResults,
+        actionLabel: context.l10n.searchClearQuery,
+        onAction: () { _controller.clear(); _onChanged(''); },
+      );
     }
     final showSongs = _category == 'all' || _category == 'songs';
     final showAlbums = _category == 'all' || _category == 'albums';
@@ -229,7 +333,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       if (showSongs && res.songs.isNotEmpty) ...[
         header(context.l10n.searchSongs),
         for (final t in res.songs)
-          SongRow(track: t, onTap: () => handler.playTracks(res.songs, res.songs.indexWhere((x) => x.key == t.key), kind: 'search', label: context.l10n.searchResultsLabel)),
+          SongRow(track: t, onTap: () => handler.playTracks(searchTapTracks(t), 0, kind: 'search', label: context.l10n.searchResultsLabel)),
       ],
       if (showAlbums && res.albums.isNotEmpty) ...[
         header(context.l10n.searchAlbums),

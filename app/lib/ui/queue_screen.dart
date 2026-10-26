@@ -25,7 +25,8 @@ class QueueSectionList extends StatelessWidget {
   final List<int> itemIndices;
 
   /// Membangun isi baris; [dragHandle] WAJIB ditempatkan pembangun (di kanan baris).
-  final Widget Function(BuildContext context, Track track, Widget dragHandle) rowBuilder;
+  /// [engineIndex] = indeks asal item di seksi engine-nya (untuk menu konteks).
+  final Widget Function(BuildContext context, Track track, int engineIndex, Widget dragHandle) rowBuilder;
 
   /// Indeks engine asal & tujuan akhir (onReorderItem sudah memberi indeks final).
   final void Function(int fromIndex, int toIndex) onReorder;
@@ -64,6 +65,7 @@ class QueueSectionList extends StatelessWidget {
             child: rowBuilder(
               context,
               items[pos],
+              itemIndices[pos],
               ReorderableDragStartListener(
                 index: pos,
                 child: ClaiIcon(ClaiIcons.dragHandle, color: ClaiColors.inkFaint, size: 20),
@@ -138,6 +140,139 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     await ref.read(audioHandlerProvider).removeFromQueue(section, index);
   }
 
+  // ---------- Mode pilih-banyak (Ronde Tambahan 2015, Butir 2) ----------
+  // Seleksi diikat ke KUNCI trek per seksi (bukan indeks): urut-ulang oleh
+  // Smart Shuffle / isi-ulang Putar Otomatis tidak menggeser identitas
+  // pilihan. Trek yang sedang diputar TIDAK termasuk alam seleksi (tidak
+  // tinggal di seksi mana pun) — ia tak bisa dipilih untuk dihapus.
+  bool _selecting = false;
+  final Map<String, Set<TrackKey>> _selected = {
+    'manual': {},
+    'continuation': {},
+    'autoplay': {},
+  };
+
+  int get _selectedCount =>
+      _selected.values.fold(0, (a, s) => a + s.length);
+
+  bool _isSelected(String section, Track t) =>
+      _selected[section]?.contains(t.key) ?? false;
+
+  void _toggleSelected(String section, Track t) {
+    setState(() {
+      final set = _selected[section]!;
+      if (!set.add(t.key)) set.remove(t.key);
+    });
+  }
+
+  void _enterSelection(String section, Track t) {
+    setState(() {
+      _selecting = true;
+      _selected[section]!.add(t.key);
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selecting = false;
+      for (final s in _selected.values) {
+        s.clear();
+      }
+    });
+  }
+
+  void _selectAll(qe.QueueEngine engine) {
+    setState(() {
+      _selected['manual']!.addAll(engine.manual.map((t) => t.key));
+      _selected['continuation']!
+          .addAll(engine.continuation.map((t) => t.key));
+      _selected['autoplay']!.addAll(engine.autoplay.map((t) => t.key));
+    });
+  }
+
+  /// Trek terpilih dalam urutan putar efektif (Berikutnya → Lanjutan →
+  /// Putar Otomatis, urutan daftar masing-masing) untuk aksi massal.
+  List<Track> _selectedTracksInOrder(qe.QueueEngine engine) {
+    List<Track> pick(List<Track> list, String section) =>
+        [for (final t in list) if (_isSelected(section, t)) t];
+    return [
+      ...pick(engine.manual, 'manual'),
+      ...pick(engine.continuation, 'continuation'),
+      ...pick(engine.autoplay, 'autoplay'),
+    ];
+  }
+
+  /// SnackBar lewat messenger LOKAL layar ini (alasan yang sama seperti
+  /// _showUndoSnack: messenger akar terbukti menggantung di permukaan ini).
+  void _showLocalSnack(String message) {
+    final messenger = _messengerKey.currentState;
+    if (messenger == null) return;
+    _closeUndoSnack();
+    messenger.hideCurrentSnackBar();
+    _snackController = messenger.showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 4),
+    ));
+    final mine = _snackController!;
+    mine.closed.then((_) {
+      if (identical(_snackController, mine)) _snackController = null;
+    });
+    _snackTimer = Timer(const Duration(seconds: 4), _closeUndoSnack);
+  }
+
+  /// Menu konteks PENUH untuk item lanjutan (Ronde Tambahan 2015,
+  /// Butir 3): lembar yang sama seperti di semua layar, bertindak atas
+  /// ITEM itu — dengan "Putar Berikutnya"/"Tambah ke Antrian" berwujud
+  /// PINDAH (item sudah di antrean; tanpa duplikat) dan "Hapus dari
+  /// Antrian" yang sama seperti geser-hapus (dengan Urungkan).
+  void _openItemMenu(String section, int index, Track t) {
+    final handler = ref.read(audioHandlerProvider);
+    showTrackContextSheet(
+      context,
+      ref,
+      t,
+      fromQueue: true,
+      onRemoveFromQueue: () => _onRemoved(section, index, t),
+      onPlayNextOverride: () =>
+          handler.playNextQueued(section, index, t.key),
+      onAddToQueueOverride: () =>
+          handler.sendQueuedToEnd(section, index, t.key),
+    );
+  }
+
+  Future<void> _bulkRemove() async {
+    final handler = ref.read(audioHandlerProvider);
+    final removed = await handler.removeManyFromQueue(
+      manual: Set.of(_selected['manual']!),
+      continuation: Set.of(_selected['continuation']!),
+      autoplay: Set.of(_selected['autoplay']!),
+    );
+    if (!mounted) return;
+    _exitSelection();
+    _showLocalSnack(l10n.bulkRemovedFromQueue(removed));
+  }
+
+  Future<void> _bulkSave() async {
+    final engine = ref.read(audioHandlerProvider).engine;
+    final tracks = _selectedTracksInOrder(engine);
+    final n = await ref.read(libraryProvider).saveAllToCollection(tracks);
+    if (!mounted) return;
+    _exitSelection();
+    _showLocalSnack(n > 0 ? l10n.bulkSaved(n) : l10n.bulkSavedNone);
+  }
+
+  Future<void> _bulkPlaylist() async {
+    final engine = ref.read(audioHandlerProvider).engine;
+    final tracks = _selectedTracksInOrder(engine);
+    final acted = await showAddTracksToPlaylistSheet(
+      context,
+      ref,
+      tracks,
+      onFeedback: _showLocalSnack,
+    );
+    if (acted && mounted) _exitSelection();
+  }
+
   @override
   Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
@@ -145,14 +280,106 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     return ScaffoldMessenger(
       key: _messengerKey,
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.queueTitle),
-        actions: [
-          IconButton(icon: ClaiIcon(ClaiIcons.clearAll), tooltip: context.l10n.queueClear,
-              onPressed: engine.effectiveQueue.isEmpty ? null : () => handler.clearQueue()),
-          IconButton(icon: ClaiIcon(ClaiIcons.close), tooltip: context.l10n.a11yClose, onPressed: () => Navigator.of(context).pop()),
-        ],
-      ),
+      appBar: _selecting
+          ? AppBar(
+              leading: IconButton(
+                icon: ClaiIcon(ClaiIcons.close),
+                tooltip: context.l10n.a11yClose,
+                onPressed: _exitSelection,
+              ),
+              title: Text(context.l10n.queueSelectedCount(_selectedCount)),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    final all = _selectedCount >=
+                        engine.effectiveQueue.length;
+                    if (all) {
+                      setState(() {
+                        for (final s in _selected.values) {
+                          s.clear();
+                        }
+                      });
+                    } else {
+                      _selectAll(engine);
+                    }
+                  },
+                  child: Text(
+                    _selectedCount >= engine.effectiveQueue.length
+                        ? context.l10n.queueUnselectAll
+                        : context.l10n.queueSelectAll,
+                    style: const TextStyle(color: ClaiColors.accent),
+                  ),
+                ),
+              ],
+            )
+          : AppBar(
+              title: Text(context.l10n.queueTitle),
+              actions: [
+                TextButton(
+                  onPressed: engine.effectiveQueue.isEmpty
+                      ? null
+                      : () => setState(() => _selecting = true),
+                  child: Text(
+                    context.l10n.queueSelect,
+                    style: TextStyle(
+                      color: engine.effectiveQueue.isEmpty
+                          ? ClaiColors.inkFaint
+                          : ClaiColors.accent,
+                    ),
+                  ),
+                ),
+                IconButton(icon: ClaiIcon(ClaiIcons.clearAll), tooltip: context.l10n.queueClear,
+                    onPressed: engine.effectiveQueue.isEmpty ? null : () => handler.clearQueue()),
+                IconButton(icon: ClaiIcon(ClaiIcons.close), tooltip: context.l10n.a11yClose, onPressed: () => Navigator.of(context).pop()),
+              ],
+            ),
+      bottomNavigationBar: _selecting
+          ? SafeArea(
+              child: Container(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: ClaiColors.divider),
+                  ),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _BulkAction(
+                        icon: ClaiIcons.trash,
+                        // Audit UX 2017: label tampak PENDEK khusus massal —
+                        // label konteks penuh ("Tambahkan ke Playlist",
+                        // 22 huruf pada 11px di sepertiga lebar 360dp)
+                        // pasti terpotong elipsis; label semantik tetap
+                        // memakai kalimat utuh untuk pembaca layar.
+                        label: context.l10n.queueBulkRemove,
+                        semanticLabel: context.l10n.ctxRemoveFromQueue,
+                        color: ClaiColors.error,
+                        onTap: _selectedCount == 0 ? null : _bulkRemove,
+                      ),
+                    ),
+                    Expanded(
+                      child: _BulkAction(
+                        icon: ClaiIcons.playlistAdd,
+                        label: context.l10n.queueBulkPlaylist,
+                        semanticLabel: context.l10n.ctxAddToPlaylist,
+                        onTap: _selectedCount == 0 ? null : _bulkPlaylist,
+                      ),
+                    ),
+                    Expanded(
+                      child: _BulkAction(
+                        icon: ClaiIcons.heart,
+                        label: context.l10n.queueBulkSave,
+                        semanticLabel: context.l10n.ctxSaveToCollection,
+                        onTap: _selectedCount == 0 ? null : _bulkSave,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: StreamBuilder(
         stream: handler.queueStream,
         initialData: engine,
@@ -179,17 +406,56 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                   if (trailing != null) trailing,
                 ]),
               );
+          // Satu baris item lanjutan, sadar mode:
+          // - normal: ketuk = lompat putar; ⋮ = menu konteks penuh atas
+          //   item itu (Butir 3); tekan-lama = masuk mode pilih (Butir 2);
+          //   trailing per seksi (gagang seret / lencana AUTO) dari
+          //   pemanggil lewat [trail].
+          // - pilih: ketuk = alih centang; ⋮ dan gagang disembunyikan
+          //   agar ketukan murni untuk memilih (Butir 3c).
+          Widget queueRow(String section, int index, Track t,
+              {Widget? trail, bool auto = false}) {
+            if (_selecting) {
+              return SongRow(
+                track: t,
+                showMenu: false,
+                selected: _isSelected(section, t),
+                onTap: () => _toggleSelected(section, t),
+                trailing: auto
+                    ? Text(context.l10n.queueAutoBadge,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: ClaiColors.accent))
+                    : null,
+              );
+            }
+            return SongRow(
+              track: t,
+              showMenu: true,
+              onTap: () => handler.jumpTo(t.key),
+              onLongPress: () => _enterSelection(section, t),
+              onMenuPressed: () => _openItemMenu(section, index, t),
+              trailing: trail,
+            );
+          }
+
           Widget sectionList(String section, List<Track> tracks) {
             final idxs = visibleIdx(tracks);
+            if (_selecting) {
+              return Column(children: [
+                for (final i in idxs) queueRow(section, i, tracks[i]),
+              ]);
+            }
             return QueueSectionList(
               section: section,
               items: [for (final i in idxs) tracks[i]],
               itemIndices: idxs,
-              rowBuilder: (ctx, t, handle) => SongRow(
-                track: t,
-                showMenu: false,
-                onTap: () => handler.jumpTo(t.key),
-                trailing: handle,
+              rowBuilder: (ctx, t, engineIndex, handle) => queueRow(
+                section,
+                engineIndex,
+                t,
+                trail: handle,
               ),
               onReorder: (o, n) => handler.moveInQueue(section, o, n),
               onDismissed: (index, t) => _onRemoved(section, index, t),
@@ -197,10 +463,13 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           }
 
           Widget dismissibleRow(String section, Track t, int index, {bool auto = false}) {
-            final row = SongRow(
-              track: t, showMenu: false,
-              onTap: () => handler.jumpTo(t.key),
-              trailing: auto
+            if (_selecting) return queueRow(section, index, t, auto: auto);
+            final row = queueRow(
+              section,
+              index,
+              t,
+              auto: auto,
+              trail: auto
                   ? Text(context.l10n.queueAutoBadge, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ClaiColors.accent))
                   : ClaiIcon(ClaiIcons.dragHandle, color: ClaiColors.inkFaint, size: 20),
             );
@@ -288,6 +557,55 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           ]);
         },
       ),
+      ),
+    );
+  }
+}
+
+/// Satu tombol aksi massal di bar bawah mode pilih-banyak: ikon di atas
+/// label kecil, area ketuk lebar penuh bagiannya. Nonaktif (onTap null)
+/// tampil samar.
+class _BulkAction extends StatelessWidget {
+  final ClaiIconData icon;
+  final String label;
+  final String? semanticLabel;
+  final Color? color;
+  final VoidCallback? onTap;
+  const _BulkAction({
+    required this.icon,
+    required this.label,
+    this.semanticLabel,
+    this.color,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final c = enabled ? (color ?? ClaiColors.ink) : ClaiColors.inkFaint;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticLabel ?? label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClaiIcon(icon, size: 22, color: c),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

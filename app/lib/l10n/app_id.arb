@@ -5,6 +5,7 @@
   "navSearch": "Cari",
   "navLibrary": "Koleksi",
   "offlineBarText": "Mode offline — hanya unduhan & file lokal",
+  "miniSwipeHint": "Geser kartu pemutar untuk ganti lagu",
   "eqTitle": "Equalizer",
   "eqChecking": "Memeriksa dukungan perangkat…",
   "eqUnavailable": "Equalizer tidak tersedia di perangkat ini — efek Equalizer Android menolak dibuat pada sesi pemain yang sedang hidup. Detail teknisnya tercatat di Log insiden (Pengaturan → Diagnosis Lokal).",
@@ -151,6 +152,9 @@
   "captureLinkSub": "Tempel tautan playlist/lagu atau kata kunci.",
   "captureHint": "Tempel tautan atau ketik kata kunci…",
   "captureAction": "Tangkap",
+  "searchCaptureTitle": "Tangkap daftar lagu",
+  "searchCaptureSub": "Tempel tautan/teks (termasuk playlist Spotify) atau pilih gambar — lagunya dicocokkan untukmu.",
+  "capturePickImage": "Pilih gambar dari galeri",
   "setBgStatus": "Status izin latar",
   "bgStatusLine": "Notifikasi: {notif} · Baterai: {battery}",
   "@bgStatusLine": {
@@ -187,7 +191,7 @@
       }
     }
   },
-  "aboutVersion": "Clai 1.0.0",
+  "aboutVersion": "Clai 1.0.1",
   "aboutBody": "Pemutar musik sumber terbuka (GPL-3.0) yang dibangun clean-room: tanpa kode atau aset dari layanan lain. Katalog dan lagu berasal dari layanan musik pihak ketiga lewat API tidak resmi — dinyatakan terbuka di README repo; arsitektur provider memungkinkan sumber lain ditambahkan tanpa menyentuh player. Kamu juga bisa menempel tautan playlist publik dari aplikasi musik lain: daftar lagunya dibaca, lalu dicocokkan ke katalog di sini — tanpa akun. Lirik dari LRCLIB; pengayaan sampul dari MusicBrainz/Cover Art Archive; scrobble opsional ke ListenBrainz dengan token milikmu sendiri. Semua data pribadimu — koleksi, riwayat, unduhan — hanya tersimpan di HP-mu.",
   "logTitle": "Log insiden",
   "logEmpty": "Belum ada insiden tercatat.",
@@ -386,14 +390,60 @@
   "ctxOpenAlbum": "Buka Album",
   "ctxOpenArtist": "Buka Artis",
   "ctxShare": "Bagikan",
-  "ctxShareText": "Dengarkan \"{title}\" — {artist} di Clai",
-  "@ctxShareText": {
+  "ctxShareCredit": "Dibagikan lewat Clai — unduh aplikasinya: {url}",
+  "@ctxShareCredit": {
     "placeholders": {
-      "artist": {},
+      "url": {}
+    }
+  },
+  "radioPageTitle": "Radio — {title}",
+  "@radioPageTitle": {
+    "placeholders": {
       "title": {}
     }
   },
+  "radioGeneratedFrom": "Bangkitan radio dari lagu ini",
+  "radioEmpty": "Belum ada lagu radio yang dapat dibuat dari lagu ini.",
+  "radioLoadFailed": "Tidak dapat memuat radio lagu ini. Periksa koneksimu lalu coba lagi.",
   "ctxRemoveFromQueue": "Hapus dari Antrian",
+  "queueSelect": "Pilih",
+  "queueSelectedCount": "{count} dipilih",
+  "queueBulkRemove": "Hapus",
+  "queueBulkPlaylist": "Ke Playlist",
+  "queueBulkSave": "Simpan",
+  "@queueSelectedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "queueSelectAll": "Pilih Semua",
+  "queueUnselectAll": "Batalkan Semua",
+  "bulkQueueAdded": "{count} lagu ditambahkan ke Antrian.",
+  "@bulkQueueAdded": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bulkSaved": "{count} lagu disimpan ke Koleksi.",
+  "@bulkSaved": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bulkSavedNone": "Semua lagu ini sudah ada di Koleksi.",
+  "bulkPlaylistAdded": "{count} lagu ditambahkan ke playlist.",
+  "@bulkPlaylistAdded": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "bulkPlaylistNone": "Semua lagu ini sudah ada di playlist itu.",
+  "bulkRemovedFromQueue": "{count} lagu dihapus dari Antrian.",
+  "@bulkRemovedFromQueue": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "ctxNewPlaylist": "Playlist baru",
   "ctxPlaylistName": "Nama playlist",
   "ctxAlreadyInPlaylist": "Sudah ada di playlist",
@@ -410,6 +460,7 @@
   "searchEmpty": "Ketik untuk mencari di katalog.\nHasil muncul sambil kamu mengetik.",
   "searchRecent": "Terakhir dicari",
   "searchClearAll": "Hapus semua",
+  "searchClearQuery": "Hapus kata kunci",
   "searchNoResults": "Tidak ditemukan. Coba kata kunci lain — ini bukan gagal jaringan, memang tidak ada hasilnya.",
   "searchResultsLabel": "Hasil cari",
   "searchSongs": "Lagu",
@@ -432,6 +483,7 @@
     }
   },
   "collectionEmptyPlaylists": "Belum ada playlist. Buat satu dengan tombol + di bawah.",
+  "collectionGoSearch": "Cari lagu",
   "collectionEmptySaved": "Belum ada lagu tersimpan. Ketuk hati pada lagu mana pun — dari baris lagu atau Player.",
   "collectionNewPlaylistName": "Nama playlist baru",
   "contentUnavailable": "Konten tidak tersedia.",
@@ -598,13 +650,13 @@
   },
   "sleepTitle": "Timer tidur",
   "sleepSubOff": "Musik berhenti sendiri — lalu bisa dilanjutkan besok dari posisi yang sama.",
-  "sleepSubMinutes": "Timer aktif — {remaining} lagi. Saat berbunyi, volume memudar 5 detik lalu musik jeda.",
+  "sleepSubMinutes": "Timer aktif — {remaining} lagi. Volume memudar halus di bentang akhir, lalu musik jeda.",
   "@sleepSubMinutes": {
     "placeholders": {
       "remaining": {}
     }
   },
-  "sleepSubEndOfSong": "Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar 5 detik).",
+  "sleepSubEndOfSong": "Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar di bentang akhirnya).",
   "sleepMinutes": "{m} menit",
   "@sleepMinutes": {
     "placeholders": {

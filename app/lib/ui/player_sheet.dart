@@ -18,7 +18,7 @@ import 'widgets.dart';
 
 Future<void> openPlayerSheet(BuildContext context) {
   return showModalBottomSheet<void>(
-    context: context, isScrollControlled: true, backgroundColor: ClaiColors.surface1,
+    context: claiRootContext(context), isScrollControlled: true, backgroundColor: ClaiColors.surface1,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     // Scaffold transparan di dalam sheet: SnackBar dari tombol di dalam Player
     // (placeholder Lirik/Timer) harus tampil DI DALAM sheet — tanpa ini ia
@@ -130,7 +130,19 @@ class PlayerSheet extends ConsumerWidget {
                 // gerak-reduksi — D-05).
                 MarqueeText(item.title, style: displayStyle(28)),
                 const SizedBox(height: 4),
-                Text(item.artist ?? '', style: const TextStyle(fontSize: 16, color: ClaiColors.inkSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                // UX2 (build 2018): nama artis bisa diketuk membuka halaman
+                // artis — pola navigasi yang sama seperti "Buka Artis" di
+                // lembar konteks (canOpenArtist/openArtistFromTrack). Trek
+                // yang artisnya tak bisa dinavigasi (mis. file lokal tanpa
+                // artis) tetap teks biasa.
+                if (current != null && canOpenArtist(current))
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => openArtistFromTrack(context, ref, current),
+                    child: Text(item.artist ?? '', style: const TextStyle(fontSize: 16, color: ClaiColors.inkSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  )
+                else
+                  Text(item.artist ?? '', style: const TextStyle(fontSize: 16, color: ClaiColors.inkSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
               ])),
               IconButton(
                 iconSize: 48,
@@ -236,7 +248,7 @@ class PlayerSheet extends ConsumerWidget {
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               _TextAction(icon: ClaiIcons.lyrics, label: context.l10n.playerLyrics, onTap: () => openLyricsSheet(context)),
               _TextAction(icon: ClaiIcons.queue, label: context.l10n.queueTitle, onTap: () =>
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QueueScreen()))),
+                  Navigator.of(claiRootContext(context)).push(MaterialPageRoute(builder: (_) => const QueueScreen()))),
               _TextAction(icon: ClaiIcons.moon, label: context.l10n.playerTimer, onTap: () => openSleepTimerSheet(context)),
               _TextAction(icon: ClaiIcons.mic, label: context.l10n.playerVoice, onTap: () => openVoiceSheet(context)),
             ]),

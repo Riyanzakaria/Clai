@@ -128,6 +128,12 @@ abstract class AppLocalizations {
   /// **'Mode offline — hanya unduhan & file lokal'**
   String get offlineBarText;
 
+  /// No description provided for @miniSwipeHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Geser kartu pemutar untuk ganti lagu'**
+  String get miniSwipeHint;
+
   /// No description provided for @eqTitle.
   ///
   /// In id, this message translates to:
@@ -734,6 +740,24 @@ abstract class AppLocalizations {
   /// **'Tangkap'**
   String get captureAction;
 
+  /// No description provided for @searchCaptureTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Tangkap daftar lagu'**
+  String get searchCaptureTitle;
+
+  /// No description provided for @searchCaptureSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Tempel tautan/teks (termasuk playlist Spotify) atau pilih gambar — lagunya dicocokkan untukmu.'**
+  String get searchCaptureSub;
+
+  /// No description provided for @capturePickImage.
+  ///
+  /// In id, this message translates to:
+  /// **'Pilih gambar dari galeri'**
+  String get capturePickImage;
+
   /// No description provided for @setBgStatus.
   ///
   /// In id, this message translates to:
@@ -875,7 +899,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutVersion.
   ///
   /// In id, this message translates to:
-  /// **'Clai 1.0.0'**
+  /// **'Clai 1.0.1'**
   String get aboutVersion;
 
   /// No description provided for @aboutBody.
@@ -1508,17 +1532,119 @@ abstract class AppLocalizations {
   /// **'Bagikan'**
   String get ctxShare;
 
-  /// No description provided for @ctxShareText.
+  /// No description provided for @ctxShareCredit.
   ///
   /// In id, this message translates to:
-  /// **'Dengarkan \"{title}\" — {artist} di Clai'**
-  String ctxShareText(Object artist, Object title);
+  /// **'Dibagikan lewat Clai — unduh aplikasinya: {url}'**
+  String ctxShareCredit(Object url);
+
+  /// No description provided for @radioPageTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Radio — {title}'**
+  String radioPageTitle(Object title);
+
+  /// No description provided for @radioGeneratedFrom.
+  ///
+  /// In id, this message translates to:
+  /// **'Bangkitan radio dari lagu ini'**
+  String get radioGeneratedFrom;
+
+  /// No description provided for @radioEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada lagu radio yang dapat dibuat dari lagu ini.'**
+  String get radioEmpty;
+
+  /// No description provided for @radioLoadFailed.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak dapat memuat radio lagu ini. Periksa koneksimu lalu coba lagi.'**
+  String get radioLoadFailed;
 
   /// No description provided for @ctxRemoveFromQueue.
   ///
   /// In id, this message translates to:
   /// **'Hapus dari Antrian'**
   String get ctxRemoveFromQueue;
+
+  /// No description provided for @queueSelect.
+  ///
+  /// In id, this message translates to:
+  /// **'Pilih'**
+  String get queueSelect;
+
+  /// No description provided for @queueSelectedCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} dipilih'**
+  String queueSelectedCount(Object count);
+
+  /// No description provided for @queueBulkRemove.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus'**
+  String get queueBulkRemove;
+
+  /// No description provided for @queueBulkPlaylist.
+  ///
+  /// In id, this message translates to:
+  /// **'Ke Playlist'**
+  String get queueBulkPlaylist;
+
+  /// No description provided for @queueBulkSave.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan'**
+  String get queueBulkSave;
+
+  /// No description provided for @queueSelectAll.
+  ///
+  /// In id, this message translates to:
+  /// **'Pilih Semua'**
+  String get queueSelectAll;
+
+  /// No description provided for @queueUnselectAll.
+  ///
+  /// In id, this message translates to:
+  /// **'Batalkan Semua'**
+  String get queueUnselectAll;
+
+  /// No description provided for @bulkQueueAdded.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu ditambahkan ke Antrian.'**
+  String bulkQueueAdded(Object count);
+
+  /// No description provided for @bulkSaved.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu disimpan ke Koleksi.'**
+  String bulkSaved(Object count);
+
+  /// No description provided for @bulkSavedNone.
+  ///
+  /// In id, this message translates to:
+  /// **'Semua lagu ini sudah ada di Koleksi.'**
+  String get bulkSavedNone;
+
+  /// No description provided for @bulkPlaylistAdded.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu ditambahkan ke playlist.'**
+  String bulkPlaylistAdded(Object count);
+
+  /// No description provided for @bulkPlaylistNone.
+  ///
+  /// In id, this message translates to:
+  /// **'Semua lagu ini sudah ada di playlist itu.'**
+  String get bulkPlaylistNone;
+
+  /// No description provided for @bulkRemovedFromQueue.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu dihapus dari Antrian.'**
+  String bulkRemovedFromQueue(Object count);
 
   /// No description provided for @ctxNewPlaylist.
   ///
@@ -1616,6 +1742,12 @@ abstract class AppLocalizations {
   /// **'Hapus semua'**
   String get searchClearAll;
 
+  /// No description provided for @searchClearQuery.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus kata kunci'**
+  String get searchClearQuery;
+
   /// No description provided for @searchNoResults.
   ///
   /// In id, this message translates to:
@@ -1705,6 +1837,12 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Belum ada playlist. Buat satu dengan tombol + di bawah.'**
   String get collectionEmptyPlaylists;
+
+  /// No description provided for @collectionGoSearch.
+  ///
+  /// In id, this message translates to:
+  /// **'Cari lagu'**
+  String get collectionGoSearch;
 
   /// No description provided for @collectionEmptySaved.
   ///
@@ -2141,13 +2279,13 @@ abstract class AppLocalizations {
   /// No description provided for @sleepSubMinutes.
   ///
   /// In id, this message translates to:
-  /// **'Timer aktif — {remaining} lagi. Saat berbunyi, volume memudar 5 detik lalu musik jeda.'**
+  /// **'Timer aktif — {remaining} lagi. Volume memudar halus di bentang akhir, lalu musik jeda.'**
   String sleepSubMinutes(Object remaining);
 
   /// No description provided for @sleepSubEndOfSong.
   ///
   /// In id, this message translates to:
-  /// **'Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar 5 detik).'**
+  /// **'Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar di bentang akhirnya).'**
   String get sleepSubEndOfSong;
 
   /// No description provided for @sleepMinutes.

@@ -11,7 +11,7 @@ import '../core/tokens.dart';
 
 Future<void> openSleepTimerSheet(BuildContext context) {
   return showModalBottomSheet<void>(
-    context: context,
+    context: claiRootContext(context),
     isScrollControlled: true,
     backgroundColor: ClaiColors.surface1,
     shape: const RoundedRectangleBorder(

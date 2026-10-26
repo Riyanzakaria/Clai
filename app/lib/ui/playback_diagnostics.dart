@@ -472,7 +472,8 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
               ? Center(child: Text(context.l10n.diagEmpty,
                   style: TextStyle(color: ClaiColors.inkFaint)))
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.fromLTRB(
+                      16, 16, 16, bottomChromeClearance(context)),
                   child: SelectableText(_report.toString(),
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 12, height: 1.5, color: ClaiColors.ink)),
                 ),

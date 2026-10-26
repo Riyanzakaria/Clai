@@ -118,6 +118,114 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// di _volumeFor & ramp crossfade agar pudar tidak tertimpa transisi.
   double _sleepFade = 1.0;
 
+  // ---------- F2.5: peredupan tidur di bentang akhir ----------
+  /// Rampa peredupan aktif: faktor diturunkan halus (smoothstep) dari 1 ke
+  /// 0 selama jendela akhir timer — lewat faktor [_sleepFade] yang sama,
+  /// sehingga rukun dengan volume master, normalisasi, dan crossfade
+  /// (semua jalur menerapkan faktor ini secara multiplikatif).
+  Timer? _sleepFadeTimer;
+  DateTime? _sleepFadeRampStart;
+  Duration _sleepFadeRampWindow = Duration.zero;
+  bool _sleepFaded = false;
+  TrackKey? _sleepSongFadeKey;
+
+  /// Kait F2.5 (disambung app.dart): true saat timer tidur mode akhir-lagu
+  /// sedang terpasang — memicu peredupan di bentang akhir trek berjalan.
+  bool Function()? sleepEndOfSongArmed;
+
+  /// Mulai rampa peredupan selama [window] menuju nol.
+  void beginSleepFade(Duration window) {
+    _sleepFadeTimer?.cancel();
+    _sleepFadeTimer = null;
+    if (window <= Duration.zero) {
+      _sleepFade = 0;
+      _sleepFaded = true;
+      unawaited(_applyVolume());
+      return;
+    }
+    _sleepFadeRampStart = DateTime.now();
+    _sleepFadeRampWindow = window;
+    _sleepFaded = false;
+    Observability.instance.log(
+        'tidur-pudar-mulai', 'jendela ${window.inMilliseconds} ms');
+    var lastLoggedStep = -1;
+    DateTime? notPlayingSince;
+    _sleepFadeTimer =
+        Timer.periodic(const Duration(milliseconds: 200), (t) {
+      if (!_activePlayer.playing) {
+        // Jeda sesaat bisa berarti transisi antar-lagu di dalam jendela
+        // pudar — beri tenggang 2 detik sebelum menyimpulkan pengguna
+        // mengambil alih. Jeda manual yang menetap tetap membatalkan
+        // peredupan dan memulihkan faktor (putaran berikutnya tak senyap).
+        notPlayingSince ??= DateTime.now();
+        final since = notPlayingSince!;
+        if (DateTime.now().difference(since) >
+            const Duration(seconds: 2)) {
+          t.cancel();
+          _sleepFadeTimer = null;
+          _sleepFade = 1.0;
+          _sleepFaded = false;
+          unawaited(_applyVolume());
+          Observability.instance.log(
+              'tidur-pudar-batal', 'jeda menetap di tengah rampa');
+        }
+        return;
+      }
+      notPlayingSince = null;
+      final elapsed = DateTime.now().difference(_sleepFadeRampStart!);
+      final x = (elapsed.inMilliseconds / _sleepFadeRampWindow.inMilliseconds)
+          .clamp(0.0, 1.0);
+      final smooth = x * x * (3 - 2 * x); // smoothstep: awal & akhir lembut
+      _sleepFade = 1 - smooth;
+      unawaited(_applyVolume());
+      final step = (x * 4).floor();
+      if (step != lastLoggedStep) {
+        lastLoggedStep = step;
+        Observability.instance.log(
+            'tidur-pudar', 'faktor ${_sleepFade.toStringAsFixed(2)}');
+      }
+      if (x >= 1) {
+        t.cancel();
+        _sleepFadeTimer = null;
+        _sleepFade = 0;
+        _sleepFaded = true;
+        unawaited(_applyVolume());
+        Observability.instance.log('tidur-pudar-selesai', 'faktor 0.00');
+      }
+    });
+  }
+
+  /// Batalkan peredupan tidur apa pun yang berjalan & pulihkan volume.
+  void cancelSleepFade() {
+    _sleepFadeTimer?.cancel();
+    _sleepFadeTimer = null;
+    _sleepFaded = false;
+    _sleepSongFadeKey = null;
+    if (_sleepFade != 1.0) {
+      _sleepFade = 1.0;
+      unawaited(_applyVolume());
+    }
+  }
+
+  /// Peredupan akhir-lagu untuk mode akhir-lagu: dipanggil dari aliran
+  /// posisi pemain aktif; murah (gerbang bool + kunci trek) dan hanya
+  /// menyala sekali per trek saat sisa trek memasuki jendela akhir.
+  void _maybeSleepSongEndFade(Duration pos) {
+    if (_sleepFadeTimer != null || _sleepFaded) return;
+    if (!(sleepEndOfSongArmed?.call() ?? false)) return;
+    final cur = engine.current;
+    if (cur == null || _sleepSongFadeKey == cur.key) return;
+    final dur = _activePlayer.duration ?? cur.duration;
+    if (dur == null || dur <= Duration.zero) return;
+    final remaining = dur - pos;
+    if (remaining <= Duration.zero ||
+        remaining > const Duration(seconds: 30)) {
+      return;
+    }
+    _sleepSongFadeKey = cur.key;
+    beginSleepFade(remaining);
+  }
+
   /// Kait F2: aksi putar manual (batalkan timer tidur) & akhir lagu alami.
   VoidCallback? onManualPlayAction;
   VoidCallback? onNaturalTrackEnd;
@@ -747,6 +855,19 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _emitQueue();
   }
 
+  /// Tempel hasil penyembuhan metadata (artis/sampul) ke trek di mana pun ia
+  /// muncul di antrean + DB, dan segarkan mediaItem bila ia yang berjalan —
+  /// pasangan umum dari [refreshCurrentArtwork] untuk lapisan penyembuhan.
+  Future<void> refreshTrackMetadata(Track healed) async {
+    if (!engine.noteMetadata(healed)) return;
+    final cur = engine.current;
+    if (cur != null && cur.key == healed.key) {
+      mediaItem.add(_toMediaItem(cur));
+    }
+    unawaited(db.cacheTracks([healed]));
+    _emitQueue();
+  }
+
   /// Pemberitahuan jujur ke UI (snackbar): lagu dilewati, sumber terdegradasi, dsb.
   final StreamController<String> notices = StreamController<String>.broadcast();
 
@@ -1068,6 +1189,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         }
         _positionMerged.add(pos);
         _maybePullDuration(pos);
+        _maybeSleepSongEndFade(pos);
       });
 
       p.durationStream.listen((d) {
@@ -2279,6 +2401,49 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
+  /// Mulai sesi radio dari HALAMAN Radio (F2.5): item halaman yang diketuk
+  /// menjadi trek yang diputar; jangkar benih sesi tetap lagu asal halaman
+  /// (lihat QueueEngine.playRadioFromPage). Struktur meniru [startRadio].
+  Future<void> startRadioFromPage(Track seed, List<Track> page, int startIndex) {
+    final gen = ++_playGen;
+    return _runPlay(() async {
+      db.setPref('playback.everPlayed', true).then((_) {}, onError: (_) {});
+      // ADR-002: perintah putar manual = batas lagu.
+      if (pendingTransitionMode != null) {
+        transitionMode = pendingTransitionMode!;
+        pendingTransitionMode = null;
+        if (!_xfMode) {
+          _xfActiveB = false;
+          _stopXfMonitor();
+        }
+      }
+      engine.playRadioFromPage(seed: seed, page: page, startIndex: startIndex);
+      final current = engine.current ?? seed;
+      _lastPosition = Duration.zero;
+      mediaItem.add(_toMediaItem(current));
+      _emitQueue();
+      if (_xfMode) {
+        await _xfPlayCurrent(current);
+        if (gen != _playGen) return;
+        _trackStartedAt = DateTime.now();
+        _emitQueue();
+        unawaited(_maybeRefill());
+        return;
+      }
+      await _buildOrNotify(
+        fromFullIndex: 0,
+        autoplay: true,
+        what: 'radio "${seed.title}"',
+        gen: gen,
+        firstOnly: true,
+      );
+      if (gen != _playGen) return;
+      _trackStartedAt = DateTime.now();
+      _emitQueue();
+      unawaited(_maybeRefill());
+    });
+  }
+
   Future<void> enqueue(Track t, {required bool next}) {
     return _serial(() async {
       // Mode offline menolak lagu streaming masuk antrean (sumbernya takkan bisa dibangun).
@@ -2319,6 +2484,105 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           await _extendSourceToQueue();
         }
       }
+      _emitQueue();
+    });
+  }
+
+  /// Tambah banyak ke ekor Berikutnya (Ronde Tambahan 2015, halaman
+  /// Radio: "Tambah ke antrean" atas seluruh daftar bangkitan).
+  /// Mengembalikan jumlah trek yang benar-benar masuk. Semantik mengikuti
+  /// [enqueue] satu-satu: mode offline menyaring trek yang tak bisa
+  /// diputar luring (dengan satu pemberitahuan ringkas); pemain yang
+  /// menganggur memulai trek pertama, sisanya mengantre — pemutaran yang
+  /// sedang berjalan tidak pernah dibangun ulang/dijeda oleh tambahan di
+  /// ekor (jalur yang sama seperti "Tambah ke Antrian" tunggal).
+  Future<int> enqueueAll(List<Track> tracks) {
+    return _serial(() async {
+      var added = tracks;
+      if (offlineMode) {
+        added = tracks.where(isOfflinePlayable).toList();
+        if (added.length != tracks.length) {
+          notices.add(l10n.noticeOfflineSkipped(
+              tracks.length - added.length));
+        }
+      }
+      if (added.isEmpty) return 0;
+      final wasIdle = engine.current == null;
+      engine.enqueueAllLater(added);
+      if (wasIdle) {
+        final first = added.first;
+        engine.current = first;
+        engine.manual.remove(first);
+        mediaItem.add(_toMediaItem(first));
+        if (_xfMode) {
+          await _xfPlayCurrent(first);
+        } else {
+          await _buildOrNotify(
+            fromFullIndex: 0,
+            autoplay: true,
+            what: 'antrean massal "${first.title}"',
+          );
+        }
+      } else if (_xfMode) {
+        _emitQueue();
+      } else {
+        await _extendSourceToQueue();
+      }
+      _emitQueue();
+      return added.length;
+    });
+  }
+
+  /// Hapus massal mode pilih-banyak (Ronde Tambahan 2015): cabut semua
+  /// item berkunci terpilih dari ketiga seksi antrean dalam SATU edit
+  /// ekor bedah ([_syncTailAfterMutation]) — trek berjalan tidak pernah
+  /// menjadi bagian edit (ia tidak hidup di seksi mana pun) sehingga
+  /// pemutaran tidak terjeda. Item Putar Otomatis yang tercabut dicatat
+  /// sebagai sinyal negatif sesi, sama seperti hapus geser (L-06).
+  /// Mengembalikan jumlah item yang tercabut.
+  Future<int> removeManyFromQueue({
+    Set<TrackKey> manual = const {},
+    Set<TrackKey> continuation = const {},
+    Set<TrackKey> autoplay = const {},
+  }) {
+    return _serial(() async {
+      var removed = 0;
+      removed += engine.removeAllKeys(engine.manual, manual).length;
+      removed += engine.removeAllKeys(engine.continuation, continuation).length;
+      final autoRemoved = engine.removeAllKeys(engine.autoplay, autoplay);
+      for (final t in autoRemoved) {
+        engine.noteSkipped(t); // L-06, sama seperti hapus satu-satu
+      }
+      removed += autoRemoved.length;
+      if (removed > 0) {
+        await _syncTailAfterMutation('hapus massal dari antrean');
+        _emitQueue();
+      }
+      return removed;
+    });
+  }
+
+  /// "Putar Berikutnya" atas item yang SUDAH di antrean (Ronde Tambahan
+  /// 2015): PINDAHKAN item ke kepala Berikutnya — bukan menyalinnya.
+  Future<void> playNextQueued(String section, int index, TrackKey key) {
+    return _serial(() async {
+      final t = engine.extractQueued(section, index, key);
+      if (t == null) return;
+      engine.enqueueNext(t);
+      await _syncTailAfterMutation('putar berikutnya dari antrean');
+      _emitQueue();
+    });
+  }
+
+  /// "Tambah ke Antrian" atas item yang SUDAH di antrean (Ronde Tambahan
+  /// 2015): PINDAHKAN item ke ekor Berikutnya (semantik L-04 yang sama
+  /// seperti dari konteks lain: ekor seksi pengguna).
+  Future<void> sendQueuedToEnd(String section, int index, TrackKey key) {
+    return _serial(() async {
+      final t = engine.extractQueued(section, index, key);
+      if (t == null) return;
+      engine.enqueueLater(t);
+      await _syncTailAfterMutation('pindah ke akhir antrean');
       _emitQueue();
     });
   }
@@ -2709,14 +2973,41 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _scheduleSave(immediate: true);
   }
 
-  /// Pudar tidur: volume turun linear ke 0 selama 30 detik lalu jeda
-  /// (USER-FLOW F-10; Sapuan T-10 — implementasi F2 Batch 2 memakai 5 detik,
-  /// menyimpang tercatat yang kini ditutup di kode). Faktor pudar dipulihkan
-  /// ke 1 agar putaran berikutnya bersuara penuh. Aman dipanggil saat tidak
+  /// Pudar tidur lalu jeda (USER-FLOW F-10). F2.5: jalur utama kini
+  /// peredupan di bentang AKHIR timer ([beginSleepFade]) — saat timer
+  /// berbunyi volume sudah nol, jadi di sini tinggal jeda + pulihkan
+  /// faktor. Jalur warisan 30 detik tetap ada sebagai jaring pengaman
+  /// bila berbunyi tanpa peredupan pendahulu (mis. durasi trek tak
+  /// diketahui pada mode akhir-lagu). Faktor pudar selalu dipulihkan ke
+  /// 1 agar putaran berikutnya bersuara penuh. Aman dipanggil saat tidak
   /// berbunyi (langsung jeda).
   Future<void> fadeOutAndPause() async {
+    _sleepFadeTimer?.cancel();
+    _sleepFadeTimer = null;
+    if (_sleepFaded || _sleepFade <= 0.001) {
+      _sleepFaded = false;
+      await pause();
+      _sleepFade = 1.0;
+      await _applyVolume();
+      return;
+    }
     if (!_activePlayer.playing) {
       await pause();
+      return;
+    }
+    if (_sleepFade < 0.999) {
+      // Peredupan pendahulu sedang berjalan saat timer berbunyi lebih
+      // dulu: selesaikan singkat (≤1,5 detik) dari nilai sekarang ke 0.
+      final from = _sleepFade;
+      for (var i = 1; i <= 5; i++) {
+        _sleepFade = from * (1 - i / 5);
+        await _applyVolume();
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (!_activePlayer.playing) break;
+      }
+      await pause();
+      _sleepFade = 1.0;
+      await _applyVolume();
       return;
     }
     for (var i = 1; i <= 30; i++) {

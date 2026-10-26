@@ -140,6 +140,7 @@ class DrivingScreen extends ConsumerWidget {
                 label: Text(context.l10n.drvSchemeVoice,
                     style: const TextStyle(fontSize: 18)),
               ),
+              SizedBox(height: bottomChromeClearance(context)),
             ]),
           ),
         ),

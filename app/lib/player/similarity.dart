@@ -25,10 +25,23 @@ class AutoplayGate {
 
   /// Penanda non-musik yang cukup khas untuk pencocokan substring.
   static const _nonMusicSubstrings = <String>[
-    'numerolog', 'ceramah', 'khutbah', 'khotbah', 'kajian', 'tausiyah',
-    'pengajian', 'murottal', 'podcast', 'talkshow', 'talk show',
-    'stand up comedy', 'press conference', 'konferensi pers',
-    'breaking news', 'live streaming', 'siraman rohani',
+    'numerolog',
+    'ceramah',
+    'khutbah',
+    'khotbah',
+    'kajian',
+    'tausiyah',
+    'pengajian',
+    'murottal',
+    'podcast',
+    'talkshow',
+    'talk show',
+    'stand up comedy',
+    'press conference',
+    'konferensi pers',
+    'breaking news',
+    'live streaming',
+    'siraman rohani',
   ];
 
   /// Penanda pendek yang harus berdiri sebagai kata utuh agar lagu sah
@@ -42,7 +55,8 @@ class AutoplayGate {
   static const maxSongDuration = Duration(minutes: 25);
   static const minSongDuration = Duration(seconds: 30);
 
-  static String normText(String s) => s.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+  static String normText(String s) =>
+      s.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
   /// Kunci artis untuk pagar & perbandingan: peka huruf/spasi dinormalkan —
   /// "Hendraa RMX V2" / "HENDRAA RMX V2" / "Hendraa Rmx V2" adalah artis
@@ -55,15 +69,19 @@ class AutoplayGate {
     var s = normText(artistNames);
     for (final sep in [' & ', ', ', ' feat. ', ' feat ', ' ft. ', ' x ']) {
       final i = s.indexOf(sep);
-      if (i > 0) { s = s.substring(0, i); break; }
+      if (i > 0) {
+        s = s.substring(0, i);
+        break;
+      }
     }
     return s.trim();
   }
 
   /// Kunci judul untuk deduplikasi versi: sufiks kurung di ujung dibuang
   /// ("Judul (Remastered)" ≡ "Judul").
-  static String titleKey(String title) =>
-      normText(title).replaceAll(RegExp(r'\s*[\(\[][^\)\]]*[\)\]]\s*$'), '').trim();
+  static String titleKey(String title) => normText(
+    title,
+  ).replaceAll(RegExp(r'\s*[\(\[][^\)\]]*[\)\]]\s*$'), '').trim();
 
   static bool isNonMusic(Track t) {
     final hay = '${normText(t.title)} ${normText(t.artistNames)}';
@@ -84,7 +102,8 @@ class AutoplayGate {
       if (d < minSongDuration) return false;
       // Durasi ekstrem (mixtape / live-set / kompilasi video) hanya sah dari
       // artis utama yang sama dengan salah satu benih sesi.
-      if (d > maxSongDuration && !seedPrimaryKeys.contains(primaryArtistKey(t.artistNames))) {
+      if (d > maxSongDuration &&
+          !seedPrimaryKeys.contains(primaryArtistKey(t.artistNames))) {
         return false;
       }
     }
@@ -97,13 +116,37 @@ class AutoplayGate {
     final tk = titleKey(t.title);
     final pk = primaryArtistKey(t.artistNames);
     for (final s in seeds) {
-      if (titleKey(s.title) == tk && primaryArtistKey(s.artistNames) == pk) return true;
+      if (titleKey(s.title) == tk && primaryArtistKey(s.artistNames) == pk) {
+        return true;
+      }
     }
     return false;
   }
 
   /// Kunci deduplikasi antar-versi di dalam batch.
-  static String versionKey(Track t) => '${titleKey(t.title)}|${primaryArtistKey(t.artistNames)}';
+  static String versionKey(Track t) =>
+      '${titleKey(t.title)}|${primaryArtistKey(t.artistNames)}';
+}
+
+/// Batch radio SATU benih untuk halaman Radio (F2.5): keluaran mentah
+/// tangga-2 provider (RDAMVM) disaring Gerbang Kualitas dengan aturan yang
+/// sama seperti penambahan batch tangga — benih sendiri & versi lain dari
+/// lagu benih dibuang, duplikat kunci/versi dibuang, non-musik & durasi
+/// ekstrem tersaring. Urutan sumber dipertahankan (kedekatan versi radio
+/// adalah milik sumber; halaman menampilkannya apa adanya). Murni & diuji.
+List<Track> gateRadioBatch(Track seed, List<Track> raw) {
+  final seedPrimaryKeys = {AutoplayGate.primaryArtistKey(seed.artistNames)};
+  final seen = <TrackKey>{seed.key};
+  final seenVersions = <String>{};
+  final out = <Track>[];
+  for (final t in raw) {
+    if (!seen.add(t.key)) continue;
+    if (!AutoplayGate.passes(t, seedPrimaryKeys: seedPrimaryKeys)) continue;
+    if (AutoplayGate.isSeedVersion(t, [seed])) continue;
+    if (!seenVersions.add(AutoplayGate.versionKey(t))) continue;
+    out.add(t);
+  }
+  return out;
 }
 
 /// Tangga Kemiripan (PRD 5.4) — murni & teruji:
@@ -122,9 +165,12 @@ class SimilarityLadder {
   /// semua pemicu isi ulang berikutnya (gerbang _refilling di handler).
   final Duration sourceTimeout;
 
-  SimilarityLadder(this.source,
-      {this.likedKeys = const {}, this.playCounts = const {},
-       this.sourceTimeout = const Duration(seconds: 15)});
+  SimilarityLadder(
+    this.source, {
+    this.likedKeys = const {},
+    this.playCounts = const {},
+    this.sourceTimeout = const Duration(seconds: 15),
+  });
 
   Future<List<T>> _guard<T>(Future<List<T>> f) =>
       f.timeout(sourceTimeout, onTimeout: () => <T>[]);
@@ -141,7 +187,9 @@ class SimilarityLadder {
     final byLadder = <int, List<Track>>{1: [], 2: [], 3: [], 4: []};
     final seen = <TrackKey>{};
     final seenVersions = <String>{};
-    final seedPrimaryKeys = {for (final s in seeds) AutoplayGate.primaryArtistKey(s.artistNames)};
+    final seedPrimaryKeys = {
+      for (final s in seeds) AutoplayGate.primaryArtistKey(s.artistNames),
+    };
 
     void add(int ladder, Iterable<Track> tracks) {
       for (final t in tracks) {
@@ -163,14 +211,30 @@ class SimilarityLadder {
     final seedSlice = seeds.take(3).toList();
     final sameArtistResults = await Future.wait([
       for (final seed in seedSlice)
-        () async { try { return await _guard(source.sameArtist(seed)); } catch (_) { return const <Track>[]; } }(),
+        () async {
+          try {
+            return await _guard(source.sameArtist(seed));
+          } catch (_) {
+            return const <Track>[];
+          }
+        }(),
     ]);
-    for (final r in sameArtistResults) { add(1, r); }
+    for (final r in sameArtistResults) {
+      add(1, r);
+    }
     final relatedResults = await Future.wait([
       for (final seed in seedSlice)
-        () async { try { return await _guard(source.related(seed)); } catch (_) { return const <Track>[]; } }(),
+        () async {
+          try {
+            return await _guard(source.related(seed));
+          } catch (_) {
+            return const <Track>[];
+          }
+        }(),
     ]);
-    for (final r in relatedResults) { add(2, r); }
+    for (final r in relatedResults) {
+      add(2, r);
+    }
     final similarResults = await Future.wait([
       for (final seed in seedSlice)
         () async {
@@ -179,27 +243,46 @@ class SimilarityLadder {
             final tops = await Future.wait([
               for (final a in artists.take(4))
                 () async {
-                  try { return await _guard(source.artistTopTracks(a.id)); } catch (_) { return const <Track>[]; }
+                  try {
+                    return await _guard(source.artistTopTracks(a.id));
+                  } catch (_) {
+                    return const <Track>[];
+                  }
                 }(),
             ]);
             return [for (final t in tops) ...t];
-          } catch (_) { return const <Track>[]; }
+          } catch (_) {
+            return const <Track>[];
+          }
         }(),
     ]);
-    for (final r in similarResults) { add(3, r); }
+    for (final r in similarResults) {
+      add(3, r);
+    }
     if (byLadder.values.every((l) => l.length < 4)) {
       final genreResults = await Future.wait([
         for (final seed in seedSlice)
-          () async { try { return await _guard(source.sameGenre(seed)); } catch (_) { return const <Track>[]; } }(),
+          () async {
+            try {
+              return await _guard(source.sameGenre(seed));
+            } catch (_) {
+              return const <Track>[];
+            }
+          }(),
       ]);
-      for (final r in genreResults) { add(4, r); }
+      for (final r in genreResults) {
+        add(4, r);
+      }
     }
 
     // Gabung berurutan tangga 1→4; di dalam tangga, yang liked/sering diputar naik (tangga 5 = penguat),
     // lalu kandidat TERSTRUKTUR (punya album/artis terdaftar) sebelum item panel
     // telanjang — kedekatan katalog mengalahkan umpan video mentah (v4.4.2).
-    int boost(Track t) => (likedKeys.contains(t.key) ? 2 : 0) + ((playCounts[t.key] ?? 0) > 2 ? 1 : 0);
-    int structured(Track t) => (t.albumId != null || t.artistIds.isNotEmpty) ? 1 : 0;
+    int boost(Track t) =>
+        (likedKeys.contains(t.key) ? 2 : 0) +
+        ((playCounts[t.key] ?? 0) > 2 ? 1 : 0);
+    int structured(Track t) =>
+        (t.albumId != null || t.artistIds.isNotEmpty) ? 1 : 0;
     final merged = <Track>[];
     for (var ladder = 1; ladder <= 4; ladder++) {
       final list = byLadder[ladder]!;
@@ -218,7 +301,9 @@ class SimilarityLadder {
     // seperti lolos-tunda versi lama yang justru menciptakan run di ujung.
     final out = <Track>[];
     final pool = List<Track>.of(merged);
-    String? runKey = lastArtistNames == null ? null : AutoplayGate.artistKey(lastArtistNames);
+    String? runKey = lastArtistNames == null
+        ? null
+        : AutoplayGate.artistKey(lastArtistNames);
     var runCount = lastArtistNames == null ? 0 : 1;
     while (out.length < target && pool.isNotEmpty) {
       var pick = -1;
@@ -231,7 +316,12 @@ class SimilarityLadder {
       if (pick < 0) break;
       final t = pool.removeAt(pick);
       final k = AutoplayGate.artistKey(t.artistNames);
-      if (k == runKey) { runCount++; } else { runKey = k; runCount = 1; }
+      if (k == runKey) {
+        runCount++;
+      } else {
+        runKey = k;
+        runCount = 1;
+      }
       out.add(t);
     }
     return out;
@@ -271,12 +361,14 @@ Future<RefillBatch> buildRefillBatch(
   String? lastArtistNames,
 }) async {
   if (playedKeys.isEmpty) {
-    return RefillBatch(await ladder.buildBatch(
-      seeds: seeds,
-      alreadyQueued: queuedKeys,
-      sessionNegative: sessionNegative,
-      lastArtistNames: lastArtistNames,
-    ));
+    return RefillBatch(
+      await ladder.buildBatch(
+        seeds: seeds,
+        alreadyQueued: queuedKeys,
+        sessionNegative: sessionNegative,
+        lastArtistNames: lastArtistNames,
+      ),
+    );
   }
   final strict = await ladder.buildBatch(
     seeds: seeds,

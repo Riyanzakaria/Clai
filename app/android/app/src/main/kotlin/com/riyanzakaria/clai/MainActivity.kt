@@ -1,5 +1,6 @@
 package com.riyanzakaria.clai
 
+import android.app.Activity
 import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
@@ -302,6 +303,29 @@ class MainActivity : AudioServiceActivity() {
     // F2 Batch 2 'clai/share': tujuan berbagi Android (teks/gambar) + OCR.
     private var shareSink: EventChannel.EventSink? = null
     private var pendingShare: Map<String, String>? = null
+
+    // Butir 6 F2.5: pemilih gambar sistem Android untuk pintu Tangkap di
+    // layar Cari — tanpa izin penyimpanan luas (izin baca hanya untuk
+    // berkas yang dipilih); hasil pilihan disalin ke cache privat lewat
+    // penyalin yang sama seperti jalur berbagi gambar. Jalur klasik
+    // startActivityForResult dipakai karena registerForActivityResult
+    // tidak tersedia di classpath proyek ini (terbukti gagal kompilasi).
+    private var pickImageResult: MethodChannel.Result? = null
+    private val pickImageRequestCode = 0xC1A1
+
+    @Deprecated("Jalur hasil klasik untuk pemilih gambar Tangkap")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != pickImageRequestCode) return
+        val result = pickImageResult
+        pickImageResult = null
+        val uri = if (resultCode == Activity.RESULT_OK) data?.data else null
+        if (uri == null) {
+            result?.success(null)
+        } else {
+            result?.success(copySharedImageToCache(uri) ?: uri.toString())
+        }
+    }
 
     private fun extractShare(intent: Intent?): Map<String, String>? {
         if (intent == null || intent.action != Intent.ACTION_SEND) return null
@@ -804,6 +828,27 @@ class MainActivity : AudioServiceActivity() {
                         val s = pendingShare
                         pendingShare = null
                         result.success(s)
+                    }
+                    "pickCaptureImage" -> {
+                        // Butir 6 F2.5: buka pemilih gambar sistem; hasil
+                        // (atau null bila batal) tiba lewat onActivityResult.
+                        if (pickImageResult != null) {
+                            result.error("sibuk",
+                                "Pemilih gambar sedang terbuka.", null)
+                        } else {
+                            pickImageResult = result
+                            try {
+                                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                    type = "image/*"
+                                    addCategory(Intent.CATEGORY_OPENABLE)
+                                }
+                                @Suppress("DEPRECATION")
+                                startActivityForResult(intent, pickImageRequestCode)
+                            } catch (e: Exception) {
+                                pickImageResult = null
+                                result.error("pemilih-gagal", e.message, null)
+                            }
+                        }
                     }
                     "ocrImage" -> {
                         val uriString = call.argument<String>("uri")

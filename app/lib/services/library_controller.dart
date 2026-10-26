@@ -81,6 +81,34 @@ class LibraryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Simpan banyak trek ke Koleksi sekaligus (Ronde Tambahan 2015:
+  /// halaman Radio & mode pilih-banyak antrean). Yang sudah tersimpan
+  /// dilewati tanpa mengubah apa pun. Mengembalikan jumlah yang BARU
+  /// tersimpan, untuk umpan balik jujur.
+  Future<int> saveAllToCollection(List<Track> tracks) async {
+    var saved = 0;
+    for (final t in tracks) {
+      if (_liked.contains(t.key)) continue;
+      await db.setLiked(t, true);
+      _liked.add(t.key);
+      saved++;
+    }
+    if (saved > 0) notifyListeners();
+    return saved;
+  }
+
+  /// Tambah banyak trek ke satu playlist sekaligus (Ronde Tambahan
+  /// 2015). Duplikat dilewati (semantik [addToPlaylist] bawaan tanpa
+  /// allowDuplicate). Mengembalikan jumlah yang benar-benar masuk.
+  Future<int> addAllToPlaylist(String playlistId, List<Track> tracks) async {
+    var added = 0;
+    for (final t in tracks) {
+      if (await db.addToPlaylist(playlistId, t)) added++;
+    }
+    if (added > 0) await load();
+    return added;
+  }
+
   Future<String> createPlaylist(String name) async {
     final id = const Uuid().v4();
     await db.createPlaylist(id, name);

@@ -24,6 +24,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get offlineBarText => 'Mode offline — hanya unduhan & file lokal';
 
   @override
+  String get miniSwipeHint => 'Geser kartu pemutar untuk ganti lagu';
+
+  @override
   String get eqTitle => 'Equalizer';
 
   @override
@@ -368,6 +371,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get captureAction => 'Tangkap';
 
   @override
+  String get searchCaptureTitle => 'Tangkap daftar lagu';
+
+  @override
+  String get searchCaptureSub =>
+      'Tempel tautan/teks (termasuk playlist Spotify) atau pilih gambar — lagunya dicocokkan untukmu.';
+
+  @override
+  String get capturePickImage => 'Pilih gambar dari galeri';
+
+  @override
   String get setBgStatus => 'Status izin latar';
 
   @override
@@ -446,7 +459,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get aboutVersion => 'Clai 1.0.0';
+  String get aboutVersion => 'Clai 1.0.1';
 
   @override
   String get aboutBody =>
@@ -812,12 +825,77 @@ class AppLocalizationsId extends AppLocalizations {
   String get ctxShare => 'Bagikan';
 
   @override
-  String ctxShareText(Object artist, Object title) {
-    return 'Dengarkan \"$title\" — $artist di Clai';
+  String ctxShareCredit(Object url) {
+    return 'Dibagikan lewat Clai — unduh aplikasinya: $url';
   }
 
   @override
+  String radioPageTitle(Object title) {
+    return 'Radio — $title';
+  }
+
+  @override
+  String get radioGeneratedFrom => 'Bangkitan radio dari lagu ini';
+
+  @override
+  String get radioEmpty =>
+      'Belum ada lagu radio yang dapat dibuat dari lagu ini.';
+
+  @override
+  String get radioLoadFailed =>
+      'Tidak dapat memuat radio lagu ini. Periksa koneksimu lalu coba lagi.';
+
+  @override
   String get ctxRemoveFromQueue => 'Hapus dari Antrian';
+
+  @override
+  String get queueSelect => 'Pilih';
+
+  @override
+  String queueSelectedCount(Object count) {
+    return '$count dipilih';
+  }
+
+  @override
+  String get queueBulkRemove => 'Hapus';
+
+  @override
+  String get queueBulkPlaylist => 'Ke Playlist';
+
+  @override
+  String get queueBulkSave => 'Simpan';
+
+  @override
+  String get queueSelectAll => 'Pilih Semua';
+
+  @override
+  String get queueUnselectAll => 'Batalkan Semua';
+
+  @override
+  String bulkQueueAdded(Object count) {
+    return '$count lagu ditambahkan ke Antrian.';
+  }
+
+  @override
+  String bulkSaved(Object count) {
+    return '$count lagu disimpan ke Koleksi.';
+  }
+
+  @override
+  String get bulkSavedNone => 'Semua lagu ini sudah ada di Koleksi.';
+
+  @override
+  String bulkPlaylistAdded(Object count) {
+    return '$count lagu ditambahkan ke playlist.';
+  }
+
+  @override
+  String get bulkPlaylistNone => 'Semua lagu ini sudah ada di playlist itu.';
+
+  @override
+  String bulkRemovedFromQueue(Object count) {
+    return '$count lagu dihapus dari Antrian.';
+  }
 
   @override
   String get ctxNewPlaylist => 'Playlist baru';
@@ -874,6 +952,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get searchClearAll => 'Hapus semua';
 
   @override
+  String get searchClearQuery => 'Hapus kata kunci';
+
+  @override
   String get searchNoResults =>
       'Tidak ditemukan. Coba kata kunci lain — ini bukan gagal jaringan, memang tidak ada hasilnya.';
 
@@ -921,6 +1002,9 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get collectionEmptyPlaylists =>
       'Belum ada playlist. Buat satu dengan tombol + di bawah.';
+
+  @override
+  String get collectionGoSearch => 'Cari lagu';
 
   @override
   String get collectionEmptySaved =>
@@ -1184,12 +1268,12 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String sleepSubMinutes(Object remaining) {
-    return 'Timer aktif — $remaining lagi. Saat berbunyi, volume memudar 5 detik lalu musik jeda.';
+    return 'Timer aktif — $remaining lagi. Volume memudar halus di bentang akhir, lalu musik jeda.';
   }
 
   @override
   String get sleepSubEndOfSong =>
-      'Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar 5 detik).';
+      'Timer aktif — musik berhenti di akhir lagu yang sedang berjalan (memudar di bentang akhirnya).';
 
   @override
   String sleepMinutes(int m) {

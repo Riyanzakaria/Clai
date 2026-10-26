@@ -4,6 +4,7 @@ import '../l10n/l10n.dart';
 import 'smart_shuffle.dart';
 
 enum RepeatMode { off, all, one }
+
 enum ShuffleMode { off, pure, smart }
 
 /// Konteks putar: daftar asal (album/playlist/cari/radio) + indeks awal (snapshot L-15).
@@ -12,7 +13,12 @@ class PlayContext {
   final String? id;
   final String label;
   final List<Track> tracks;
-  const PlayContext({required this.kind, this.id, required this.label, required this.tracks});
+  const PlayContext({
+    required this.kind,
+    this.id,
+    required this.label,
+    required this.tracks,
+  });
 }
 
 /// Mesin antrean murni — implementasi aturan L-01…L-16 dari Phase 2, tanpa dependensi player.
@@ -20,20 +26,21 @@ class PlayContext {
 /// Antrean hanya boleh diubah lewat aktor serial di lapisan handler (L-08); kelas ini sendiri
 /// adalah fungsi murni atas state agar logikanya teruji unit.
 class QueueEngine {
-  List<Track> manual = [];       // Berikutnya
-  List<Track> continuation = []; // Lanjutan (sisa konteks sesudah indeks berjalan)
-  List<Track> autoplay = [];     // Putar Otomatis
+  List<Track> manual = []; // Berikutnya
+  List<Track> continuation =
+      []; // Lanjutan (sisa konteks sesudah indeks berjalan)
+  List<Track> autoplay = []; // Putar Otomatis
   /// Riwayat sesi: trek yang sudah dimainkan, urutan putar, tak termasuk
   /// [current]. Tanpa daftar ini gerak mundur pemutar (Sebelumnya) tak dapat
   /// diselaraskan — trek tujuan sudah terkonsumsi dari seksi antrean
   /// (temuan audit v4.4: UI desinkron dari pemutar, Sebelumnya tampak mati).
-  List<Track> played = [];       // Riwayat sesi
+  List<Track> played = []; // Riwayat sesi
   Track? current;
   PlayContext? context;
-  List<Track> seeds = [];        // benih sesi (anti-drift PRD 5.4)
+  List<Track> seeds = []; // benih sesi (anti-drift PRD 5.4)
   RepeatMode repeat = RepeatMode.off;
   ShuffleMode shuffle = ShuffleMode.off;
-  bool autoplayEnabled = true;   // pengaturan global
+  bool autoplayEnabled = true; // pengaturan global
   bool autoplaySessionOn = true; // sakelar sesi di layar Antrian
   int version = 0;
 
@@ -62,7 +69,8 @@ class QueueEngine {
   List<Track> get effectiveQueue => [...manual, ...continuation, ...autoplay];
 
   /// Seluruh antrean termasuk yang berjalan, untuk sumber audio gabungan.
-  List<Track> get fullQueue => current == null ? effectiveQueue : [current!, ...effectiveQueue];
+  List<Track> get fullQueue =>
+      current == null ? effectiveQueue : [current!, ...effectiveQueue];
 
   /// Indeks [track] di dalam fullQueue bila pengguna mengetuknya dari seksi antrean.
   int fullIndexOf(TrackKey k) => fullQueue.indexWhere((t) => t.key == k);
@@ -90,7 +98,9 @@ class QueueEngine {
     if (shuffle == ShuffleMode.pure && ordered.length > 1) {
       final first = ordered[start];
       final rest = List<Track>.of(ordered)..removeAt(start);
-      rest.shuffle(_rng); // Fisher–Yates via Random; posisi lagu berjalan tetap (PRD 5.4)
+      rest.shuffle(
+        _rng,
+      ); // Fisher–Yates via Random; posisi lagu berjalan tetap (PRD 5.4)
       current = first;
       continuation = rest;
     } else if (shuffle == ShuffleMode.smart && ordered.length > 1) {
@@ -99,7 +109,11 @@ class QueueEngine {
       final first = ordered[start];
       final rest = List<Track>.of(ordered)..removeAt(start);
       current = first;
-      continuation = smartShuffleOrder(rest, likedKeys: _smartLiked, playCounts: _smartCounts);
+      continuation = smartShuffleOrder(
+        rest,
+        likedKeys: _smartLiked,
+        playCounts: _smartCounts,
+      );
     } else {
       // Konteks kosong (album/playlist tanpa trek yang bisa dimuat) TIDAK
       // boleh melempar — mesin mendarat di keadaan kosong yang jujur
@@ -126,11 +140,52 @@ class QueueEngine {
   /// senyap dengan `manual = []`.
   void playRadio(Track seed) {
     final preservedManual = List<Track>.of(manual);
-    context = PlayContext(kind: 'radio', id: seed.id, label: 'Radio — ${seed.title}', tracks: [seed]);
+    context = PlayContext(
+      kind: 'radio',
+      id: seed.id,
+      label: 'Radio — ${seed.title}',
+      tracks: [seed],
+    );
     manual = preservedManual;
     seeds = [seed];
     current = seed;
     continuation = [];
+    autoplay = [];
+    played = [];
+    skippedKeys.clear();
+    completedKeys.clear();
+    sessionId++;
+    version++;
+  }
+
+  /// Sesi radio dari HALAMAN Radio (F2.5): jangkar benih tetap lagu asal
+  /// halaman ([seed] — anti-drift tidak berubah), tetapi trek yang diputar
+  /// adalah item halaman yang diketuk pengguna ([page] pada [startIndex]).
+  /// Daftar sesi = [seed, ...page]; lanjutan = item sesudah titik mulai,
+  /// meniru semantik playContext (item sebelum titik mulai tidak ikut sesi
+  /// ini). Antrean manual dipertahankan (D-17) dan sinyal sesi dibersihkan
+  /// seperti pergantian konteks lain.
+  void playRadioFromPage({
+    required Track seed,
+    required List<Track> page,
+    required int startIndex,
+  }) {
+    final preservedManual = List<Track>.of(manual);
+    final all = [seed, ...page.where((t) => t.key != seed.key)];
+    final startTrack = page.isEmpty
+        ? seed
+        : page[startIndex.clamp(0, page.length - 1)];
+    context = PlayContext(
+      kind: 'radio',
+      id: seed.id,
+      label: 'Radio — ${seed.title}',
+      tracks: all,
+    );
+    manual = preservedManual;
+    seeds = [seed];
+    current = startTrack;
+    final idx = all.indexWhere((t) => t.key == startTrack.key);
+    continuation = idx >= 0 ? all.sublist(idx + 1) : [];
     autoplay = [];
     played = [];
     skippedKeys.clear();
@@ -158,8 +213,15 @@ class QueueEngine {
   }
 
   /// L-04: Putar Berikutnya menyisip di kepala Berikutnya; Tambah ke Antrian di ekornya.
-  void enqueueNext(Track t) { manual.insert(0, t); version++; }
-  void enqueueLater(Track t) { manual.add(t); version++; }
+  void enqueueNext(Track t) {
+    manual.insert(0, t);
+    version++;
+  }
+
+  void enqueueLater(Track t) {
+    manual.add(t);
+    version++;
+  }
 
   Track? removeAt(List<Track> section, int index) {
     if (index < 0 || index >= section.length) return null;
@@ -168,8 +230,70 @@ class QueueEngine {
     return t;
   }
 
+  /// Daftar seksi berdasarkan nama handler ('manual' | 'continuation' |
+  /// 'autoplay'); null untuk nama tak dikenal.
+  List<Track>? sectionByName(String section) => switch (section) {
+        'manual' => manual,
+        'continuation' => continuation,
+        'autoplay' => autoplay,
+        _ => null,
+      };
+
+  /// Cabut SEMUA item berkunci [keys] dari [section] (Ronde Tambahan 2015,
+  /// hapus massal mode pilih-banyak). Mengembalikan trek yang tercabut
+  /// dalam urutan asalnya; urutan penyintas dipertahankan persis. Trek
+  /// berjalan tidak pernah ada di seksi-seksi ini, jadi tak tersentuh.
+  List<Track> removeAllKeys(List<Track> section, Set<TrackKey> keys) {
+    if (keys.isEmpty) return const [];
+    final removed = <Track>[];
+    section.removeWhere((t) {
+      if (keys.contains(t.key)) {
+        removed.add(t);
+        return true;
+      }
+      return false;
+    });
+    if (removed.isNotEmpty) version++;
+    return removed;
+  }
+
+  /// Cabut satu item dari seksi bernama untuk DIPINDAHKAN (Ronde Tambahan
+  /// 2015, menu konteks item antrean: "Putar Berikutnya"/"Tambah ke
+  /// Antrian" atas item yang sudah di antrean = pindah, bukan salin).
+  /// [index] adalah petunjuk dari tampilan; bila item di sana tidak lagi
+  /// berkunci [key] (antrean bergeser selama lembar terbuka), cari kunci
+  /// itu di seluruh seksi. Null bila seksi tak dikenal / kunci tak ada.
+  /// Berbeda dari jalur hapus: TANPA sinyal negatif sesi untuk Putar
+  /// Otomatis — memindahkan bukanlah menolak.
+  Track? extractQueued(String section, int index, TrackKey key) {
+    final list = sectionByName(section);
+    if (list == null) return null;
+    var at = index;
+    if (at < 0 || at >= list.length || list[at].key != key) {
+      at = list.indexWhere((t) => t.key == key);
+    }
+    if (at < 0) return null;
+    final t = list.removeAt(at);
+    version++;
+    return t;
+  }
+
+  /// Tambah banyak di ekor Berikutnya sekaligus (Ronde Tambahan 2015,
+  /// "Tambah ke antrean" halaman Radio atas seluruh daftar bangkitan).
+  void enqueueAllLater(List<Track> tracks) {
+    if (tracks.isEmpty) return;
+    manual.addAll(tracks);
+    version++;
+  }
+
   void moveIn(List<Track> section, int from, int to) {
-    if (from == to || from < 0 || from >= section.length || to < 0 || to >= section.length) return;
+    if (from == to ||
+        from < 0 ||
+        from >= section.length ||
+        to < 0 ||
+        to >= section.length) {
+      return;
+    }
     final t = section.removeAt(from);
     section.insert(to, t);
     version++;
@@ -180,7 +304,10 @@ class QueueEngine {
   Set<TrackKey> _smartLiked = {};
   Map<TrackKey, int> _smartCounts = {};
 
-  void setSmartSignals({Set<TrackKey>? likedKeys, Map<TrackKey, int>? playCounts}) {
+  void setSmartSignals({
+    Set<TrackKey>? likedKeys,
+    Map<TrackKey, int>? playCounts,
+  }) {
     if (likedKeys != null) _smartLiked = likedKeys;
     if (playCounts != null) _smartCounts = playCounts;
   }
@@ -189,11 +316,18 @@ class QueueEngine {
   /// Shuffle dinyalakan di tengah sesi). Manual tidak disentuh; isi tidak berubah.
   void applySmartShuffle() {
     if (continuation.length <= 1) return;
-    continuation = smartShuffleOrder(continuation, likedKeys: _smartLiked, playCounts: _smartCounts);
+    continuation = smartShuffleOrder(
+      continuation,
+      likedKeys: _smartLiked,
+      playCounts: _smartCounts,
+    );
     version++;
   }
 
-  void clearManual() { manual = []; version++; }
+  void clearManual() {
+    manual = [];
+    version++;
+  }
 
   /// Langkah maju khusus jalur crossfade (F2, ADR-002): mengambil trek
   /// berikutnya dari antrean efektif (manual → lanjutan → autoplay) dengan
@@ -214,7 +348,9 @@ class QueueEngine {
       version++;
       return next;
     }
-    if (repeat == RepeatMode.all && context != null && context!.tracks.length > 1) {
+    if (repeat == RepeatMode.all &&
+        context != null &&
+        context!.tracks.length > 1) {
       final old = current!;
       played.add(old);
       current = context!.tracks.first;
@@ -236,14 +372,25 @@ class QueueEngine {
       s.retainWhere((t) => playable.contains(t.key));
       return before - s.length;
     }
+
     removed += keep(manual);
     removed += keep(continuation);
     removed += keep(autoplay);
     if (removed > 0) version++;
     return removed;
   }
-  void clearAutoplay() { autoplay = []; version++; }
-  void clearAllUpcoming() { manual = []; continuation = []; autoplay = []; version++; }
+
+  void clearAutoplay() {
+    autoplay = [];
+    version++;
+  }
+
+  void clearAllUpcoming() {
+    manual = [];
+    continuation = [];
+    autoplay = [];
+    version++;
+  }
 
   /// Bersihkan-semua-antrean = AKHIRI SESI (v4.4.3, keputusan pemilik):
   /// pengguna yang membuang seluruh antrean bermaksud mulai bersih, jadi
@@ -261,7 +408,12 @@ class QueueEngine {
     seeds = cur == null ? [] : [cur];
     context = cur == null
         ? null
-        : PlayContext(kind: 'session', id: cur.id, label: cur.title, tracks: [cur]);
+        : PlayContext(
+            kind: 'session',
+            id: cur.id,
+            label: cur.title,
+            tracks: [cur],
+          );
     played = [];
     skippedKeys.clear();
     completedKeys.clear();
@@ -289,16 +441,22 @@ class QueueEngine {
   bool noteDuration(TrackKey k, Duration d) {
     var changed = false;
     Track fix(Track t) {
-      if (t.key == k && t.duration != d) { changed = true; return t.copyWith(duration: d); }
+      if (t.key == k && t.duration != d) {
+        changed = true;
+        return t.copyWith(duration: d);
+      }
       return t;
     }
+
     if (current != null) current = fix(current!);
     manual = [for (final t in manual) fix(t)];
     continuation = [for (final t in continuation) fix(t)];
     autoplay = [for (final t in autoplay) fix(t)];
     final ctx = context;
     if (ctx != null) {
-      for (var i = 0; i < ctx.tracks.length; i++) { ctx.tracks[i] = fix(ctx.tracks[i]); }
+      for (var i = 0; i < ctx.tracks.length; i++) {
+        ctx.tracks[i] = fix(ctx.tracks[i]);
+      }
     }
     seeds = [for (final t in seeds) fix(t)];
     if (changed) version++;
@@ -309,16 +467,54 @@ class QueueEngine {
   bool noteArtwork(TrackKey k, String url) {
     var changed = false;
     Track fix(Track t) {
-      if (t.key == k && t.artworkUrl == null) { changed = true; return t.copyWith(artworkUrl: url); }
+      if (t.key == k && t.artworkUrl == null) {
+        changed = true;
+        return t.copyWith(artworkUrl: url);
+      }
       return t;
     }
+
     if (current != null) current = fix(current!);
     manual = [for (final t in manual) fix(t)];
     continuation = [for (final t in continuation) fix(t)];
     autoplay = [for (final t in autoplay) fix(t)];
     final ctx = context;
     if (ctx != null) {
-      for (var i = 0; i < ctx.tracks.length; i++) { ctx.tracks[i] = fix(ctx.tracks[i]); }
+      for (var i = 0; i < ctx.tracks.length; i++) {
+        ctx.tracks[i] = fix(ctx.tracks[i]);
+      }
+    }
+    seeds = [for (final t in seeds) fix(t)];
+    played = [for (final t in played) fix(t)];
+    if (changed) version++;
+    return changed;
+  }
+
+  /// Ganti objek trek di semua daftar dengan salinan hasil penyembuhan
+  /// metadata (artis/sampul yang tadinya kosong kini terisi). Mengembalikan
+  /// true bila ada yang berubah. Antrean & posisi tidak disentuh — hanya
+  /// objek trek berkunci sama yang ditukar.
+  bool noteMetadata(Track healed) {
+    var changed = false;
+    Track fix(Track t) {
+      if (t.key == healed.key &&
+          (t.artistNames != healed.artistNames ||
+              t.artworkUrl != healed.artworkUrl)) {
+        changed = true;
+        return healed;
+      }
+      return t;
+    }
+
+    if (current != null) current = fix(current!);
+    manual = [for (final t in manual) fix(t)];
+    continuation = [for (final t in continuation) fix(t)];
+    autoplay = [for (final t in autoplay) fix(t)];
+    final ctx = context;
+    if (ctx != null) {
+      for (var i = 0; i < ctx.tracks.length; i++) {
+        ctx.tracks[i] = fix(ctx.tracks[i]);
+      }
     }
     seeds = [for (final t in seeds) fix(t)];
     played = [for (final t in played) fix(t)];
@@ -336,7 +532,9 @@ class QueueEngine {
   /// Menghormati prioritas L-09: Repeat-Satu > manual > konteks/Repeat-Semua > Putar Otomatis.
   Track? advance({required bool byCompletion}) {
     if (current == null) return null;
-    if (byCompletion && repeat == RepeatMode.one) return current; // putar ulang yang sama
+    if (byCompletion && repeat == RepeatMode.one) {
+      return current; // putar ulang yang sama
+    }
     final upcoming = effectiveQueue;
     if (upcoming.isNotEmpty) {
       final next = _takeNext();
@@ -380,6 +578,7 @@ class QueueEngine {
       version++;
       return true;
     }
+
     if (cut(manual) || cut(continuation) || cut(autoplay)) return current;
     return null;
   }
@@ -391,7 +590,10 @@ class QueueEngine {
   }
 
   /// Apakah isi ulang Putar Otomatis harus diminta sekarang (sisa efektif < 5, PRD 5.4).
-  bool get needsAutoplayRefill => autoplayActive && current != null && effectiveQueue.length < 5 &&
+  bool get needsAutoplayRefill =>
+      autoplayActive &&
+      current != null &&
+      effectiveQueue.length < 5 &&
       !(repeat == RepeatMode.all && (context?.tracks.length ?? 0) > 1);
 
   /// Kondisi pemicu akhir trek alami (cacat v4.4.2-2): trek berjalan adalah
@@ -400,7 +602,8 @@ class QueueEngine {
   /// WAJIB memicu isi ulang + lanjut otomatis — tanpa keadaan ini pemutar
   /// berhenti di trek pertama dan hanya Next manual / siklus sakelar yang
   /// bisa menghidupkannya (laporan pemilik).
-  bool get starvedAtEnd => autoplayActive && current != null && effectiveQueue.isEmpty;
+  bool get starvedAtEnd =>
+      autoplayActive && current != null && effectiveQueue.isEmpty;
 
   /// Benih untuk isi ulang (PRD 5.4): jangkar anti-drift adalah benih sesi
   /// ASLI — trek awal yang dipilih pengguna selalu di depan (playContext
@@ -417,8 +620,13 @@ class QueueEngine {
       if (out.length >= 3) return;
       if (!out.any((s) => s.key == t.key)) out.add(t);
     }
-    for (final t in played.reversed) { push(t); }
-    for (final s in seeds.skip(1)) { push(s); }
+
+    for (final t in played.reversed) {
+      push(t);
+    }
+    for (final s in seeds.skip(1)) {
+      push(s);
+    }
     return out;
   }
 
@@ -428,44 +636,76 @@ class QueueEngine {
 
   /// Serialisasi snapshot (L-16) — trek direferensikan kuncinya, direstorasi lewat katalog lokal.
   Map<String, Object?> snapshot({required int positionMs}) => {
-        'contextKind': context?.kind, 'contextId': context?.id, 'contextLabel': context?.label,
-        'seeds': seeds.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
-        'manual': manual.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
-        'continuation': continuation.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
-        'autoplay': autoplay.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
-        'played': played.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
-        'currentRef': current == null ? null : '${current!.providerId}|${current!.id}',
-        'positionMs': positionMs,
-        'shuffle': switch (shuffle) { ShuffleMode.pure => 'pure', ShuffleMode.smart => 'smart', ShuffleMode.off => 'off' },
-        'repeat': repeat.name,
-        'autoplayEnabled': autoplayEnabled,
-        'signals': {
-          'skipped': skippedKeys.map((k) => {'p': k.providerId, 'i': k.id}).toList(),
-          'completed': completedKeys.map((k) => {'p': k.providerId, 'i': k.id}).toList(),
-        },
-      };
+    'contextKind': context?.kind,
+    'contextId': context?.id,
+    'contextLabel': context?.label,
+    'seeds': seeds.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
+    'manual': manual.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
+    'continuation': continuation
+        .map((t) => {'p': t.providerId, 'i': t.id})
+        .toList(),
+    'autoplay': autoplay.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
+    'played': played.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
+    'currentRef': current == null
+        ? null
+        : '${current!.providerId}|${current!.id}',
+    'positionMs': positionMs,
+    'shuffle': switch (shuffle) {
+      ShuffleMode.pure => 'pure',
+      ShuffleMode.smart => 'smart',
+      ShuffleMode.off => 'off',
+    },
+    'repeat': repeat.name,
+    'autoplayEnabled': autoplayEnabled,
+    'signals': {
+      'skipped': skippedKeys
+          .map((k) => {'p': k.providerId, 'i': k.id})
+          .toList(),
+      'completed': completedKeys
+          .map((k) => {'p': k.providerId, 'i': k.id})
+          .toList(),
+    },
+  };
 
   static List<TrackKey> _keysOf(Object? raw) {
     if (raw is! List) return const [];
-    return raw.map((e) => e is Map ? TrackKey(e['p'] as String, e['i'] as String) : null).whereType<TrackKey>().toList();
+    return raw
+        .map(
+          (e) => e is Map ? TrackKey(e['p'] as String, e['i'] as String) : null,
+        )
+        .whereType<TrackKey>()
+        .toList();
   }
 
   void restore(Map<String, Object?> snap, Map<TrackKey, Track> byKey) {
     Track? find(TrackKey k) => byKey[k];
     seeds = _keysOf(snap['seeds']).map(find).whereType<Track>().toList();
     manual = _keysOf(snap['manual']).map(find).whereType<Track>().toList();
-    continuation = _keysOf(snap['continuation']).map(find).whereType<Track>().toList();
+    continuation = _keysOf(
+      snap['continuation'],
+    ).map(find).whereType<Track>().toList();
     autoplay = _keysOf(snap['autoplay']).map(find).whereType<Track>().toList();
     played = _keysOf(snap['played']).map(find).whereType<Track>().toList();
     final cur = snap['currentRef'] as String?;
     if (cur != null) {
       final parts = cur.split('|');
-      if (parts.length >= 2) current = byKey[TrackKey(parts[0], parts.sublist(1).join('|'))];
+      if (parts.length >= 2) {
+        current = byKey[TrackKey(parts[0], parts.sublist(1).join('|'))];
+      }
     }
-    context = seeds.isEmpty ? null : PlayContext(
-        kind: (snap['contextKind'] as String?) ?? 'restored', id: snap['contextId'] as String?,
-        label: (snap['contextLabel'] as String?) ?? l10n.ctxPreviousSession, tracks: seeds);
-    shuffle = switch (snap['shuffle']) { 'pure' => ShuffleMode.pure, 'smart' => ShuffleMode.smart, _ => ShuffleMode.off };
+    context = seeds.isEmpty
+        ? null
+        : PlayContext(
+            kind: (snap['contextKind'] as String?) ?? 'restored',
+            id: snap['contextId'] as String?,
+            label: (snap['contextLabel'] as String?) ?? l10n.ctxPreviousSession,
+            tracks: seeds,
+          );
+    shuffle = switch (snap['shuffle']) {
+      'pure' => ShuffleMode.pure,
+      'smart' => ShuffleMode.smart,
+      _ => ShuffleMode.off,
+    };
     repeat = RepeatMode.values.asNameMap()[snap['repeat']] ?? RepeatMode.off;
     autoplayEnabled = snap['autoplayEnabled'] != false;
     sessionId++;
