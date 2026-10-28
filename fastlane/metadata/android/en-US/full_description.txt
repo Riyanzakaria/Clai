@@ -1,0 +1,22 @@
+Clai is an open-source Android music player that asks for nothing: no account, no ads, no server, and no telemetry. Everything personal — your library, playlists, history, and settings — lives only on your phone.
+
+Streaming a song is easy; every app does that. These are the things Clai does that the big players don't:
+
+• Capture from a screenshot — photograph a track list anywhere (another app, a chat, a poster) and on-device OCR turns it into a playable queue, reporting per item what matched and what didn't. Shared links and text work too.
+• Autoplay that doesn't drift — continuations sit in their own labelled AUTO section, picked by a similarity ladder anchored to the session you started and passed through a quality gate; your skips count as a negative signal.
+• Smart Shuffle adds nothing — it only reorders the songs you already chose. Injecting new music is Autoplay's job, and Autoplay is always labelled.
+• Continue Tomorrow — the sleep timer doesn't just stop the music; it bookmarks your exact position, and tomorrow Home offers to resume the same queue where you drifted off.
+• Voice Queue — say "play …" or "pause" (Indonesian and English), processed on-device. Ambiguous matches are read back for confirmation, never guessed.
+• A real Car Mode — a giant-touch surface you can swipe anywhere, voice commands, spoken announcements, and speed-following volume between two limits you calibrate.
+
+More features: full queue control with multi-select; track radio pages with batch actions; a mini player and navigation bar that stay on screen; crossfade (1–12 s) and gapless playback; loudness normalization; a 5-band equalizer with presets; a sleep timer with a gentle fade-out; offline downloads with an offline mode that tells the truth; synced lyrics from LRCLIB with cover art via MusicBrainz / Cover Art Archive; Spotify playlist import from a public link (no Spotify account needed); local files treated as first-class citizens; optional ListenBrainz scrobbling (off by default, bring your own token); Indonesian and English interface.
+
+The honest part:
+
+• Unofficial API — Clai plays music from YouTube Music through its unofficial internal API (InnerTube), outside that service's official terms, so the source can change or break at any time. Failures are surfaced honestly in the app, and a replaceable provider layer keeps the player independent of any single source. This dependence on a proprietary network service is why Clai carries the NonFreeNet anti-feature.
+• Lossy in, lossy out — the source streams Opus/AAC up to roughly 256 kbps. There is no lossless tier to unlock, and Clai will not fake one. Your own files (FLAC included) are played as-is.
+• Clean-room — Clai contains no code, icons, artwork, or assets from Spotify or any other player, and is not affiliated with or endorsed by YouTube, Google, or Spotify.
+• Update checks — Clai can check GitHub for new versions at startup; you can turn this off in Settings, automatic downloads are off by default, and nothing is ever downloaded or installed without your tap. If you installed Clai from an app repository, leave it off and let the repository handle updates.
+• Your data stays yours — no accounts, no analytics, no telemetry, no ads. Everything personal is stored locally on your device.
+
+Clai is free software, released under the GNU General Public License v3.0.

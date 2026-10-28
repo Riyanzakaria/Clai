@@ -1,0 +1,22 @@
+Clai adalah pemutar musik Android sumber terbuka yang tidak meminta apa pun: tanpa akun, tanpa iklan, tanpa server, dan tanpa telemetri. Semua hal pribadi — koleksimu, playlist, riwayat, dan pengaturan — hanya tinggal di HP-mu.
+
+Memutar lagu itu mudah; semua aplikasi bisa. Ini hal-hal yang dilakukan Clai dan tidak dilakukan pemain besar:
+
+• Tangkap dari screenshot — foto daftar lagu di mana saja (aplikasi lain, chat, poster) dan OCR di perangkat mengubahnya menjadi antrean yang bisa diputar, dengan laporan per lagu mana yang cocok dan mana yang tidak. Tautan dan teks yang dibagikan juga bisa.
+• Putar Otomatis yang tidak melantur — lanjutannya duduk di bagian AUTO berlabel tersendiri, dipilih oleh tangga kemiripan yang berjangkar pada sesi yang kamu mulai dan melewati gerbang kualitas; lagu yang kamu lewati dihitung sebagai sinyal negatif.
+• Acak Cerdas tidak menambahkan apa pun — ia hanya mengurutkan ulang lagu yang sudah kamu pilih. Menyuntikkan musik baru adalah tugas Putar Otomatis, dan Putar Otomatis selalu berlabel.
+• Lanjut Besok — timer tidur tidak sekadar menghentikan musik; ia menandai posisi persismu, dan besok Beranda menawarkan melanjutkan antrean yang sama dari titik kamu tertidur.
+• Antrean Suara — ucapkan "putar …" atau "jeda" (Indonesia dan Inggris), diproses di perangkat. Hasil yang ambigu dibacakan kembali untuk konfirmasi, tidak pernah ditebak.
+• Mode Mobil yang sungguhan — permukaan sentuh raksasa yang bisa digeser di mana saja, perintah suara, pengumuman lisan, dan volume mengikuti kecepatan di antara dua batas yang kamu kalibrasi sendiri.
+
+Fitur lainnya: kontrol antrean penuh dengan pilih-banyak; halaman radio lagu dengan aksi massal; mini player dan bilah navigasi yang tetap di layar; crossfade (1–12 detik) dan putar tanpa jeda; normalisasi kenyaringan; equalizer 5-band dengan preset; timer tidur dengan fade-out lembut; unduhan offline dengan mode offline yang jujur; lirik tersinkron dari LRCLIB dengan sampul via MusicBrainz / Cover Art Archive; impor playlist Spotify dari tautan publik (tanpa perlu akun Spotify); berkas lokal diperlakukan setara lagu streaming; scrobbling ListenBrainz opsional (mati secara bawaan, bawa tokenmu sendiri); antarmuka Indonesia dan Inggris.
+
+Bagian jujurnya:
+
+• API tidak resmi — Clai memutar musik dari YouTube Music melalui API internal tidak resminya (InnerTube), di luar ketentuan resmi layanan itu, jadi sumbernya bisa berubah atau rusak kapan saja. Kegagalan ditampilkan dengan jujur di aplikasi, dan lapisan provider yang bisa diganti menjaga pemutar tetap mandiri dari satu sumber. Ketergantungan pada layanan jaringan proprietari inilah alasan Clai menyandang anti-feature NonFreeNet.
+• Lossy masuk, lossy keluar — sumbernya mengalirkan Opus/AAC hingga sekitar 256 kbps. Tidak ada tingkat lossless untuk dibuka, dan Clai tidak akan memalsukannya. Berkasmu sendiri (termasuk FLAC) diputar apa adanya.
+• Clean-room — Clai tidak mengandung kode, ikon, karya seni, atau aset dari Spotify atau pemutar lain mana pun, dan tidak berafiliasi dengan atau didukung oleh YouTube, Google, atau Spotify.
+• Pemeriksaan pembaruan — Clai dapat memeriksa versi baru ke GitHub saat dibuka; ini bisa dimatikan di Pengaturan, unduhan otomatis mati secara bawaan, dan tidak ada apa pun yang diunduh atau dipasang tanpa ketukanmu. Jika kamu memasang Clai dari repositori aplikasi, biarkan mati dan serahkan pembaruan ke repositori itu.
+• Datamu tetap milikmu — tanpa akun, tanpa analitik, tanpa telemetri, tanpa iklan. Semua data pribadi tersimpan lokal di perangkatmu.
+
+Clai adalah perangkat lunak bebas, dirilis di bawah GNU General Public License v3.0.

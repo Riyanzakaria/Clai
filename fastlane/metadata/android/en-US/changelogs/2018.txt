@@ -1,0 +1,1 @@
+Clai 1.1.0 — radio as a page (see the whole station first; play, queue all, save all, or add all to a playlist), queue multi-select, a mini player and navigation bar that stay on screen, a sleep timer with fade-out, and search results that play just the song you tapped. Plus metadata self-healing, a fixed OCR model download, and working share-to-Capture while the app is open.
