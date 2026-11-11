@@ -1,0 +1,3 @@
+Tapping a song now just plays it: songs you tapped while another was loading no longer line up and play through one after another.
+Previous now takes you back to the song you were actually hearing, even after jumping around the queue or tapping an autoplay song.
+Update checks are fixed: the app now reliably lets you know when a new version is available.
