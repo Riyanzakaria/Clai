@@ -82,6 +82,15 @@ class MainActivity : AudioServiceActivity() {
             visEmitCount[sessionId] = n
             if (n % 20 == 0) {
                 val (a, c) = visAccum[sessionId] ?: (0.0 to 0L)
+                // Ronde Kresek (2026-11-04): RESET akumulasi setiap emit.
+                // Sebelumnya visAccum tidak pernah di-reset, jadi RMS yang
+                // dikirim adalah rata-rata sejak visStart — makin lama sesi
+                // berjalan, nilai makin tak peka terhadap kenyaringan kini
+                // (mutu ukur normalisasi menurun seiring waktu). Kini RMS
+                // mengukur jendela ±2 dtk terakhir saja (20 tangkap pada
+                // laju tangkap maksimum/2), sesuai maksud awalnya.
+                visAccum[sessionId] = 0.0 to 0L
+                visEmitCount[sessionId] = 0
                 if (c > 0) {
                     val rms = sqrt(a / c)
                     val db = if (rms <= 0.0) -96.0 else 20 * log10(rms)
@@ -125,6 +134,35 @@ class MainActivity : AudioServiceActivity() {
         }
         visAccum.remove(sessionId)
         visEmitCount.remove(sessionId)
+    }
+
+    // Ronde Kresek (2026-11-04): Equalizer kini BISA dilepas. Sebelumnya
+    // instance per sesi hanya dibuat (getOrPut) dan tak pernah release() —
+    // setiap pergantian session-id meninggalkan satu instance efek yatim di
+    // sesi mati, tanpa jalan membersihkannya selain proses mati.
+    private fun eqRelease(sessionId: Int) {
+        try {
+            equalizers.remove(sessionId)?.let {
+                try {
+                    it.enabled = false
+                } catch (_: Exception) {
+                }
+                it.release()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun releaseAllFx() {
+        for (id in equalizers.keys.toList()) eqRelease(id)
+        for (id in visualizers.keys.toList()) visStop(id)
+    }
+
+    override fun onDestroy() {
+        // Higiene terakhir: jangan tinggalkan efek native menempel ke sesi
+        // yang pemiliknya sudah tidak ada.
+        releaseAllFx()
+        super.onDestroy()
     }
 
     private var installReceiver: BroadcastReceiver? = null
@@ -727,6 +765,29 @@ class MainActivity : AudioServiceActivity() {
                         if (sessionId != null) visStop(sessionId)
                         result.success(null)
                     }
+                    "eqRelease" -> {
+                        // Ronde Kresek: lepas instance Equalizer satu sesi
+                        // (sesi berganti / EQ dimatikan / pemain dibuang).
+                        val sessionId = call.argument<Int>("sessionId")
+                        if (sessionId != null) eqRelease(sessionId)
+                        result.success(null)
+                    }
+                    "fxReleaseAll" -> {
+                        releaseAllFx()
+                        result.success(null)
+                    }
+                    "fxCounts" -> {
+                        // Bukti pembeda untuk Log insiden: berapa instance
+                        // efek yang benar-benar hidup di sisi native dan di
+                        // sesi mana saja. Kebocoran = angka ini tumbuh tanpa
+                        // pernah menyusut lintas pergantian sesi.
+                        result.success(mapOf(
+                            "eq" to equalizers.size,
+                            "vis" to visualizers.size,
+                            "eqSessions" to equalizers.keys.toList(),
+                            "visSessions" to visualizers.keys.toList()
+                        ))
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -906,7 +967,8 @@ class MainActivity : AudioServiceActivity() {
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
-            MediaStore.Audio.Media.DURATION
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.MIME_TYPE
         )
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         contentResolver.query(uri, projection, selection, null, "${MediaStore.Audio.Media.TITLE} ASC")?.use { c ->
@@ -915,6 +977,7 @@ class MainActivity : AudioServiceActivity() {
             val aI = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val alI = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val dI = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val mI = c.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
             while (c.moveToNext()) {
                 val id = c.getLong(idI)
                 out.add(mapOf(
@@ -923,6 +986,7 @@ class MainActivity : AudioServiceActivity() {
                     "artist" to c.getString(aI),
                     "album" to c.getString(alI),
                     "duration" to c.getLong(dI),
+                    "mime" to (if (mI >= 0) c.getString(mI) else null),
                     "uri" to ContentUris.withAppendedId(uri, id).toString()
                 ))
             }
