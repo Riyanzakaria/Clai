@@ -124,6 +124,36 @@ class ExploreShelf {
   bool get hasCards => albums.isNotEmpty || artists.isNotEmpty || playlists.isNotEmpty;
 }
 
+/// Satu ubin kategori Mood & Genre dari halaman `FEmusic_moods_and_genres`
+/// sumber (Ronde Koreksi Komposisi F3, papan 04): judul, warna garis khas,
+/// dan titik akhir telusur SUMBER itu sendiri — ketuk ubin membuka halaman
+/// kategori sumber yang nyata, bukan daftar karangan lokal.
+@immutable
+class MoodGenreItem {
+  final String title;
+
+  /// Warna garis khas dari sumber (ARGB; alfa diabaikan saat dirender).
+  final int stripeColor;
+  final String browseId;
+  final String? params;
+  const MoodGenreItem({
+    required this.title,
+    required this.stripeColor,
+    required this.browseId,
+    this.params,
+  });
+}
+
+/// Satu seksi halaman Mood & Genre sumber (mis. "Moods" / "Genres"),
+/// judulnya apa adanya dari sumber.
+@immutable
+class MoodGenreSection {
+  final String title;
+  final List<MoodGenreItem> items;
+  const MoodGenreSection({required this.title, this.items = const []});
+  bool get isEmpty => items.isEmpty;
+}
+
 @immutable
 class SearchResults {
   final List<Track> songs;
@@ -140,7 +170,27 @@ class StreamInfo {
   final String mimeType;
   final int? bitrate;
   final DateTime expiresAt;
-  const StreamInfo({required this.url, required this.mimeType, this.bitrate, required this.expiresAt});
+
+  /// Pasangan UA–URL (Tahap 3): UA yang harus dipakai pipa pengambilan
+  /// (tangga muat/proxy/unduhan) untuk URL ini, bila penerbitnya bukan
+  /// keluarga bawaan. Null = pakai UA bawaan pipa. TIDAK disimpan ke
+  /// cache DB (cache hanya menyimpan URL) — entri cache yang terbit dari
+  /// jalur ber-UA khusus tetap dapat dipakai; penolakan edge menurunkannya
+  /// ke fallback seperti biasa.
+  final String? userAgent;
+
+  /// Penanda asal resolusi: true bila info ini lahir dari jalur DIRECT-1
+  /// (dipakai kabel pemulihan penolakan + statistik Diagnostik).
+  final bool viaDirectPath;
+
+  const StreamInfo({
+    required this.url,
+    required this.mimeType,
+    this.bitrate,
+    required this.expiresAt,
+    this.userAgent,
+    this.viaDirectPath = false,
+  });
 }
 
 enum StreamQuality { low, normal, high }
