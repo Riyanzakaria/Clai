@@ -5,13 +5,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import '../domain/models.dart';
 import '../domain/personal_rank.dart';
+import '../services/waveform.dart';
 
 /// Basis data lokal Clai — skema fisik TECHNICAL-BLUEPRINT Bab 2 (SQLite).
 /// ADR-003: sqflite menggantikan drift; aturan migrasi Bab 2.5 tetap berlaku penuh:
 /// cadangan pra-migrasi wajib, kegagalan migrasi membuka cadangan, data pengguna tidak boleh hilang.
 class AppDb {
   static const dbName = 'clai.db';
-  static const schemaVersion = 4;
+  static const schemaVersion = 5;
   Database? _db;
   Future<Database>? _opening;
 
@@ -179,6 +180,21 @@ class AppDb {
       );
       await b.commit(noResult: true);
     }
+    if (oldV < 5) {
+      // v5 (Ronde Player B): waveform ukur per trek — ember energi hasil
+      // pengukuran RMS nyata saat pemutaran (bukan data karangan).
+      final b = d.batch();
+      _createF5Tables(b);
+      await b.commit(noResult: true);
+    }
+  }
+
+  /// Tabel Ronde Player B (v5) — dipakai jalur buat-baru & migrasi v4→v5.
+  static void _createF5Tables(Batch b) {
+    b.execute('''CREATE TABLE IF NOT EXISTS track_waveforms (
+      provider_id TEXT NOT NULL, provider_track_id TEXT NOT NULL,
+      buckets TEXT NOT NULL, updated_at INTEGER NOT NULL,
+      PRIMARY KEY (provider_id, provider_track_id))''');
   }
 
   /// Tabel Sapuan Kepatuhan (v4) — dipakai jalur buat-baru & migrasi v3→v4.
@@ -298,6 +314,7 @@ class AppDb {
     _createF2Tables(b);
     _createF3Tables(b);
     _createF4Tables(b);
+    _createF5Tables(b);
     b.execute(
       "ALTER TABLE queue_snapshots ADD COLUMN played_json TEXT NOT NULL DEFAULT '[]'",
     );
@@ -459,6 +476,27 @@ class AppDb {
       [playlistId],
     );
     return rows.map(Track.fromDbRow).toList();
+  }
+
+  /// Putar terakhir per playlist pengguna (Ronde Koreksi Komposisi F3,
+  /// meta baris Koleksi papan 05): MAX(started_at) peristiwa putar atas
+  /// trek-trek playlist itu, epoch milidetik. Playlist yang belum pernah
+  /// diputar tidak muncul di peta — meta-nya tanpa klaim waktu.
+  Future<Map<String, int>> playlistLastPlayed() async {
+    final d = await db;
+    final rows = await d.rawQuery(
+      '''SELECT e.playlist_id AS pid, MAX(ev.started_at) AS last_ms
+      FROM playlist_entries e
+      JOIN playback_events ev
+        ON ev.provider_id = e.provider_id
+        AND ev.provider_track_id = e.provider_track_id
+      GROUP BY e.playlist_id''',
+    );
+    return {
+      for (final r in rows)
+        if (r['pid'] != null && r['last_ms'] != null)
+          r['pid'] as String: (r['last_ms'] as num).toInt(),
+    };
   }
 
   Future<int> playlistCount(String playlistId) async {
@@ -651,6 +689,31 @@ class AppDb {
       );
     });
     return tracks.take(limit).toList();
+  }
+
+  /// Teratas menurut hitungan putar MENTAH dalam jendela waktu
+  /// (Kampanye Rombak UI — rak Beranda "Paling sering minggu ini"):
+  /// hanya event dengan started_at >= [fromMs] yang dihitung; urutan
+  /// hitungan menurun, seri diputus oleh putar terakhir terbaru.
+  /// Berbeda dari [frequentTracks] (peringkat campuran sepanjang
+  /// masa): rak mingguan harus jujur pada jendelanya — minggu yang
+  /// kosong mengembalikan daftar kosong, bukan juara lama.
+  Future<List<({Track track, int count})>> topPlayedSince(
+    int fromMs, {
+    int limit = 3,
+  }) async {
+    final d = await db;
+    final rows = await d.rawQuery(
+      '''SELECT t.*, COUNT(*) c, MAX(e.started_at) last FROM playback_events e
+      JOIN tracks t ON t.provider_id=e.provider_id AND t.provider_track_id=e.provider_track_id
+      WHERE e.started_at >= ? GROUP BY e.provider_id, e.provider_track_id
+      ORDER BY c DESC, last DESC LIMIT ?''',
+      [fromMs, limit],
+    );
+    return [
+      for (final r in rows)
+        (track: Track.fromDbRow(r), count: (r['c'] as int?) ?? 0),
+    ];
   }
 
   Future<void> clearHistory() async {
@@ -927,25 +990,47 @@ class AppDb {
     final rows = await d.query('queue_snapshots', where: 'id=1', limit: 1);
     if (rows.isEmpty) return null;
     final r = rows.first;
+    // Dekode TOLERAN per kolom (Ronde Bug Notifikasi): JSON satu kolom yang
+    // korup tidak boleh membunuh seluruh snapshot — kolom itu jatuh ke nilai
+    // kosongnya dan kolom sehat tetap terbaca. (Versi lama melempar keluar
+    // dari jsonDecode pertama yang rusak, dan karena barisnya menetap,
+    // restorasi gagal IDENTIK di setiap start dingin sampai data dihapus.)
+    Object? decodeTolerant(Object? raw, Object? fallback) {
+      if (raw is! String) return fallback;
+      try {
+        return jsonDecode(raw);
+      } catch (_) {
+        return fallback;
+      }
+    }
+
     return {
       'contextKind': r['context_kind'],
       'contextId': r['context_id'],
       'contextLabel': r['context_label'],
-      'seeds': jsonDecode(r['seed_json'] as String),
-      'manual': jsonDecode(r['manual_json'] as String),
-      'continuation': jsonDecode(r['continuation_json'] as String),
-      'autoplay': jsonDecode(r['autoplay_json'] as String),
+      'seeds': decodeTolerant(r['seed_json'], const []),
+      'manual': decodeTolerant(r['manual_json'], const []),
+      'continuation': decodeTolerant(r['continuation_json'], const []),
+      'autoplay': decodeTolerant(r['autoplay_json'], const []),
       'currentRef': r['current_ref'],
       'positionMs': r['position_ms'],
       'shuffle': r['shuffle_mode'],
       'repeat': r['repeat_mode'],
       'autoplayEnabled': (r['autoplay_enabled'] as int) == 1,
-      'signals': jsonDecode(r['session_signals_json'] as String),
-      'played': (r['played_json'] is String)
-          ? jsonDecode(r['played_json'] as String)
-          : const [],
+      'signals': decodeTolerant(r['session_signals_json'], const {}),
+      'played': decodeTolerant(r['played_json'], const []),
       'volume': (r['volume'] as num?)?.toDouble(),
     };
+  }
+
+  /// Buang snapshot antrean (Ronde Bug Notifikasi): snapshot yang terbukti
+  /// beracun — gagal dibaca karena bentuk datanya, atau menyatakan sesi
+  /// tetapi tak satu pun treknya ada di katalog — dibuang oleh jalur
+  /// restorasi agar start berikutnya mulai dari sesi bersih, bukan gagal
+  /// yang sama selamanya.
+  Future<void> deleteQueueSnapshot() async {
+    final d = await db;
+    await d.delete('queue_snapshots', where: 'id=1');
   }
 
   // ---------- cache aliran ----------
@@ -1007,7 +1092,15 @@ class AppDb {
       limit: 1,
     );
     if (rows.isEmpty) return null;
-    return jsonDecode(rows.first['value_json'] as String) as T;
+    // Null-safe & type-safe (perbaikan Ronde Player B): nilai yang
+    // disimpan bisa SAH berupa null JSON (mis. setPref('sleep.last',
+    // null) saat simpanan dibuang) atau tipenya berbeda dari yang
+    // diminta pemanggil. Cast lama `as T` melempar
+    // "type 'Null' is not a subtype of type 'String'" di jalur itu —
+    // crash berulang kartu Sleep Resume di logcat ronde 8038. Nilai
+    // yang tak cocok tipe kini dibaca sebagai "tidak ada".
+    final decoded = jsonDecode(rows.first['value_json'] as String);
+    return decoded is T ? decoded : null;
   }
 
   Future<void> setPref(String key, Object? value) async {
@@ -1016,6 +1109,29 @@ class AppDb {
       'key': key,
       'value_json': jsonEncode(value),
       'schema_v': 1,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  // ---------- waveform ukur (Ronde Player B, skema v5) ----------
+  Future<WaveformData?> waveformFor(TrackKey k) async {
+    final d = await db;
+    final rows = await d.query(
+      'track_waveforms',
+      where: 'provider_id=? AND provider_track_id=?',
+      whereArgs: [k.providerId, k.id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return WaveformData.decode(rows.first['buckets'] as String?);
+  }
+
+  Future<void> saveWaveform(TrackKey k, WaveformData data) async {
+    final d = await db;
+    await d.insert('track_waveforms', {
+      'provider_id': k.providerId,
+      'provider_track_id': k.id,
+      'buckets': data.encode(),
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
