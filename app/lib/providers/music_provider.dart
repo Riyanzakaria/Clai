@@ -22,7 +22,14 @@ abstract class MusicProvider {
   /// Tangga 4: pencarian berbasis genre/niche dari metadata benih.
   Future<List<Track>> getSameGenre(Track seed);
 
-  Future<StreamInfo> resolveStream(Track track, StreamQuality quality);
+  /// [stillWanted] (Ronde 8054): pemeriksaan kehendak yang dinilai ulang
+  /// tepat sebelum pekerjaan resolusi berat benar-benar dieksekusi. Bila
+  /// mengembalikan false, resolusi batal dengan DirectSuperseded (bukan
+  /// kegagalan) — perintah putar yang sudah dikalahkan ketukan lebih baru
+  /// tidak boleh mengantre pekerjaan di depan ketukan terbaru. Provider
+  /// yang tidak punya antrean boleh mengabaikannya.
+  Future<StreamInfo> resolveStream(Track track, StreamQuality quality,
+      {bool Function()? stillWanted});
 
   /// Aliran cadangan (muxed/progresif) bila URL utama ditolak sumber saat diambil
   /// pemutar — v4.1. Default: provider tidak punya cadangan (null).
