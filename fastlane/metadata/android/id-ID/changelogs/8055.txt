@@ -1,0 +1,3 @@
+Mengetuk lagu kini langsung memutarnya: lagu yang kamu ketuk selagi lagu lain dimuat tidak lagi mengantre dan berbunyi satu-satu bergantian.
+Tombol Sebelumnya kini membawamu kembali ke lagu yang benar-benar sedang kamu dengar, walau kamu melompat-lompat di antrean atau mengetuk lagu putar otomatis.
+Pemeriksaan update diperbaiki: aplikasi kini memberi tahu dengan benar bila ada versi baru.
