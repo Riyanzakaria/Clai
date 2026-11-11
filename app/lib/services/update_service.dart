@@ -64,11 +64,20 @@ int compareVersionNames(String a, String b) {
   return 0;
 }
 
-/// Rilis dianggap BARU bila nomor bangunnya lebih tinggi; bila tag tanpa nomor
-/// bangun (build 0 di kedua sisi), bandingkan nama versi.
+/// Rilis dianggap BARU bila NAMA versinya lebih tinggi — nama adalah kunci
+/// utama. Nomor bangun hanya memecah seri bila nama sama DAN tag rilis memang
+/// membawa nomor bangun ('+N').
+///
+/// Mengapa bukan sebaliknya (Ronde 8054): semua tag rilis terbit TIDAK membawa
+/// sufiks bangun (v1.0.0, v1.1.0, v2.0.0 → build selalu 0), sedangkan nomor
+/// bangun pemasangan selalu > 0 (versionCode % 1000: 1.1.0 → 18). Aturan lama
+/// ("salah satu sisi positif → bandingkan bangun saja") dengan itu selalu
+/// memutuskan 0 > 18 = false: pembaruan dalam aplikasi tidak pernah menyala
+/// untuk rilis terbit mana pun.
 bool isNewerRelease(ReleaseInfo r, {required String currentName, required int currentBuild}) {
-  if (r.build > 0 || currentBuild > 0) return r.build > currentBuild;
-  return compareVersionNames(r.versionName, currentName) > 0;
+  final byName = compareVersionNames(r.versionName, currentName);
+  if (byName != 0) return byName > 0;
+  return r.build > 0 && r.build > currentBuild;
 }
 
 /// Pilih aset APK yang cocok dengan ABI perangkat (nama berkas split Flutter

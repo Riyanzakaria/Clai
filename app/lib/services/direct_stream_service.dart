@@ -89,6 +89,10 @@ class DirectPathStats {
   int okCount = 0;
   int fallbackCount = 0;
   final Map<String, int> fallbackByCause = {};
+
+  /// Pekerjaan dibuang dari antrean karena sudah dikalahkan (Ronde 8054) —
+  /// bukan kegagalan: tidak masuk fallbackCount/sistem demosi.
+  int supersededCount = 0;
   String? lastPath; // 'direct' | 'legacy'
   String? lastCause;
   int? lastItag;
@@ -248,19 +252,26 @@ class DirectStreamService {
 
   /// Satu percobaan resolusi DIRECT untuk [track] pada [quality].
   /// StreamInfo keberhasilan (berpasangan UA jalur), atau null dengan
-  /// sebab tercatat di [stats]/log. TIDAK pernah melempar. Pemanggil
-  /// serentak untuk (trek, kualitas) yang sama berbagi satu percobaan.
-  Future<StreamInfo?> tryResolve(Track track, StreamQuality quality) {
+  /// sebab tercatat di [stats]/log. Melempar HANYA [DirectSuperseded]:
+  /// bila [stillWanted] diberikan dan mengembalikan false pada saat
+  /// percobaan mencapai kepala antrean rantai berseri, percobaan dibuang
+  /// sebelum menyentuh jahitan apa pun (Ronde 8054 — ketukan usang tidak
+  /// boleh mengeksekusi resolusi penuh di depan ketukan terbaru).
+  /// Pemanggil serentak untuk (trek, kualitas) yang sama berbagi satu
+  /// percobaan; [stillWanted] milik pemanggil PERTAMA yang berlaku.
+  Future<StreamInfo?> tryResolve(Track track, StreamQuality quality,
+      {bool Function()? stillWanted}) {
     final key = '${track.key}|${quality.name}';
     final running = _inFlight[key];
     if (running != null) return running;
-    final fut = _resolvePipeline(track, quality, key);
+    final fut = _resolvePipeline(track, quality, key, stillWanted: stillWanted);
     _inFlight[key] = fut;
     return fut;
   }
 
   Future<StreamInfo?> _resolvePipeline(
-      Track track, StreamQuality quality, String key) async {
+      Track track, StreamQuality quality, String key,
+      {bool Function()? stillWanted}) async {
     try {
       try {
         if (!await _readEnabled()) {
@@ -295,6 +306,15 @@ class DirectStreamService {
       _AttemptOutcome? outcome;
       var execMs = 0;
       await _serialized(() async {
+        // Ronde 8054: pemeriksaan kehendak di WAKTU EKSEKUSI (pola gerbang
+        // yang sama): pekerjaan yang sudah dikalahkan selagi menunggu
+        // antrean dibuang di sini — bukan kegagalan, bukan sebab demosi.
+        if (stillWanted != null && !stillWanted()) {
+          stats.supersededCount++;
+          _event('direct-dibatalkan',
+              'pekerjaan usang dibuang dari antrean · "${track.title}"');
+          throw const DirectSuperseded();
+        }
         final esw = Stopwatch()..start();
         outcome = await _gateThenAttempt(track, quality);
         execMs = esw.elapsedMilliseconds;
