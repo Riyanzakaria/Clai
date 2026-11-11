@@ -1,7 +1,7 @@
 name: clai
 description: "Clai — an open-source music player for Android. No account, no ads, no telemetry: your library, playlists, and listening history live only on your phone."
 publish_to: 'none'
-version: 1.1.0+2018
+version: 2.0.0+8053
 
 environment:
   sdk: ^3.9.0
@@ -24,6 +24,7 @@ dependencies:
   google_fonts: ^6.3.2
   uuid: ^4.5.1
   share_plus: ^11.1.0
+  webview_flutter: ^4.9.0
 
 dev_dependencies:
   flutter_test:
@@ -34,5 +35,20 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  fonts:
+    # Font tampilan (keputusan pemilik 2026-11-10, staging 8049): Clash
+    # Display menggantikan Space Grotesk. Bukan Google Fonts — dibundel
+    # dari Fontshare/ITF (lisensi Free Font, lihat assets/fonts/README.md).
+    - family: Clash Display
+      fonts:
+        - asset: assets/fonts/ClashDisplay-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/ClashDisplay-Semibold.ttf
+          weight: 600
+        - asset: assets/fonts/ClashDisplay-Bold.ttf
+          weight: 700
   assets:
     - assets/logo/
+    # Solver EJS (yt-dlp-ejs 0.8.0: ejs_lib.min.js + ejs_core.min.js) — hanya
+    # dimuat Lab PoToken diagnostik (Tahap 2 Mesin Penyeberangan 2.0).
+    - assets/solver/
