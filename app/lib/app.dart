@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,10 +12,18 @@ import 'core/clai_icons.dart';
 import 'core/tokens.dart';
 import 'l10n/l10n.dart';
 import 'data/app_db.dart';
+import 'domain/models.dart';
 import 'player/audio_handler.dart';
 import 'providers/ytmusic/ytmusic_provider.dart';
 import 'providers/spotify/spotify_provider.dart';
-import 'services/download_service.dart';
+import 'services/direct_web_engine.dart';
+import 'services/ambient_controller.dart';
+import 'services/ambient_theme.dart';
+import 'services/waveform.dart';
+import 'services/waveform_recorder.dart';
+import 'services/audio_fx_service.dart';
+import 'services/cover_accent_service.dart';
+import 'services/download_service.dart' hide unawaited;
 import 'services/driving_service.dart';
 import 'services/capture_service.dart';
 import 'services/enrichment_service.dart';
@@ -30,18 +39,77 @@ import 'services/track_matcher.dart';
 import 'services/update_service.dart';
 import 'ui/collection_screen.dart';
 import 'ui/cover_accent_glow.dart';
+import 'ui/glass.dart';
+import 'ui/haptics.dart';
 import 'ui/capture_sheet.dart';
 import 'ui/home_screen.dart';
 import 'ui/mini_player.dart';
 import 'ui/search_screen.dart';
 
 final appDbProvider = Provider<AppDb>((_) => AppDb());
+
+/// Mesin tema "Sampul Hidup" (DS v4.0, Workstream E F3): keadaan tema
+/// suasana untuk seluruh aplikasi — lihat services/ambient_theme.dart.
+final ambientControllerProvider =
+    StateNotifierProvider<AmbientController, AmbientState>(
+      (ref) => AmbientController(ref.watch(appDbProvider)),
+    );
+
+/// Irisan keadaan ambien untuk konsumen UI (Ronde Optimasi 8053, kelas
+/// B(i)): SEMUA field [AmbientState] KECUALI `breathFactor`. Terbitan
+/// napas hanya mengubah `breathFactor` (umpan RMS ±2 dtk + peluruhan
+/// 300 md) — sebelum ronde ini setiap terbitan napas membangun ulang
+/// SELURUH penonton keadaan ambien (akar, kaca chrome, semua layar),
+/// padahal faktor napas hanya dikonsumsi SATU tempat: modulasi alfa
+/// wash papan Player. Konsumen menonton irisan ini lewat select()
+/// langsung di situs watch-nya → nol pembangunan ulang dari napas.
+/// Kesetaraan
+/// rekaman bersifat struktural: irisan berubah HANYA bila field visual
+/// sungguh berubah (palet berganti objek hanya saat warna berubah).
+typedef AmbientUiState = ({
+  bool enabled,
+  AmbientStrength strength,
+  bool breathing,
+  bool reduceEffects,
+  AmbientPalette palette,
+});
+
+AmbientUiState ambientUiSlice(AmbientState s) => (
+  enabled: s.enabled,
+  strength: s.strength,
+  breathing: s.breathing,
+  reduceEffects: s.reduceEffects,
+  palette: s.palette,
+);
+
+// CATATAN BENTUK (terukur, tes 8053): konsumen memakai select()
+// LANGSUNG di situs watch-nya —
+//   ref.watch(ambientControllerProvider.select(ambientUiSlice))
+// BUKAN provider perantara yang membungkus select: perantara terbukti
+// menelan notifikasi perubahan nyata yang datang SETELAH rangkaian
+// emisi tanpa-perubahan (kasus napas → ganti strength tak menyebar).
+// Faktor napas dibaca papan Player dengan pola yang sama:
+//   ref.watch(ambientControllerProvider.select((s) => s.breathFactor))
+
+/// Perekam waveform ukur (Ronde Player B): ember energi nyata per trek
+/// dari aliran RMS Visualizer, persisten di DB — lihat
+/// services/waveform_recorder.dart.
+final waveformRecorderProvider = ChangeNotifierProvider<WaveformRecorder>(
+  (ref) => WaveformRecorder(ref.watch(appDbProvider)),
+);
 final ytMusicProvider = Provider<YtMusicProvider>(
   (ref) => YtMusicProvider(ref.watch(appDbProvider)),
 );
 final localFilesProvider = Provider<LocalFilesService>(
   (_) => LocalFilesService(),
 );
+
+/// Cache hasil pindai File Lokal sesi ini (Ronde Koreksi Komposisi F3):
+/// diisi LocalFilesBody sesudah pengguna memindai di tab Berkas, dibaca
+/// baris Berkas Lokal Koleksi untuk meta hitungan NYATA. Null = belum
+/// pernah dipindai sesi ini — Koleksi TIDAK memicu pindai/izin sendiri;
+/// metanya jatuh ke label tanpa hitungan, bukan angka karangan.
+final localScanCacheProvider = StateProvider<List<Track>?>((_) => null);
 
 /// Diisi oleh bootstrap (bootstrap.dart) dari AudioService.init — satu-satunya handler (L-01).
 final audioHandlerProvider = Provider<ClaiAudioHandler>(
@@ -71,8 +139,10 @@ final enrichmentServiceProvider = Provider<EnrichmentService>(
 /// Lapisan penyembuhan metadata (Ronde Cacat Metadata): rekam trek ber-artis
 /// kosong / tanpa sampul diselesaikan sekali dari provider saat ditampilkan.
 final trackMetadataHealerProvider = Provider<TrackMetadataHealer>(
-  (ref) => TrackMetadataHealer(ref.watch(appDbProvider),
-      resolveById: ref.watch(ytMusicProvider).resolveTrackById),
+  (ref) => TrackMetadataHealer(
+    ref.watch(appDbProvider),
+    resolveById: ref.watch(ytMusicProvider).resolveTrackById,
+  ),
 );
 
 /// Layanan F2 Batch 2: unduhan/offline (butuh provider musik + DB).
@@ -134,10 +204,16 @@ ThemeData buildClaiTheme() {
     textTheme: GoogleFonts.interTextTheme(
       base.textTheme,
     ).apply(bodyColor: ClaiColors.ink, displayColor: ClaiColors.ink),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: ClaiColors.base,
       foregroundColor: ClaiColors.ink,
       elevation: 0,
+      // DS Bab 3: judul layar = type/title (Clash Display 20/26 600).
+      // Satu ketetapan tema untuk SEMUA AppBar — Antrian, Pengaturan +
+      // halaman kelompoknya, konten/playlist/radio/unduhan/Spotify,
+      // Diagnostik, Log — menggantikan Inter bawaan tema teks.
+      // (Kampanye Rombak UI Total — Batch 2.)
+      titleTextStyle: displayStyle(20),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: ClaiColors.base,
@@ -153,17 +229,117 @@ ThemeData buildClaiTheme() {
     snackBarTheme: const SnackBarThemeData(
       backgroundColor: ClaiColors.surface3,
       contentTextStyle: TextStyle(color: ClaiColors.ink),
+      // Part terkecil (Ronde Koreksi Komposisi F3): sudut snackbar selaras
+      // radius kartu kecil DS, bukan persegi bawaan Material.
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+    ),
+    // Dialog baku DS (Ronde Koreksi Komposisi F3): SATU resep untuk semua
+    // AlertDialog — permukaan surface-2 + radius 20 (ClaiRadius.sheet).
+    // Dialog yang sudah menyebut backgroundColor sendiri tetap menang;
+    // tema ini menambal yang polos agar tak ada dialog Material mentah.
+    dialogTheme: const DialogThemeData(
+      backgroundColor: ClaiColors.surface2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(ClaiRadius.sheet)),
+      ),
+      titleTextStyle: TextStyle(
+        color: ClaiColors.ink,
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+      ),
+      contentTextStyle: TextStyle(color: ClaiColors.inkSecondary, fontSize: 14),
     ),
     dividerTheme: const DividerThemeData(color: ClaiColors.divider),
+    // Kelas kontrol baku DS (Ronde Sapuan Part Kecil Total 8045): SATU
+    // resep tema untuk sakelar, geser, centang, menu popup, dan tombol
+    // isi/tepi — permukaan yang tidak menyebut gayanya sendiri (baris
+    // Pengaturan, Diagnostik, lembar) tidak lagi jatuh ke Material
+    // mentah. Gaya eksplisit di titik pakai tetap menang atas tema.
+    switchTheme: SwitchThemeData(
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? ClaiColors.accent
+            : ClaiColors.surface3,
+      ),
+      thumbColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? ClaiColors.onAccent
+            : ClaiColors.inkSecondary,
+      ),
+      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+    ),
+    sliderTheme: const SliderThemeData(
+      activeTrackColor: ClaiColors.accent,
+      inactiveTrackColor: ClaiColors.surface3,
+      thumbColor: ClaiColors.accent,
+      overlayColor: Color(0x29B8F135),
+      trackHeight: 3,
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? ClaiColors.accent
+            : Colors.transparent,
+      ),
+      checkColor: WidgetStateProperty.all(ClaiColors.onAccent),
+      side: const BorderSide(color: ClaiColors.inkFaint, width: 1.5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(5)),
+      ),
+    ),
+    popupMenuTheme: const PopupMenuThemeData(
+      color: ClaiColors.surface2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+      textStyle: TextStyle(color: ClaiColors.ink, fontSize: 15),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(999)),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: ClaiColors.ink,
+        side: const BorderSide(color: ClaiColors.divider),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(999)),
+        ),
+      ),
+    ),
   );
 }
 
-/// Judul display Space Grotesk (DS Bab 3).
-TextStyle displayStyle(double size) => GoogleFonts.spaceGrotesk(
+/// Family font tampilan (DS Bab 3; keputusan pemilik 2026-11-10,
+/// staging 8049): **Clash Display** terbundel — menggantikan Space
+/// Grotesk yang sebelumnya dimuat GoogleFonts. SATU nama untuk semua
+/// gaya tampilan agar tak ada rujukan font lama yang tertinggal.
+const String kDisplayFontFamily = 'Clash Display';
+
+/// Judul display Clash Display (DS Bab 3).
+TextStyle displayStyle(double size) => TextStyle(
+  fontFamily: kDisplayFontFamily,
   fontSize: size,
   fontWeight: FontWeight.w600,
   color: ClaiColors.ink,
   height: 1.18,
+);
+
+/// Tingkat pahlawan `type/hero` (DS v4.0 §3-P4): Clash Display 34–40
+/// HANYA untuk momen pahlawan — sapaan Beranda, angka waktu Player,
+/// kelak angka Statistik. Angka tabular agar waktu tidak berjoget.
+TextStyle heroStyle(double size) => TextStyle(
+  fontFamily: kDisplayFontFamily,
+  fontSize: size,
+  fontWeight: FontWeight.w600,
+  color: ClaiColors.ink,
+  height: 1.1,
+  fontFeatures: const [FontFeature.tabularFigures()],
 );
 
 /// Geometri chrome bawah (v4.4.2, cacat jarak mini player ↔ nav).
@@ -185,6 +361,12 @@ const double kMiniPlayerBottomMargin = 1;
 const double kNavBarHeight = 54;
 const double kNavBarTopPad = 1;
 
+/// Margin sisi kartu mini player (kiri & kanan) — tapak horizontal
+/// kartu. Dipakai lukisan penopang chrome untuk tahu di mana kartu
+/// berakhir dan sisi kosongnya mulai (Kampanye Rombak UI, putusan
+/// pemilik 2026-11-09 11:18: sisi kosong itu harus TRANSPARAN).
+const double kMiniPlayerSideMargin = 12;
+
 /// ~~Tinggi pita pudar scrim di atas gugus~~ — DIHAPUS pada Ronde Koreksi
 /// Gradasi (perintah pemilik 25 Okt 12:17 WIB atas build 2010): gradasi
 /// dinilai KETINGGIAN karena pita +56 dp ini melukis lapisan sampai di
@@ -194,60 +376,208 @@ const double kNavBarTopPad = 1;
 /// (lihat [chromeScrimHeight]); konten yang digulir tampil jernih sampai
 /// menyentuh tepi atas kartu. Geometri gugus tidak berubah sama sekali.
 ///
-/// Hentian gradasi scrim — kini dipetakan pada ruas pendek di bawah
-/// kartu itu saja (bukan lagi seluruh tinggi gugus + pita seperti desain
-/// 2006/2010). Hentian terakhir memudarkan tinta sampul kembali ke arah
-/// [ClaiColors.base] di tepi paling bawah.
-const List<double> kChromeScrimStops = [0, 0.5, 1.0];
+/// Profil gradasi scrim warisan (tema mati) — Ronde Perbaikan Scrim,
+/// vonis pemilik 2026-11-09 10:06 atas tangkapan HP-nya (build 6035):
+/// profil lama yang dikalibrasi "tipis seperti Spotify" (25 Okt 2026:
+/// 0,32 tepat di bawah kartu → 0,55 zona ikon → 0,85 tepi paling
+/// bawah) membiarkan judul rak terang ("Koleksi Kamu") TERBACA
+/// menghantui di belakang ikon/label nav, dan alfa awal 0,32 tepat di
+/// bawah kartu menggambar garis terang yang bisa ditunjuk di
+/// perbatasan kartu. Standar pemilik kini terukur dan menggantikan
+/// kalibrasi lama: gradasi mencapai nyaris pekat pada titik yang
+/// masih TERTUTUP di balik kartu, melintasi tepi bawah kartu tanpa
+/// anak tangga yang bisa ditunjuk, dan teks terang yang terparkir di
+/// zona chrome tidak terbaca lagi.
+///
+/// Lukisan kini mulai [kChromeScrimTuck] dp di atas tepi bawah kartu
+/// (tertutup kartu opak; di strip margin 12 dp ia terbaca sebagai
+/// bayangan kartu) dan berjangkar pada tepi bawah kartu:
+/// - Tepi atas lukisan: alfa 0,88 (pita sudut kartu).
+/// - +6 dp: alfa 0,97 — titik nyaris-pekat, masih tertutup kartu.
+/// - Tepi bawah kartu (+16 dp): alfa 0,99.
+/// - +40 dp dan tepi paling bawah: alfa 1,00, warna menggeser halus
+///   ke arah [ClaiColors.base].
+/// Wujud klasiknya dipertahankan — gradasi tonal berwarna sampul di
+/// bawah kartu melayang dan nav transparan di atasnya; yang diganti
+/// hanya kurvanya. Susunan warna+hentian: [chromeScrimGradient].
+const double kChromeScrimTuck = 16;
+const List<double> kChromeScrimBandDp = [0, 6, 16, 40];
+const List<double> kChromeScrimBandAlphas = [0.88, 0.97, 0.99, 1.0];
 
-/// Profil alfa scrim zona nav (Ronde Koreksi Gradasi — dikalibrasi pada
-/// referensi Spotify kiriman pemilik, 25 Okt 12:21 WIB: "gradasinya tipis
-/// aja seperti spotify"). Arahnya berjangkar di BAWAH: paling TIPIS di
-/// tepi atas ruas (tepat di bawah kartu), menggelap halus ke bawah,
-/// paling pekat hanya di tepi paling bawah. Konten di balik zona nav
-/// harus terbaca JELAS menembus (sampul album dikenali), gradasinya
-/// hanya penggelapan halus — bukan pita tinta. Jangkar keterbacaan
-/// diminimalkan sesuai perintah: cukup gelap agar ikon + label nav
-/// (putih/inkFaint) terbaca, setipis yang masih memenuhi itu; bila ragu
-/// antara "rona terasa" vs "tipis", referensi menang.
-/// - Tepi atas ruas: [kScrimNavTopAlpha] (0.32).
-/// - Tengah ruas (zona ikon): [kScrimNavMidAlpha] (0.55).
-/// - Tepi paling bawah: [kScrimBottomAlpha] (0.85).
-/// (Build 2010 sebagai pembanding: ruas ini alfa 1.0 opak penuh — blok
-/// warna; vonis pemilik: "semi transparan? karena yang aku lihat
-/// enggak".)
-const double kScrimNavTopAlpha = 0.32;
-const double kScrimNavMidAlpha = 0.55;
-const double kScrimBottomAlpha = 0.85;
+/// CHROME BERSIH — putusan final pemilik 2026-11-10 11:43 (ronde
+/// 8046): pada tema hidup TIDAK ada lagi lukisan penggelap apa pun
+/// di sekitar chrome. Falloff panjang di atas kartu mini dan fade
+/// penopang zona nav DIHAPUS TOTAL dari kode — bukan dimatikan,
+/// dihapus — karena dua ronde perbaikan sebelumnya (penopang
+/// dipangkas ke strip nav pada Koreksi Chrome 2; ekor alfa di tepi
+/// falloff pada Sapuan 8045) tetap menyisakan pita hitam yang bisa
+/// ditunjuk pemilik di HP-nya: "daritadi padahal aku ingin
+/// hilangkan itu jadi harusnya BERSIH". Yang menjaga keterbacaan
+/// di balik chrome kini HANYA bahan kaca kartu mini & bilah nav
+/// itu sendiri (blur + tint permukaannya). Konsekuensi yang
+/// dipilih pemilik dan dicatat apa adanya: teks terang yang
+/// terparkir di belakang nav dapat tampak menghantui — harga yang
+/// ia terima demi chrome yang bersih. Fungsi-fungsi fade yang
+/// tersisa di bagian ini kini melayani tema warisan saja (tema
+/// mati TIDAK berubah).
 
-/// Tinggi lukisan scrim chrome bawah: HANYA margin bawah kartu mini +
-/// bilah navigasi + inset sistem. Bukan tinggi kartu, bukan celah atas
-/// kartu, tanpa pita di atas gugus (perintah pemilik, Koreksi Gradasi).
+/// Wilayah lukisan penopang chrome — sejak ronde 8046 fungsi ini
+/// beserta [ChromeBackingPainter] HANYA melayani tema warisan:
+/// pada tema hidup tidak ada lukisan penopang sama sekali (putusan
+/// final pemilik 2026-11-10 11:43; lihat catatan chrome bersih di
+/// atas). Geometri yang dikembalikan tidak berubah dari Koreksi
+/// Chrome 2: SATU daerah dari tepi atas strip nav
+/// ([cardBottomY] + [kMiniPlayerBottomMargin]) sampai dasar layar —
+/// di mode warisan, di daerah itulah fade zona nav tinggal; pita
+/// kartu, celahnya, dan kedua sisinya tidak dilukis.
+///
+/// [cardBottomY] = jarak dari tepi atas lukisan ke tepi bawah kartu
+/// (mode warisan: [kChromeScrimTuck]).
+
+List<Rect> chromeBackingRects({
+  required double width,
+  required double height,
+  required double cardBottomY,
+}) {
+  return [
+    Rect.fromLTRB(0, cardBottomY + kMiniPlayerBottomMargin, width, height),
+  ];
+}
+
+/// Profil alfa fade zona nav (lahir di Koreksi Chrome 2; sejak
+/// ronde 8046 hanya dipakai tema warisan).
+/// nav, naik monoton di dalam strip (16/30/43 dp), pekat 1,00 di
+/// tepi bawah strip (54 dp), terminal sesudahnya. Kenaikan per baris
+/// piksel tertahan ≤ ±3/255 bahkan di atas konten putih murni —
+/// standar anak tangga kolom margin ronde scrim.
+const List<double> kChromeNavFadeAlphas = [0, 0, 0.38, 0.75, 0.95, 1.0, 1.0];
+
+/// Hentian fade zona nav untuk tinggi lukisan [height]; dua hentian
+/// pertama (0 dan tepi atas strip) sama-sama alfa 0 — gradasi shader
+/// datar-transparan di seluruh pita kartu.
+List<double> chromeNavFadeStops(double height, double cardBottomY) {
+  final navTop = cardBottomY + kMiniPlayerBottomMargin;
+  double f(double dp) => (dp / height).clamp(0.0, 1.0);
+  return [
+    0,
+    f(navTop),
+    f(navTop + 16),
+    f(navTop + 30),
+    f(navTop + 43),
+    f(navTop + kNavBarHeight),
+    1.0,
+  ];
+}
+
+/// Fade zona nav mode warisan: permukaan tonal sampul (disaring
+/// [readableAccentSurface]) bergeser ke [ClaiColors.base] sambil
+/// memekat — terminalnya sama dengan scrim warisan lama, profilnya
+/// profil Koreksi Chrome 2.
+({List<Color> colors, List<double> stops}) chromeNavFadeLegacyGradient(
+  Color? tonal,
+  double height,
+  double cardBottomY,
+) {
+  final surface = tonal == null
+      ? ClaiColors.base
+      : readableAccentSurface(tonal);
+  Color at(double lerpToBase, double alpha) => Color.lerp(
+    surface,
+    ClaiColors.base,
+    lerpToBase,
+  )!.withValues(alpha: alpha);
+  const lerps = [0.0, 0.0, 0.0, 0.15, 0.35, 0.5, 0.5];
+  final colors = <Color>[
+    for (var i = 0; i < kChromeNavFadeAlphas.length; i++)
+      at(lerps[i], kChromeNavFadeAlphas[i]),
+  ];
+  return (colors: colors, stops: chromeNavFadeStops(height, cardBottomY));
+}
+
+/// Pelukis penopang chrome: satu shader gradasi (dibuat atas persegi
+/// wilayah lukisan utuh) dilukis hanya pada [chromeBackingRects].
+/// Sejak ronde 8046 pelukis ini hanya dipakai tema warisan; tema
+/// hidup tidak melukis penopang apa pun di belakang chrome.
+
+class ChromeBackingPainter extends CustomPainter {
+  final List<Color> colors;
+  final List<double> stops;
+  final double cardBottomY;
+
+  const ChromeBackingPainter({
+    required this.colors,
+    required this.stops,
+    required this.cardBottomY,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: colors,
+        stops: stops,
+      ).createShader(Offset.zero & size);
+    for (final r in chromeBackingRects(
+      width: size.width,
+      height: size.height,
+      cardBottomY: cardBottomY,
+    )) {
+      canvas.drawRect(r, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(ChromeBackingPainter old) =>
+      old.cardBottomY != cardBottomY ||
+      !listEquals(old.colors, colors) ||
+      !listEquals(old.stops, stops);
+}
+
+/// kartu, bukan celah atas kartu (perintah pemilik, Koreksi Gradasi).
 double chromeScrimHeight(double bottomInset) =>
     kMiniPlayerBottomMargin + kNavBarHeight + bottomInset;
 
-/// Warna gradasi scrim chrome bawah (Ronde Putusan Desain butir B —
-/// perintah pemilik: "di belakang navigation bar itu gradasi", berwarna
-/// mengikuti sampul; Ronde Koreksi Gradasi: ruas lukisannya hanya di
-/// bawah mini player dan seluruhnya semi-transparan). Tanpa aksen:
-/// gradasi netral [ClaiColors.base]. Dengan aksen: tinta sampul
-/// (disaring [readableAccentSurface] agar label nav tetap kontras),
-/// memudar ke arah base di tepi bawah. Geometri tidak berubah.
-List<Color> chromeScrimColors(Color? tonal) {
-  if (tonal == null) {
-    return [
-      ClaiColors.base.withValues(alpha: kScrimNavTopAlpha),
-      ClaiColors.base.withValues(alpha: kScrimNavMidAlpha),
-      ClaiColors.base.withValues(alpha: kScrimBottomAlpha),
-    ];
-  }
-  final surface = readableAccentSurface(tonal);
-  return [
-    surface.withValues(alpha: kScrimNavTopAlpha),
-    surface.withValues(alpha: kScrimNavMidAlpha),
-    Color.lerp(surface, ClaiColors.base, 0.5)!
-        .withValues(alpha: kScrimBottomAlpha),
+/// Tinggi lukisan scrim warisan kini (Ronde Perbaikan Scrim): ruas di
+/// bawah kartu ditambah pita sudut [kChromeScrimTuck] yang tertutup
+/// kartu — lukisan mulai di atas tepi bawah kartu, BUKAN di atas
+/// gugus; tak ada pita pudar di atas kartu.
+double chromeScrimPaintHeight(double bottomInset) =>
+    kChromeScrimTuck + chromeScrimHeight(bottomInset);
+
+/// Gradasi scrim chrome bawah mode warisan (Ronde Putusan Desain
+/// butir B — perintah pemilik: "di belakang navigation bar itu
+/// gradasi", berwarna mengikuti sampul; profil alfa diganti total
+/// pada Ronde Perbaikan Scrim, lihat [kChromeScrimBandAlphas]).
+/// Tanpa aksen: gradasi netral [ClaiColors.base]. Dengan aksen:
+/// tinta sampul (disaring [readableAccentSurface] agar label nav
+/// tetap kontras), menggeser ke arah base saat menuruni zona nav.
+/// [height] = tinggi lukisan ([chromeScrimPaintHeight] perangkat).
+({List<Color> colors, List<double> stops}) chromeScrimGradient(
+  Color? tonal,
+  double height,
+) {
+  final surface = tonal == null
+      ? ClaiColors.base
+      : readableAccentSurface(tonal);
+  Color at(double lerpToBase, double alpha) => Color.lerp(
+    surface,
+    ClaiColors.base,
+    lerpToBase,
+  )!.withValues(alpha: alpha);
+  final colors = <Color>[
+    at(0, kChromeScrimBandAlphas[0]),
+    at(0, kChromeScrimBandAlphas[1]),
+    at(0, kChromeScrimBandAlphas[2]),
+    at(0.35, kChromeScrimBandAlphas[3]),
+    at(0.5, 1.0),
   ];
+  final stops = <double>[
+    for (final dp in kChromeScrimBandDp) (dp / height).clamp(0.0, 1.0),
+    1.0,
+  ];
+  return (colors: colors, stops: stops);
 }
 
 /// Pengganti bahasa manual (PRD Bab 3): null = ikuti sistem; 'id'/'en' =
@@ -270,6 +600,26 @@ double bottomChromeClearance(BuildContext context) =>
 /// [sheetHostContext].
 final GlobalKey<NavigatorState> claiRootNavigatorKey =
     GlobalKey<NavigatorState>();
+
+/// Penekan chrome cangkang (audit 8047, observasi Mode Mobil #16):
+/// selama layar Menyetir tampil, kartu mini + nav cangkang disembunyikan
+/// — layar itu punya kendali putar raksasanya sendiri, dan chrome ganda
+/// di atasnya adalah kendali ganda + banjir cahaya Volt di zona bawah.
+///
+/// PELAJARAN BISEK 8047 (jangan ulangi dua jalan buntu ini):
+/// 1. Menukar anak Stack chrome menjadi SizedBox.shrink() saat bendera
+///    naik membuat rute Menyetir HITAM TOTAL di build rilis emulator
+///    (tanpa satu pun error terlog; tes widget dengan pola sama lulus —
+///    bedanya bangku punya DirectEngineHost (platform view WebView)
+///    berbagi Stack yang sama, jadi pertukaran struktur anak Stack
+///    adalah pemicu yang konsisten dengan semua bukti).
+/// 2. Mendorong DrivingScreen pada navigator akar gagal "No
+///    ProviderScope found" (log insiden 2026-11-10 16:31) — scope
+///    aplikasi hidup di dalam sub-pohon cangkang.
+/// Maka penekanan di sini WAJIB tanpa pertukaran struktur: chrome
+/// selalu terpasang persis seperti biasa, hanya dilukis transparan +
+/// diabaikan sentuhnya (Opacity + IgnorePointer) selama bendera naik.
+final ValueNotifier<bool> claiChromeSuppressed = ValueNotifier<bool>(false);
 
 /// Konteks di dalam overlay navigator aplikasi (MaterialApp ClaiApp) —
 /// tuan rumah untuk SEMUA lembar modal dan rute yang wajib menutupi
@@ -323,7 +673,7 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   Future<void> _loadMiniSwipeHint() async {
     final seen =
         await ref.read(appDbProvider).pref<bool>('ui.miniSwipeHintSeen') ??
-            false;
+        false;
     if (mounted && seen != _miniSwipeHintSeen) {
       setState(() => _miniSwipeHintSeen = seen);
     }
@@ -523,6 +873,117 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
     shareEvents.receiveBroadcastStream().listen((event) {
       if (event is Map) _openCapture(event.cast<String, Object?>());
     }, onError: (_) {});
+    // Mesin tema "Sampul Hidup" (DS v4.0 §5): tiap trek berjalan memberi
+    // warna tanda tangan sampulnya ke kontroler tema; kontroler menahan
+    // ganti-cepat (tinta menetap) dan menurunkan palet untuk seluruh UI.
+    // Napas (U1) diberi makan aliran RMS Visualizer yang sama dengan
+    // estimator kenyaringan — tidak ada Visualizer kedua.
+    final amb = ref.read(ambientControllerProvider.notifier);
+    handler.mediaItem.listen((item) {
+      ClaiHaptics.trackLanded(
+        item?.id,
+        playing: handler.playbackState.valueOrNull?.playing ?? false,
+      );
+      if (item == null) return;
+      final db = ref.read(appDbProvider);
+      CoverAccentService(db)
+          .sourceForUrl(item.artUri?.toString())
+          .then((src) => amb.setSource(item.id, src))
+          .catchError((_) {});
+    });
+    AudioFxService().rmsEvents.listen(
+      (e) {
+        final rmsDb = (e['rmsDb'] as num?)?.toDouble();
+        if (rmsDb == null) return;
+        // Detak untuk penjaga kesehatan Visualizer handler (Ronde
+        // 8050): peristiwa ini sendiri adalah bukti rantai hidup.
+        handler.noteRmsHeartbeat();
+        final playingNow = handler.playbackState.valueOrNull?.playing ?? false;
+        amb.feedRms(rmsDb, playing: playingNow);
+        // Konsumen ketiga aliran yang sama: waveform ukur Player.
+        // Ember diisi dari posisi & durasi trek aktif SAAT sampel tiba
+        // (pola atribusi yang sama dengan estimator kenyaringan).
+        final cur = handler.engine.current;
+        // Instrumentasi atribusi (Ronde Perbaikan Waveform Perangkat):
+        // peristiwa RMS membawa sessionId sesi pemiliknya — catat apakah
+        // ia berasal dari pemain yang sedang berbunyi dan apakah kunci
+        // umpan (engine) sama dengan kunci yang dimuat pemain itu.
+        final evSession = (e['sessionId'] as num?)?.toInt();
+        final activeSession = handler.activeAudioSessionId;
+        ref
+            .read(waveformRecorderProvider)
+            .noteRmsEvent(
+              fromActiveSession:
+                  evSession != null && evSession == activeSession,
+              hasCurrent: cur != null,
+              feedKey: cur?.key,
+              soundingKey: handler.soundingKey,
+            );
+        if (cur != null) {
+          ref
+              .read(waveformRecorderProvider)
+              .feed(
+                key: cur.key,
+                position: handler.position,
+                duration:
+                    cur.duration ??
+                    handler.mediaItem.valueOrNull?.duration ??
+                    Duration.zero,
+                rmsDb: rmsDb,
+                playing: playingNow,
+              );
+        }
+      },
+      onError: (_) {
+        /* kanal putus: napas diam, bukan crash */
+      },
+    );
+    // Gerbang konsumen Visualizer untuk napas (perbaikan U1, ronde
+    // Player F3): handler menyalakan Visualizer bila normalisasi ATAU
+    // napas membutuhkannya. Tanpa kabel ini napas mati biner pada
+    // setiap pemasangan yang normalisasinya mati (bawaan) — vonis
+    // perangkat 2026-11-09 10:44. Keadaan awal disinkronkan seketika;
+    // perubahan pref tema (yang memuat asinkron) tertangkap listener.
+    void syncBreathVis() {
+      final s = ref.read(ambientControllerProvider);
+      unawaited(
+        handler.setBreathVisWanted(
+          s.enabled && s.breathing && !s.reduceEffects,
+        ),
+      );
+    }
+
+    ref.listenManual(ambientControllerProvider, (_, __) => syncBreathVis());
+    syncBreathVis();
+    // Suara KETIGA gerbang Visualizer: perekam waveform ukur
+    // (Sisipan G-1, 2026-11-10). Cangkang menuliskan kebutuhan
+    // perekam dari kelengkapan data trek berjalan — predikat murni
+    // waveformWantsVisualizer (data belum lengkap = butuh; penuh =
+    // diam, tidak membakar Visualizer). Penilai ulang: ganti trek
+    // (listener mediaItem di atas tidak menyentuh ini, jadi kaitnya
+    // di sini) dan setiap pemberitahuan perekam (ember terisi / data
+    // DB tiba — saat data menjadi penuh, suara padam sendiri).
+    final waveformRecorder = ref.read(waveformRecorderProvider);
+    void syncWaveformVis() {
+      final cur = handler.engine.current;
+      if (cur == null) {
+        unawaited(handler.setWaveformVisWanted(false));
+        return;
+      }
+      unawaited(
+        handler.setWaveformVisWanted(
+          waveformWantsVisualizer(waveformRecorder.dataFor(cur.key)),
+        ),
+      );
+    }
+
+    handler.mediaItem.listen((_) => syncWaveformVis());
+    waveformRecorder.addListener(syncWaveformVis);
+    syncWaveformVis();
+    // Unduhan selesai → denyut haptik (U6), lewat kait layanan.
+    ref.read(downloadServiceProvider).onDownloadCompleted = (_) {
+      ClaiHaptics.downloadDone();
+    };
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _pullPendingShare());
   }
@@ -530,6 +991,18 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final localeOverride = ref.watch(localeOverrideProvider);
+    // Keadaan tema diamati di sini agar gerbang haptik (U6) selalu sinkron
+    // dengan sakelar Kurangi Efek. 8053 B(i): hanya field reduceEffects
+    // yang dibutuhkan akar — select() agar terbitan napas tidak membangun
+    // ulang seluruh pohon MaterialApp; disableAnimations dibaca lewat
+    // aksesor beraspek agar animasi inset keyboard (aspek viewInsets)
+    // tidak membangun ulang akar per bingkai (butir A).
+    final ambReduceEffects = ref.watch(
+      ambientControllerProvider.select((s) => s.reduceEffects),
+    );
+    ClaiHaptics.reduceEffects =
+        ambReduceEffects ||
+        (MediaQuery.maybeDisableAnimationsOf(context) ?? false);
     return MaterialApp(
       title: 'Clai',
       debugShowCheckedModeBanner: false,
@@ -573,6 +1046,29 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
               resizeToAvoidBottomInset: true,
               body: Stack(
                 children: [
+                  // Mesin WebView DIRECT-1 (Tahap 3): lapisan terbawah,
+                  // malas-muat — kosong sampai resolver pertama meminta
+                  // mesin; tertutup penuh oleh konten di atasnya.
+                  const Positioned(left: 0, top: 0, child: DirectEngineHost()),
+                  // Wash "Sampul Hidup" (DS v4.0 §5) di kepala layar tab:
+                  // tinta lagu berjalan mewarnai ruangan di belakang
+                  // konten; rute yang didorong menutupinya (Scaffold
+                  // opak) sehingga dosis layar tugas tetap milik
+                  // halamannya sendiri. Dosis mengikuti tab (DS v4.0
+                  // §5.2): Beranda = pahlawan, Cari/Koleksi = tugas 40%.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: _tabNotifier,
+                      builder: (context, tab, _) => AmbientWashLayer(
+                        kind: tab == 0
+                            ? AmbientSurfaceKind.hero
+                            : AmbientSurfaceKind.task,
+                      ),
+                    ),
+                  ),
                   Positioned.fill(
                     child: SafeArea(
                       bottom: false,
@@ -585,13 +1081,32 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
                             builder: (context, tab, _) => IndexedStack(
                               index: tab,
                               children: [
-                                HomeScreen(
-                                  onGoSearch: () => _goTab(1),
-                                  onGoCollection: () => _goTab(2),
+                                // 8053 B(ii): gerbang visibilitas ticker.
+                                // IndexedStack memasang SEMUA tab; tanpa
+                                // gerbang ini ticker efek di tab tersembunyi
+                                // (mis. EqualizerBars baris yang sedang
+                                // diputar) menjadwalkan bingkai selamanya.
+                                // TickerMode HANYA membungkam ticker —
+                                // keadaan, gulir, dan isi tab tidak
+                                // berubah; ticker hidup lagi seketika saat
+                                // tab kembali tampil (tes pengunci:
+                                // test/optimasi_8053_test.dart).
+                                TickerMode(
+                                  enabled: tab == 0,
+                                  child: HomeScreen(
+                                    onGoSearch: () => _goTab(1),
+                                    onGoCollection: () => _goTab(2),
+                                  ),
                                 ),
-                                const SearchScreen(),
-                                CollectionScreen(
-                                  onGoSearch: () => _goTab(1),
+                                TickerMode(
+                                  enabled: tab == 1,
+                                  child: const SearchScreen(),
+                                ),
+                                TickerMode(
+                                  enabled: tab == 2,
+                                  child: CollectionScreen(
+                                    onGoSearch: () => _goTab(1),
+                                  ),
                                 ),
                               ],
                             ),
@@ -604,7 +1119,22 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    child: RepaintBoundary(child: _bottomChrome(context)),
+                    // Audit 8047 (#16): penekanan TANPA pertukaran
+                    // struktur (lihat pelajaran bisek pada deklarasi
+                    // claiChromeSuppressed) — sub-pohon chrome diteruskan
+                    // sebagai `child` agar elemennya identik di kedua
+                    // keadaan; yang berubah hanya lukisan + sentuh.
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: claiChromeSuppressed,
+                      builder: (context, suppressed, child) => IgnorePointer(
+                        ignoring: suppressed,
+                        child: Opacity(
+                          opacity: suppressed ? 0 : 1,
+                          child: child,
+                        ),
+                      ),
+                      child: RepaintBoundary(child: _bottomChrome(context)),
+                    ),
                   ),
                 ],
               ),
@@ -626,22 +1156,42 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   /// jatuh di balik kartu/nav. Geometri gugus (celah 2, kartu 64,
   /// margin 1, nav 54) TIDAK berubah.
   ///
-  /// Ronde Putusan Desain butir B: scrim diwarnai [chromeScrimColors]
+  /// Ronde Putusan Desain butir B: scrim diwarnai [chromeScrimGradient]
   /// dari tinta sampul trek berjalan/terakhir (pipa aksen dinamis yang
   /// sama dengan kartu Beranda/Player/mini player); tanpa trek ia netral.
   ///
   /// Ronde Koreksi Gradasi (perintah pemilik atas 2010): DUA koreksi —
-  /// (1) seluruh ruas scrim semi-transparan (tak ada ruas opak; lihat
-  /// profil alfa di [kScrimNavTopAlpha]); (2) lukisan scrim DIPANGKAS
-  /// hanya ke bawah mini player: tepi atasnya duduk di tepi BAWAH kartu,
+  /// (1) seluruh ruas scrim semi-transparan (tak ada ruas opak; profil
+  /// alfa saat itu 0,32/0,55/0,85); (2) lukisan scrim DIPANGKAS hanya
+  /// ke bawah mini player: tepi atasnya duduk di tepi BAWAH kartu,
   /// menaungi margin bawah kartu + bilah navigasi + inset saja
   /// ([chromeScrimHeight]). Pita pudar di atas gugus dihapus — konten
   /// tampil jernih sampai menyentuh tepi atas kartu. Geometri gugus
   /// (posisi kartu, celah, nav) tetap persis; yang berubah hanya luas
   /// lukisan scrim.
+  ///
+  /// Ronde Perbaikan Scrim (vonis pemilik 2026-11-09 10:06):
+  /// kalibrasi "tipis" koreksi (1) di atas DIGANTIKAN standar terukur
+  /// pemilik — gradasi mencapai nyaris pekat tertutup di balik
+  /// kartu (mode warisan: profil [kChromeScrimBandAlphas] + pita
+  /// sudut [kChromeScrimTuck]), supaya perbatasan gradasi↔mini
+  /// player tak bisa ditunjuk dan teks terang tak terbaca
+  /// menghantui di belakang nav. Geometri tetap.
+  ///
+  /// Ronde Chrome Bersih (putusan final pemilik 2026-11-10 11:43):
+  /// standar anti-hantu di atas sejak ronde ini berlaku untuk mode
+  /// warisan saja. Pada tema hidup SELURUH lukisan latar chrome
+  /// dihapus total — pemilik menolak sisa gradasi apa pun di
+  /// sekitar kartu mini ("harusnya BERSIH"); keterbacaan di balik
+  /// chrome diserahkan ke bahan kaca kartu & nav itu sendiri.
   Widget _bottomChrome(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final handler = ref.read(audioHandlerProvider);
+    // Tema Dinamis menyala → chrome bersih tanpa lukisan latar
+    // (ronde 8046); mati → lukisan warisan persis di bawah.
+    final ambOn = ref.watch(
+      ambientControllerProvider.select((s) => s.enabled),
+    );
     return StreamBuilder<MediaItem?>(
       stream: handler.mediaItem.stream,
       initialData: handler.mediaItem.valueOrNull,
@@ -663,130 +1213,174 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
           // pada jarak yang sama dari bawah karena induknya
           // Positioned(bottom: 0).
           builder: (context, tonal) => Stack(
-              children: [
+            children: [
+              // Chrome bersih (ronde 8046, putusan final pemilik
+              // 2026-11-10 11:43): saat Tema Dinamis menyala TIDAK
+              // ada lukisan latar apa pun di sekitar chrome —
+              // falloff di atas kartu dan penopang zona nav dihapus
+              // total; keterbacaan diserahkan ke bahan kaca kartu
+              // mini & bilah nav itu sendiri. Cabang di bawah ini
+              // hanya hidup saat tema MATI (warisan, tak berubah).
+              if (!ambOn)
+                // Scrim warisan profil baru (Ronde Perbaikan Scrim):
+                // lukisan mulai kChromeScrimTuck di atas tepi bawah
+                // kartu (tertutup kartu) dan mencapai pekat penuh di
+                // zona nav — lihat chromeScrimGradient.
                 Positioned(
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  height: chromeScrimHeight(bottomInset),
+                  height: chromeScrimPaintHeight(bottomInset),
                   child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: chromeScrimColors(tonal),
-                          stops: kChromeScrimStops,
-                        ),
-                      ),
-                    ),
+                    // Kampanye Rombak UI (putusan pemilik 11:18) +
+                    // Koreksi Chrome 2 (putusan pemilik 2026-11-10):
+                    // saat kartu ada, lukisan dipangkas ke
+                    // chromeBackingRects dengan
+                    // profil fade zona nav warisan
+                    // [chromeNavFadeLegacyGradient]; pita selipan di
+                    // sisi kartu dan strip di balik kartu ikut
+                    // dibebaskan. Tanpa kartu: profil scrim lama utuh.
+                    child: item == null
+                        ? DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: chromeScrimGradient(
+                                  tonal,
+                                  chromeScrimPaintHeight(bottomInset),
+                                ).colors,
+                                stops: chromeScrimGradient(
+                                  tonal,
+                                  chromeScrimPaintHeight(bottomInset),
+                                ).stops,
+                              ),
+                            ),
+                          )
+                        : CustomPaint(
+                            painter: ChromeBackingPainter(
+                              colors: chromeNavFadeLegacyGradient(
+                                tonal,
+                                chromeScrimPaintHeight(bottomInset),
+                                kChromeScrimTuck,
+                              ).colors,
+                              stops: chromeNavFadeLegacyGradient(
+                                tonal,
+                                chromeScrimPaintHeight(bottomInset),
+                                kChromeScrimTuck,
+                              ).stops,
+                              cardBottomY: kChromeScrimTuck,
+                            ),
+                          ),
                   ),
                 ),
-                // Kolom non-posisi: Stack mengukur dirinya dari kolom ini.
-                Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(height: kChromeTopGap),
-                      // Bilah offline (DS 6.12): keadaan yang dinyatakan, bukan kesalahan.
-                      StreamBuilder(
-                        stream: ref.read(audioHandlerProvider).queueStream,
-                        builder: (context, _) {
-                          if (!ref.read(audioHandlerProvider).offlineMode)
-                            return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+              // Kolom non-posisi: Stack mengukur dirinya dari kolom ini.
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: kChromeTopGap),
+                  // Bilah offline (DS 6.12): keadaan yang dinyatakan, bukan kesalahan.
+                  StreamBuilder(
+                    stream: ref.read(audioHandlerProvider).queueStream,
+                    builder: (context, _) {
+                      if (!ref.read(audioHandlerProvider).offlineMode)
+                        return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ClaiColors.surface2,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              ClaiIcon(
+                                ClaiIcons.cloudOff,
+                                size: 18,
+                                color: ClaiColors.warning,
                               ),
-                              decoration: BoxDecoration(
-                                color: ClaiColors.surface2,
-                                borderRadius: BorderRadius.circular(10),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.offlineBarText,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: ClaiColors.inkSecondary,
+                                  ),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  ClaiIcon(
-                                    ClaiIcons.cloudOff,
-                                    size: 18,
-                                    color: ClaiColors.warning,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n.offlineBarText,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: ClaiColors.inkSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      // Audit UX 2017: petunjuk geser mini player SATU
-                      // KALI — gestur geser tidak terlihat sama sekali
-                      // bagi pengguna baru. Bilah ramping pola bilah
-                      // offline, tepat di atas kartu; geometri chrome
-                      // yang dikunci tak berubah (tinggi nol saat tiada).
-                      StreamBuilder(
-                        stream: ref.read(audioHandlerProvider).mediaItem.stream,
-                        initialData:
-                            ref.read(audioHandlerProvider).mediaItem.valueOrNull,
-                        builder: (context, snap) {
-                          if (snap.data == null || _miniSwipeHintSeen) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                            child: Container(
-                              padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-                              decoration: BoxDecoration(
-                                color: ClaiColors.surface2,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  ClaiIcon(
-                                    ClaiIcons.next,
-                                    size: 18,
-                                    color: ClaiColors.accent,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n.miniSwipeHint,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: ClaiColors.inkSecondary,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: ClaiIcon(
-                                      ClaiIcons.close,
-                                      size: 18,
-                                      color: ClaiColors.inkSecondary,
-                                    ),
-                                    tooltip: context.l10n.a11yClose,
-                                    onPressed: _dismissMiniSwipeHint,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      MiniPlayer(onSwipeCommitted: _dismissMiniSwipeHint),
-                      _navBar(context),
-                      SizedBox(height: bottomInset),
-                    ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-              ],
-            ),
+                  // Audit UX 2017: petunjuk geser mini player SATU
+                  // KALI — gestur geser tidak terlihat sama sekali
+                  // bagi pengguna baru. Bilah ramping pola bilah
+                  // offline, tepat di atas kartu; geometri chrome
+                  // yang dikunci tak berubah (tinggi nol saat tiada).
+                  StreamBuilder(
+                    stream: ref.read(audioHandlerProvider).mediaItem.stream,
+                    initialData: ref
+                        .read(audioHandlerProvider)
+                        .mediaItem
+                        .valueOrNull,
+                    builder: (context, snap) {
+                      if (snap.data == null || _miniSwipeHintSeen) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                          decoration: BoxDecoration(
+                            color: ClaiColors.surface2,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              ClaiIcon(
+                                ClaiIcons.next,
+                                size: 18,
+                                color: ClaiColors.accent,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.miniSwipeHint,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: ClaiColors.inkSecondary,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: ClaiIcon(
+                                  ClaiIcons.close,
+                                  size: 18,
+                                  color: ClaiColors.inkSecondary,
+                                ),
+                                tooltip: context.l10n.a11yClose,
+                                onPressed: _dismissMiniSwipeHint,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  MiniPlayer(onSwipeCommitted: _dismissMiniSwipeHint),
+                  _navBar(context),
+                  SizedBox(height: bottomInset),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -799,16 +1393,26 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   /// [kNavBarTopPad] dari tepi atas zona nav; label selalu utuh.
   Widget _navBar(BuildContext context) {
     final s = context.l10n;
-    return SizedBox(
+    final bar = SizedBox(
       height: kNavBarHeight,
       child: ValueListenableBuilder<int>(
         valueListenable: _tabNotifier,
         builder: (context, tab, _) => Row(
           children: [
             _navDestination(
-                0, ClaiIcons.home, ClaiIcons.homeFill, s.navHome, tab),
+              0,
+              ClaiIcons.home,
+              ClaiIcons.homeFill,
+              s.navHome,
+              tab,
+            ),
             _navDestination(
-                1, ClaiIcons.search, ClaiIcons.search, s.navSearch, tab),
+              1,
+              ClaiIcons.search,
+              ClaiIcons.search,
+              s.navSearch,
+              tab,
+            ),
             _navDestination(
               2,
               ClaiIcons.library,
@@ -820,6 +1424,11 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
         ),
       ),
     );
+    // v4.0 (KD-1 revisi): bilah nav menjadi KACA pada geometri yang sama
+    // persis (54 dp, full-width) — bukan pil mengambang, bukan klasik.
+    // Tema mati / Kurangi Efek → GlassSurface jatuh ke transparan:
+    // bilah v3.1 persis (transparan di atas scrim lama).
+    return GlassSurface(radius: 18, fallback: Colors.transparent, child: bar);
   }
 
   Widget _navDestination(

@@ -194,6 +194,16 @@ class _ClaiBootstrapAppState extends State<ClaiBootstrapApp> {
             androidNotificationIcon: 'mipmap/ic_launcher',
           ),
         );
+        // Kabel pemulihan + pemanasan DIRECT-1 (Tahap 3): penolakan URL
+        // oleh edge masuk ke layanan resolver; sesi minter dipanaskan
+        // malas sesudah putar pertama agar trek berikutnya cepat.
+        handler!.directRejectedHook =
+            (t) => provider!.noteDirectFetchRejected(t.key);
+        // Pulihnya trek tertolak mengembalikan tangga ke anak adaptif:
+        // satu 403 transien tidak mendemosi jalur untuk seluruh sesi.
+        provider!.directService.onRecovered =
+            () => handler!.resetLadderToAdaptive();
+        handler!.trackStartedListeners.add(provider!.prewarmDirect);
       }),
       BootstrapStep(l10n.startupPrefs, () async {
         final autoplay = await db!.pref<bool>('playback.autoplay');
