@@ -54,7 +54,10 @@ class LoadLadder {
       };
 
   /// Resolusi URL adaptif (provider) — juga dipakai anak proxy sebagai resolusi malasnya.
-  final Future<StreamInfo> Function(Track track) resolveAdaptive;
+  /// [stillWanted] diteruskan dari [childFor]: pemeriksaan kehendak yang
+  /// dinilai ulang tepat sebelum resolusi berat dieksekusi (Ronde 8054).
+  final Future<StreamInfo> Function(Track track,
+      {bool Function()? stillWanted}) resolveAdaptive;
 
   /// Resolusi URL muxed cadangan (provider) — null bila tak tersedia.
   final Future<StreamInfo?> Function(Track track) resolveMuxed;
@@ -111,9 +114,17 @@ class LoadLadder {
   /// untuk anak yang diberikan dan MELEMPAR bila pemasangan gagal. Berhenti di anak
   /// pertama yang berhasil (anak itu menjadi pemenang lengket) dan mengembalikan
   /// nomornya; melempar galat anak terakhir bila ketiga anak gugur.
+  ///
+  /// [isAbortError] (Ronde 8054): kelas galat BATAL — pembangunan yang sudah
+  /// dikalahkan perintah putar lebih baru. Galat kelas ini BUKAN kegagalan
+  /// anak tangga: dilempar ulang seketika tanpa menaiki anak berikutnya dan
+  /// tanpa memanggil [onRungFailed]. (Sebelumnya pembangunan yang kalah
+  /// tetap membakar resolusi muxed + anak proxy sebelum mati, memperpanjang
+  /// antrean di belakang ketukan terbaru.)
   Future<int> run({
     required Future<void> Function(int rung) attempt,
     void Function(int rung, Object error, StackTrace stackTrace)? onRungFailed,
+    bool Function(Object error)? isAbortError,
   }) async {
     Object? lastError;
     StackTrace? lastStack;
@@ -123,6 +134,9 @@ class LoadLadder {
         _sticky = rung;
         return rung;
       } catch (e, st) {
+        if (isAbortError?.call(e) ?? false) {
+          Error.throwWithStackTrace(e, st);
+        }
         lastError = e;
         lastStack = st;
         onRungFailed?.call(rung, e, st);
@@ -140,7 +154,12 @@ class LoadLadder {
   /// diam-diam ke anak proxy untuk trek itu saja, agar satu trek buruk tidak membunuh
   /// seluruh jendela — kegagalannya akan muncul saat trek itu sendiri dimainkan
   /// (dan jalur galat putar menaikkan tangga untuknya).
-  Future<AudioSource> childFor(Track t, int rung, {bool strict = false}) async {
+  /// [stillWanted] (Ronde 8054): diteruskan ke resolusi adaptif agar
+  /// pekerjaan pembangunan yang sudah dikalahkan bisa dibuang dari antrean
+  /// resolusi sebelum dieksekusi. Anak proxy TIDAK menerimanya: resolusinya
+  /// malas (saat byte benar-benar diambil trek itu sedang dimainkan).
+  Future<AudioSource> childFor(Track t, int rung,
+      {bool strict = false, bool Function()? stillWanted}) async {
     final downloaded = localFileFor?.call(t);
     if (downloaded != null) {
       return AudioSource.uri(Uri.file(downloaded), tag: tagFor(t));
@@ -151,7 +170,7 @@ class LoadLadder {
     switch (rung) {
       case rungAdaptiveUri:
         try {
-          final info = await resolveAdaptive(t);
+          final info = await resolveAdaptive(t, stillWanted: stillWanted);
           return AudioSource.uri(Uri.parse(info.url),
               headers: headersFor(info), tag: tagFor(t));
         } catch (e) {

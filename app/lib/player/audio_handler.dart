@@ -10,6 +10,7 @@ import '../core/error_describe.dart';
 import '../data/app_db.dart';
 import '../domain/models.dart';
 import '../providers/music_provider.dart';
+import '../providers/ytmusic/direct_types.dart';
 import '../services/ambient_theme.dart';
 import '../services/audio_fx_service.dart';
 import '../services/gate_metrics.dart';
@@ -40,6 +41,25 @@ AudioServiceShuffleMode audioServiceShuffleMode(ShuffleMode mode) =>
     mode != ShuffleMode.off
     ? AudioServiceShuffleMode.all
     : AudioServiceShuffleMode.none;
+
+/// Langkah Mundur gapless pada posisi ≤ 3 dtk (PRD 5.4 + Ronde 8055).
+/// Urutan tetap: pendahulu DI JENDELA sumber selalu dipakai dulu (rantai
+/// Maju/Mundur murni tidak berubah); bila jendela tidak memuatnya — sumber
+/// dibangun ulang berjangkar di trek berjalan oleh ketuk-lompat, eskalasi
+/// _verifyAdvance, bangun ekor, atau pulih sesi — Mundur jatuh ke RIWAYAT
+/// SESI (engine.played), sumber yang sama dengan jalur crossfade; keduanya
+/// kosong → ulang trek berjalan dari awal.
+enum GaplessPreviousStep { windowPrevious, historyPrevious, restartCurrent }
+
+GaplessPreviousStep gaplessPreviousStep({
+  required bool hasPreviousInWindow,
+  required bool hasSessionHistory,
+}) =>
+    hasPreviousInWindow
+        ? GaplessPreviousStep.windowPrevious
+        : hasSessionHistory
+            ? GaplessPreviousStep.historyPrevious
+            : GaplessPreviousStep.restartCurrent;
 
 /// Kumpulkan kunci trek dari peta snapshot secara DEFENSIF (Ronde Bug
 /// Notifikasi): entri yang bukan Map atau tak punya 'p'/'i' String DILEWATI,
@@ -870,7 +890,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _emitQueue();
     final gen = ++_playGen;
     if (_xfMode) {
-      await _xfPlayCurrent(engine.current!);
+      await _xfPlayCurrent(engine.current!, gen: gen);
     } else {
       await _buildOrNotify(
         fromFullIndex: 0,
@@ -944,8 +964,9 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// Tangga strategi muat (v4.2): URI adaptif+header → URI muxed+header → proxy.
   /// Pemenang lengket per sesi; kegagalan setAudioSource/per-trek menaikkan tangga.
   late final LoadLadder _ladder = LoadLadder(
-    resolveAdaptive: (t) async {
-      final info = await provider.resolveStream(t, effectiveQuality);
+    resolveAdaptive: (t, {stillWanted}) async {
+      final info = await provider.resolveStream(t, effectiveQuality,
+          stillWanted: stillWanted);
       if (info.bitrate != null) _resolvedBitrates[t.key] = info.bitrate!;
       _resolvedDirect[t.key] = info.viaDirectPath;
       return info;
@@ -1748,6 +1769,9 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (isInterruptionError(e)) return false;
       // v4.4: pembangunan yang dikalahkan ketukan lebih baru juga normal.
       if (e is _Superseded) return false;
+      // Ronde 8054: resolusi dibuang dari antrean DIRECT karena sudah
+      // dikalahkan — juga normal, bukan insiden, bukan pemberitahuan.
+      if (e is DirectSuperseded) return false;
       // v4.1: catat rantai galat LENGKAP (kode + pesan + sebab) — log v4 hanya memuat
       // "(0) Source error" generik sehingga sebab sebenarnya tak terlihat.
       Observability.instance.log(
@@ -1794,7 +1818,13 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         for (var i = 0; i < window.length; i++) {
           // Trek awal jendela KETAT: ialah yang dimuat setAudioSource sekarang —
           // kegagalannya pada anak ini harus menggugurkan anak tangganya.
-          children.add(await _ladder.childFor(window[i], rung, strict: i == 0));
+          // Ronde 8054: pembangunan bergenerasi meneruskan pemeriksaan
+          // kehendaknya ke resolusi — pekerjaan yang sudah dikalahkan
+          // dibuang dari antrean resolusi berseri sebelum dieksekusi,
+          // bukan sesudah menghabiskan resolusi penuh.
+          children.add(await _ladder.childFor(window[i], rung,
+              strict: i == 0,
+              stillWanted: gen == null ? null : () => gen == _playGen));
         }
         // Titik komit generasi: pembangunan usang gugur SEBELUM menyentuh pemutar.
         if (gen != null && gen != _playGen) throw const _Superseded();
@@ -1812,6 +1842,10 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         // membersihkannya — initialPosition terbukti bisa terbuang senyap
         // untuk anak sumber proxy/resolving (D-06, bukti emulator).
       },
+      // Ronde 8054: galat kelas BATAL (pembangunan dikalahkan / resolusi
+      // dibuang dari antrean) bukan kegagalan anak tangga — tangga tidak
+      // menaiki anak berikutnya untuk pekerjaan yang sudah mati.
+      isAbortError: (e) => e is _Superseded || e is DirectSuperseded,
       onRungFailed: (rung, e, st) {
         // v4.3: anak tangga yang gugur karena disela muat lain bukan kegagalan.
         if (isInterruptionError(e)) return;
@@ -2314,20 +2348,43 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   /// Memutar satu trek di pemain aktif (jalur crossfade): sumber tunggal,
   /// tanpa sumber gabungan. [initialPosition] dipakai handoff batas-mode.
+  ///
+  /// [gen] (Ronde 8054): generasi perintah putar pemanggil. Jalur ini dulu
+  /// TIDAK punya titik komit generasi (jalur gapless punya, di _buildSource):
+  /// invokasi yang resolusinya selesai belakangan tetap memasang sumber &
+  /// berbunyi. Terbukti di emulator pada APK rilis: ketukan berurutan pada
+  /// mode crossfade berbunyi satu-satu mengikuti urutan ketuk sampai
+  /// ketukan terakhir — gejala persis laporan pemilik 2026-11-11. Kini
+  /// generasi diperiksa ulang sesudah resolusi (sebelum menyentuh pemutar,
+  /// pola yang sama dengan verifikasi ulang _xfPreload) dan sekali lagi
+  /// tepat sebelum play() — tanpa jeda await di antara periksa & perintah,
+  /// jadi tidak ada celah sela. Pemanggil internal tanpa generasi
+  /// (lompat/ramp/handoff mode) perilakunya tidak berubah.
   Future<void> _xfPlayCurrent(
     Track t, {
     Duration initialPosition = Duration.zero,
+    int? gen,
   }) async {
+    bool superseded() => gen != null && gen != _playGen;
     await _xfResetPlayers();
     _xfPreloadFailedKey = null;
     await _gainFor(t);
-    final child = await _ladder.childFor(t, _ladder.stickyRung, strict: true);
+    final AudioSource child;
+    try {
+      child = await _ladder.childFor(t, _ladder.stickyRung,
+          strict: true,
+          stillWanted: gen == null ? null : () => gen == _playGen);
+    } on DirectSuperseded {
+      return; // dibuang dari antrean resolusi: sudah dikalahkan
+    }
+    if (superseded()) return; // titik komit generasi
     _sourceBuiltThisProcess = true;
     await _activePlayer.setAudioSource(child, initialPosition: initialPosition);
     await _activePlayer.setLoopMode(
       engine.repeat == RepeatMode.one ? LoopMode.one : LoopMode.off,
     );
     await _applyVolume();
+    if (superseded()) return; // ketukan lebih baru tiba saat memasang
     await _activePlayer.play();
     _trackStartedAt = DateTime.now();
     _lastPosition = initialPosition;
@@ -2674,7 +2731,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       mediaItem.add(_toMediaItem(engine.current!));
       _emitQueue();
       if (_xfMode) {
-        await _xfPlayCurrent(engine.current!);
+        await _xfPlayCurrent(engine.current!, gen: gen);
         if (gen != _playGen) return; // dikalahkan ketukan lebih baru
         _trackStartedAt = DateTime.now();
         _emitQueue();
@@ -2714,7 +2771,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       mediaItem.add(_toMediaItem(seed));
       _emitQueue();
       if (_xfMode) {
-        await _xfPlayCurrent(seed);
+        await _xfPlayCurrent(seed, gen: gen);
         if (gen != _playGen) return;
         _trackStartedAt = DateTime.now();
         _emitQueue();
@@ -2757,7 +2814,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       mediaItem.add(_toMediaItem(current));
       _emitQueue();
       if (_xfMode) {
-        await _xfPlayCurrent(current);
+        await _xfPlayCurrent(current, gen: gen);
         if (gen != _playGen) return;
         _trackStartedAt = DateTime.now();
         _emitQueue();
@@ -3096,7 +3153,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       mediaItem.add(_toMediaItem(target));
       _emitQueue();
       if (_xfMode) {
-        await _xfPlayCurrent(target);
+        await _xfPlayCurrent(target, gen: gen);
         if (gen != _playGen) return;
         _trackStartedAt = DateTime.now();
         _emitQueue();
@@ -3544,12 +3601,62 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // Konvensi (PRD 5.4): > 3 dtk → ulang dari awal; ≤ 3 dtk → trek sebelumnya.
     if (_player.position > const Duration(seconds: 3)) {
       await _player.seek(Duration.zero);
-    } else if (_player.hasPrevious) {
-      await _player.seekToPrevious();
     } else {
-      await _player.seek(Duration.zero);
+      switch (gaplessPreviousStep(
+        hasPreviousInWindow: _player.hasPrevious,
+        hasSessionHistory: engine.played.isNotEmpty,
+      )) {
+        case GaplessPreviousStep.windowPrevious:
+          await _player.seekToPrevious();
+        case GaplessPreviousStep.historyPrevious:
+          // Ronde 8055: trek yang baru didengar terdampar di luar jendela
+          // sumber (dibangun ulang berjangkar di trek berjalan) tetapi sesi
+          // mengingatnya — mundur lewat riwayat, bukan mengulang trek ini.
+          await _previousViaHistory();
+        case GaplessPreviousStep.restartCurrent:
+          await _player.seek(Duration.zero);
+      }
     }
     if (resumeAfterSkip == true && !_player.playing) await _player.play();
+  }
+
+  /// Mundur gapless lewat riwayat sesi (Ronde 8055): dipakai saat trek yang
+  /// baru saja didengar tidak lagi berada di jendela sumber berjalan.
+  /// Langkahnya meniru [jumpTo] — guard offline SEBELUM mutasi (restorePlayed
+  /// mengubah sesi; menolak sesudahnya akan merusak sesi), generasi putar
+  /// baru agar pembangunan usang gugur di titik komit (Ronde 8054), bangun
+  /// ulang dari trek hasil pulih lalu perluas jendela di latar. Status putar
+  /// DIPERTAHANKAN (autoplay: false): seekToPrevious pun tidak mengubahnya —
+  /// Mundur saat dijeda tetap dijeda, saat berbunyi tetap berbunyi.
+  Future<void> _previousViaHistory() async {
+    final target = engine.played.last;
+    if (offlineMode && !isOfflinePlayable(target)) {
+      await _player.seek(Duration.zero);
+      return;
+    }
+    final gen = ++_playGen;
+    final prev = engine.current;
+    engine.restorePlayed(engine.played.length - 1);
+    final restored = engine.current;
+    if (restored == null) return;
+    if (prev != null && prev.key != restored.key) {
+      _closeTrackEvent(prev, completed: false);
+    }
+    _pendingRestoreSeek = null; // navigasi eksplisit: seek pulih batal
+    _lastPosition = Duration.zero;
+    mediaItem.add(_toMediaItem(restored));
+    _emitQueue();
+    await _buildOrNotify(
+      fromFullIndex: _currentFullIndex,
+      autoplay: false,
+      what: '"${restored.title}"',
+      gen: gen,
+      firstOnly: true,
+    );
+    if (gen != _playGen) return;
+    _trackStartedAt = DateTime.now();
+    _emitQueue();
+    unawaited(_extendSourceToQueue());
   }
 
   @override
