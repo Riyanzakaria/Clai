@@ -532,7 +532,7 @@ void main() {
         expiresAt: DateTime.now().add(const Duration(hours: 1)),
       );
       LoadLadder mk(StreamInfo info) => LoadLadder(
-            resolveAdaptive: (x) async => info,
+            resolveAdaptive: (x, {stillWanted}) async => info,
             resolveMuxed: (x) async => null,
             tagFor: (x) => 'tag',
             isLocal: (x) => false,

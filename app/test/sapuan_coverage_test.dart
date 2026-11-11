@@ -142,7 +142,10 @@ void main() {
       bool Function(Track)? isLocal,
     }) =>
         LoadLadder(
-          resolveAdaptive: adaptive ?? (t) async => info('https://cdn/${t.id}'),
+          // Ronde 8054: resolveAdaptive tangga kini menerima {stillWanted};
+          // pembantu uji membungkus resolver uji berbentuk lama.
+          resolveAdaptive: (t, {stillWanted}) =>
+              (adaptive ?? (x) async => info('https://cdn/${x.id}'))(t),
           resolveMuxed: muxed ?? (t) async => info('https://mux/${t.id}'),
           tagFor: (t) => null,
           isLocal: isLocal ?? (t) => t.playableRef.startsWith('file'),

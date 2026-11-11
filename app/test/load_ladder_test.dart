@@ -18,7 +18,10 @@ void main() {
     bool Function(Track)? isLocal,
   }) =>
       LoadLadder(
-        resolveAdaptive: adaptive ?? (t) async => info('https://contoh/adaptif'),
+        // Ronde 8054: resolveAdaptive tangga kini menerima {stillWanted};
+        // pembantu uji membungkus resolver uji berbentuk lama.
+        resolveAdaptive: (t, {stillWanted}) =>
+            (adaptive ?? (x) async => info('https://contoh/adaptif'))(t),
         resolveMuxed: muxed ?? (t) async => info('https://contoh/muxed'),
         tagFor: (t) => 'tag-${t.id}',
         isLocal: isLocal ?? ((t) => false),
