@@ -561,6 +561,14 @@ class QueueEngine {
 
   /// Lompat manual ke trek tertentu dalam antrean efektif (ketuk di layar Antrian).
   Track? jumpTo(TrackKey k) {
+    // Trek yang sedang berjalan saat lompatan terjadi SUDAH terputar sesi
+    // ini: catat ke riwayat sebelum current diganti. Tanpa ini trek itu
+    // hilang dari [played] (jalur maju alami & crossfade mencatatnya lewat
+    // played.add(old)) sehingga isi-ulang Putar Otomatis boleh menawarkannya
+    // lagi di sesi yang sama — cacat vonis perangkat T3 lengan E, terbukti
+    // di emulator 2026-11-09 ("back to friends" kembali di batch isi-ulang
+    // #2; log: riwayat dikecualikan 2, seharusnya 3).
+    final outgoing = current;
     // Cari di manual dulu, lalu continuation, lalu autoplay; yang mendahului dibuang (perilaku standar).
     bool cut(List<Track> s) {
       final i = s.indexWhere((t) => t.key == k);
@@ -579,7 +587,14 @@ class QueueEngine {
       return true;
     }
 
-    if (cut(manual) || cut(continuation) || cut(autoplay)) return current;
+    if (cut(manual) || cut(continuation) || cut(autoplay)) {
+      if (outgoing != null &&
+          outgoing.key != k &&
+          (played.isEmpty || played.last.key != outgoing.key)) {
+        played.add(outgoing);
+      }
+      return current;
+    }
     return null;
   }
 
@@ -669,9 +684,14 @@ class QueueEngine {
 
   static List<TrackKey> _keysOf(Object? raw) {
     if (raw is! List) return const [];
+    // Defensif penuh (Ronde Bug Notifikasi): entri Map yang tak punya
+    // 'p'/'i' String ikut DILEWATI — cast telanjang di sini adalah pelempar
+    // TypeError yang membunuh restorasi snapshot beracun di setiap boot.
     return raw
         .map(
-          (e) => e is Map ? TrackKey(e['p'] as String, e['i'] as String) : null,
+          (e) => (e is Map && e['p'] is String && e['i'] is String)
+              ? TrackKey(e['p'] as String, e['i'] as String)
+              : null,
         )
         .whereType<TrackKey>()
         .toList();

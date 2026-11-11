@@ -29,6 +29,13 @@ import '../domain/models.dart';
 ///    pada permintaan PERTAMA sumber ini, sumber beralih permanen ke URL progresif
 ///    (itag 18 — terbukti melayani semua pola range) sebelum satu byte pun disajikan,
 ///    agar byte satu trek tidak pernah tercampur dari dua berkas berbeda.
+/// 5. COBA-ULANG SEBELUM VONIS (Tahap 3). 403/429 pada URL utama dicoba ulang
+///    dengan jeda (maks 3 percobaan per jendela) SEBELUM cadangan diambil —
+///    403 transien sembuh pada URL yang sama (pelajaran MWEB sumber yang
+///    dibedah di studi Tahap 1 + pola drain E3). Pengambilan memakai
+///    pasangan UA–URL info (StreamInfo.userAgent; jalur DIRECT-1 membawa
+///    UA penerbitnya). Peralihan ke cadangan dilaporkan lewat
+///    onPrimaryRejected agar resolver menyegarkan sesi/mengecualikan trek.
 
 // StreamAudioSource ditandai @experimental oleh just_audio, tetapi inilah API resmi
 // sumber malasnya — dipakai sadar penuh (satu-satunya jalan resolusi per-trek).
@@ -41,7 +48,22 @@ class ResolvingAudioSource extends StreamAudioSource {
   final Future<StreamInfo?> Function()? resolveFallback;
 
   /// Pengambil byte (dapat disuntik untuk uji).
-  final RangeFetcher fetcher;
+  late final RangeFetcher fetcher;
+
+  /// Laporan penolakan (Tahap 3): dipanggil SATU kali saat URL utama
+  /// ditolak edge (403/429 sesudah coba-ulang) dan sumber beralih ke
+  /// cadangan muxed. Resolver memakai laporan ini untuk menyegarkan
+  /// sesi / mengecualikan trek.
+  final void Function()? onPrimaryRejected;
+
+  /// Jeda coba-ulang jendela yang ditolak 403/429 sebelum vonis
+  /// (pelajaran MWEB upstream: 403 transien sembuh dengan jeda + coba
+  /// lagi pada URL yang sama — jangan ulangi dosa memperlakukan 403
+  /// pertama sebagai kematian). Dapat di-nol-kan di uji.
+  List<Duration> retryDelays = const [
+    Duration(milliseconds: 350),
+    Duration(milliseconds: 900),
+  ];
 
   /// Batas satu jendela ambil upstream (byte) — lihat cacat 1.
   static const int maxChunkBytes = 1048576;
@@ -54,22 +76,31 @@ class ResolvingAudioSource extends StreamAudioSource {
   StreamInfo? _fallback;
   bool _onFallback = false;
   int? _knownTotal;
+  String? _activeUa;
 
   /// Apakah sumber ini sudah beralih ke cadangan muxed (untuk laporan diagnostik).
   bool get fallbackActive => _onFallback;
 
   ResolvingAudioSource(this.track, this.resolve,
-      {super.tag, this.resolveFallback, RangeFetcher? fetcher})
-      : fetcher = fetcher ?? fetchHttpRange;
+      {super.tag, this.resolveFallback, RangeFetcher? fetcher, this.onPrimaryRejected}) {
+    this.fetcher = fetcher ?? _defaultFetch;
+  }
+
+  Future<FetchedBytes> _defaultFetch(Uri uri,
+          {required int start, required int endInclusive}) =>
+      fetchHttpRange(uri,
+          start: start, endInclusive: endInclusive, userAgent: _activeUa);
 
   /// Satu HttpClient bersama: pooling koneksi ke googlevideo antar permintaan range.
   static final HttpClient _client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
 
   /// Pengambil byte bawaan (dart:io — tumpukan yang sama di perangkat & uji desktop).
+  /// [userAgent] = pasangan UA–URL info yang sedang diambil (jalur
+  /// DIRECT-1 membawa UA penerbitnya); null = UA bawaan keluarga ANDROID.
   static Future<FetchedBytes> fetchHttpRange(Uri uri,
-      {required int start, required int endInclusive}) async {
+      {required int start, required int endInclusive, String? userAgent}) async {
     final req = await _client.getUrl(uri);
-    req.headers.set(HttpHeaders.userAgentHeader, playerUserAgent);
+    req.headers.set(HttpHeaders.userAgentHeader, userAgent ?? playerUserAgent);
     // Range SELALU terbatas (inklusif di kedua ujung, per semantik header HTTP).
     req.headers.set(HttpHeaders.rangeHeader, 'bytes=$start-$endInclusive');
     final res = await req.close().timeout(const Duration(seconds: 20));
@@ -91,18 +122,23 @@ class ResolvingAudioSource extends StreamAudioSource {
         ? (_fallback ??= await resolveFallback?.call() ?? await _primaryInfo())
         : await _primaryInfo();
 
-    var attempt = await _fetchBounded(info, reqStart, end);
+    _activeUa = info.userAgent;
+    var attempt = _onFallback
+        ? await _fetchBounded(info, reqStart, end)
+        : await _fetchPrimaryWithRetry(info, reqStart, end);
     if (!_onFallback && _fallback == null && attempt.statusCode != HttpStatus.ok &&
         attempt.statusCode != HttpStatus.partialContent) {
       // Permintaan gagal sebelum byte disajikan: coba cadangan muxed SEKALI untuk
       // seluruh umur sumber ini (keputusan lengket — lihat cacat 4 di kepala berkas).
       final fb = await resolveFallback?.call();
       if (fb != null) {
+        onPrimaryRejected?.call();
         unawaited(attempt.body.drain<void>().catchError((_) {})); // bebaskan koneksi gagal
         _fallback = fb;
         _onFallback = true;
         info = fb;
         _knownTotal = null;
+        _activeUa = info.userAgent;
         attempt = await _fetchBounded(info, reqStart, end);
       }
     }
@@ -137,6 +173,26 @@ class ResolvingAudioSource extends StreamAudioSource {
   Future<FetchedBytes> _fetchBounded(StreamInfo info, int reqStart, int? end) {
     final w = fetchWindow(reqStart, end, knownTotal: _knownTotal);
     return fetcher(Uri.parse(info.url), start: w.start, endInclusive: w.endInclusive);
+  }
+
+  /// Ambil jendela dari URL UTAMA dengan coba-ulang sebelum vonis:
+  /// status 403/429 dicoba lagi pada URL yang sama sesudah jeda
+  /// [retryDelays] (403 transien adalah pelajaran MWEB upstream dan pola
+  /// drain E3 Tahap 2: ≤3 percobaan per jendela). Status lain langsung
+  /// dikembalikan ke pemanggil (yang memutuskan fallback).
+  Future<FetchedBytes> _fetchPrimaryWithRetry(
+      StreamInfo info, int reqStart, int? end) async {
+    var attempt = await _fetchBounded(info, reqStart, end);
+    var i = 0;
+    while ((attempt.statusCode == HttpStatus.forbidden ||
+            attempt.statusCode == 429) &&
+        i < retryDelays.length) {
+      unawaited(attempt.body.drain<void>().catchError((_) {}));
+      final delay = retryDelays[i++];
+      if (delay > Duration.zero) await Future<void>.delayed(delay);
+      attempt = await _fetchBounded(info, reqStart, end);
+    }
+    return attempt;
   }
 }
 

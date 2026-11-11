@@ -10,6 +10,7 @@ import '../core/error_describe.dart';
 import '../data/app_db.dart';
 import '../domain/models.dart';
 import '../providers/music_provider.dart';
+import '../services/ambient_theme.dart';
 import '../services/audio_fx_service.dart';
 import '../services/gate_metrics.dart';
 import '../services/observability.dart';
@@ -19,6 +20,8 @@ import 'interruption_policy.dart';
 import 'load_ladder.dart';
 import 'queue_engine.dart';
 import 'similarity.dart';
+import 'session_coherence.dart';
+import 'session_fx_tracker.dart';
 import 'source_sync.dart';
 import 'stall_watchdog.dart';
 import 'test_tone.dart';
@@ -37,6 +40,33 @@ AudioServiceShuffleMode audioServiceShuffleMode(ShuffleMode mode) =>
     mode != ShuffleMode.off
     ? AudioServiceShuffleMode.all
     : AudioServiceShuffleMode.none;
+
+/// Kumpulkan kunci trek dari peta snapshot secara DEFENSIF (Ronde Bug
+/// Notifikasi): entri yang bukan Map atau tak punya 'p'/'i' String DILEWATI,
+/// bukan melempar — satu entri cacat tidak boleh membunuh seluruh restorasi.
+/// (Terbukti di emulator: entri manual tanpa 'i' membuat restore gagal dengan
+/// TypeError di SETIAP start dingin, dan keadaan itu hanya sembuh oleh hapus
+/// data — persis riwayat cacat notifikasi di HP pemilik.)
+Set<TrackKey> collectSnapshotKeys(Map<String, Object?> snap) {
+  final keys = <TrackKey>{};
+  for (final section in ['seeds', 'manual', 'continuation', 'autoplay', 'played']) {
+    final raw = snap[section];
+    if (raw is! List) continue;
+    for (final e in raw) {
+      if (e is Map && e['p'] is String && e['i'] is String) {
+        keys.add(TrackKey(e['p'] as String, e['i'] as String));
+      }
+    }
+  }
+  final cur = snap['currentRef'];
+  if (cur is String && cur.contains('|')) {
+    final parts = cur.split('|');
+    final head = parts.first;
+    final tail = parts.sublist(1).join('|');
+    if (head.isNotEmpty && tail.isNotEmpty) keys.add(TrackKey(head, tail));
+  }
+  return keys;
+}
 
 /// Satu-satunya pemilik player (L-01, L-14). UI tidak pernah menyentuh just_audio langsung.
 /// Sumber audio = satu ConcatenatingAudioSource yang mencerminkan antrean mesin (Blueprint D-02),
@@ -276,6 +306,141 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// Normalisasi menyala: volume tiap lagu dikali gain per-lagunya.
   bool normalizationOn = false;
 
+  /// Napas ambien (U1) meminta Visualizer: konsumen KEDUA aliran RMS.
+  /// Ditulis cangkang aplikasi dari keadaan tema (tema hidup && napas
+  /// hidup && bukan Kurangi Efek). Visualizer menyala bila normalisasi
+  /// ATAU napas membutuhkannya — satu Visualizer, dua konsumen
+  /// (perbaikan ronde Player F3; sebelumnya napas menumpang sakelar
+  /// normalisasi sehingga mati biner di keadaan bawaannya yang mati).
+  bool breathVisWanted = false;
+
+  /// Perekam waveform ukur meminta Visualizer: konsumen KETIGA
+  /// aliran RMS (Sisipan G-1, 2026-11-10). Ditulis cangkang aplikasi
+  /// dari kelengkapan data trek berjalan — menyala hanya selama data
+  /// trek itu BELUM lengkap terukur; trek penuh tidak membakar
+  /// Visualizer. Tanpa suara ini, waveform kelaparan permanen pada
+  /// keadaan bawaan (normalisasi mati + napas mati): bukti perangkat
+  /// pemilik atas 8039, waveform berhenti di ±23% ember.
+  bool waveformVisWanted = false;
+
+  /// Apakah Visualizer dibutuhkan sesi mana pun saat ini.
+  bool get _visNeeded => visualizerNeeded(
+        normalizationOn: normalizationOn,
+        breathWanted: breathVisWanted,
+        waveformWanted: waveformVisWanted,
+      );
+
+  /// Rantai serialisasi sinkronisasi Visualizer (Ronde 8050):
+  /// semua jalur yang menyentuh keadaan Visualizer — gerbang
+  /// konsumen dari cangkang, kemunculan sesi baru, penjaga
+  /// kesehatan — masuk SATU antrean futures. Sebelumnya tiap jalur
+  /// memanggil mulai/berhenti secara asinkron bebas; dua sinkronisasi
+  /// yang tumpang tindih (gerbang berayun saat ganti trek + sesi
+  /// muncul bersamaan) bisa saling mendahului dan meninggalkan
+  /// Visualizer berhenti padahal gerbang menyala — rantai ukur mati
+  /// tanpa satu pun galat. Kini kebutuhan dibaca ulang pada saat
+  /// giliran eksekusi tiba, bukan pada saat panggilan dibuat.
+  Future<void> _visSyncChain = Future<void>.value();
+
+  /// Selaraskan Visualizer semua sesi dengan kebutuhan konsumen
+  /// ([_visNeeded]): nyala → mulai di setiap sesi hidup (kegagalan
+  /// tercatat), mati → berhenti di semuanya. [forceRestart] (dari
+  /// penjaga kesehatan) menghentikan dulu lalu memulai lagi —
+  /// obat untuk Visualizer yang menempel tetapi berhenti mengalir
+  /// di perangkat.
+  Future<void> _syncVisualizer({bool forceRestart = false}) {
+    final run = _visSyncChain.then(
+      (_) => _syncVisualizerNow(forceRestart: forceRestart),
+    );
+    _visSyncChain = run.catchError((_) {});
+    return run;
+  }
+
+  Future<void> _syncVisualizerNow({bool forceRestart = false}) async {
+    final on = _visNeeded;
+    for (final id in audioSessionIds) {
+      if (id == null) continue;
+      if (on) {
+        if (forceRestart) await _fx.visStop(id);
+        final ok = await _fx.visStart(id);
+        if (!ok) {
+          Observability.instance.log(
+            'vis-gagal-mulai',
+            'sesi $id (gerbang konsumen): ${_fx.lastVisError ?? 'alasan tak terbaca'}',
+          );
+        }
+      } else {
+        await _fx.visStop(id);
+      }
+    }
+  }
+
+  // ---- Penjaga kesehatan Visualizer (Ronde 8050) ----
+  /// Detak peristiwa RMS terakhir (diberi makan cangkang dari
+  /// pendengar alirannya — sumber yang sama dengan perekam).
+  DateTime? _lastRmsAt;
+
+  /// Penegasan ulang terakhir oleh penjaga (untuk jeda pendinginan).
+  DateTime? _lastVisReassertAt;
+
+  /// Berapa kali penjaga menegaskan ulang sesi ini — terbaca di
+  /// Diagnostik Putar (ekor baris "Waveform:") & Log insiden
+  /// ('vis-jaga-ulang'), agar perilaku perangkat terbukti dari angka.
+  int visReassertCount = 0;
+
+  Timer? _visWatchdogTimer;
+
+  /// Catat satu detak RMS (dipanggil cangkang per peristiwa).
+  void noteRmsHeartbeat() => _lastRmsAt = DateTime.now();
+
+  /// Nyalakan penjaga berkala: selama gerbang menyatakan Visualizer
+  /// dibutuhkan dan pemain berbunyi tetapi RMS diam melewati ambang
+  /// predikat [visWatchdogDue], tegaskan ulang (berhenti → mulai)
+  /// lewat jalur terserialisasi yang sama. Rantai yang mati
+  /// diam-diam di perangkat kini menyembuhkan dirinya dalam
+  /// ±15–20 detik putar, bukan pada pemasangan build berikutnya.
+  void _startVisWatchdog() {
+    _visWatchdogTimer?.cancel();
+    _visWatchdogTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      final now = DateTime.now();
+      final due = visWatchdogDue(
+        needed: _visNeeded,
+        playing: _player.playing || _playerB.playing,
+        msSinceLastRms: _lastRmsAt == null
+            ? null
+            : now.difference(_lastRmsAt!).inMilliseconds,
+        msSinceLastReassert: _lastVisReassertAt == null
+            ? null
+            : now.difference(_lastVisReassertAt!).inMilliseconds,
+      );
+      if (!due) return;
+      _lastVisReassertAt = now;
+      visReassertCount++;
+      Observability.instance.log(
+        'vis-jaga-ulang',
+        'RMS diam padahal gerbang butuh & pemain berbunyi — '
+            'Visualizer ditegaskan ulang (ke-$visReassertCount)',
+      );
+      unawaited(_syncVisualizer(forceRestart: true));
+    });
+  }
+
+  /// Konsumen napas berubah (dari cangkang): hitung ulang kebutuhan
+  /// Visualizer. Tanpa perubahan keadaan, tidak ada kerja kanal.
+  Future<void> setBreathVisWanted(bool want) async {
+    if (breathVisWanted == want) return;
+    breathVisWanted = want;
+    await _syncVisualizer();
+  }
+
+  /// Konsumen waveform berubah (dari cangkang): pola yang sama
+  /// persis dengan napas (Sisipan G-1).
+  Future<void> setWaveformVisWanted(bool want) async {
+    if (waveformVisWanted == want) return;
+    waveformVisWanted = want;
+    await _syncVisualizer();
+  }
+
   /// Cache gain per-lagu (1.0 = netral) + override diagnostik sementara.
   final Map<TrackKey, double> _gainCache = {};
   double? _probeGain;
@@ -383,22 +548,10 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     normalizationOn = on;
     await db.setPref('playback.normalization', on);
     await _applyVolume();
-    // Estimator Visualizer mengikuti sakelar: nyala → ukur sesi berjalan;
-    // mati → hentikan (tidak ada sampel baru yang teratribusi).
-    for (final id in audioSessionIds) {
-      if (id == null) continue;
-      if (on) {
-        final ok = await _fx.visStart(id);
-        if (!ok) {
-          Observability.instance.log(
-            'vis-gagal-mulai',
-            'sesi $id (sakelar normalisasi): ${_fx.lastVisError ?? 'alasan tak terbaca'}',
-          );
-        }
-      } else {
-        await _fx.visStop(id);
-      }
-    }
+    // Visualizer mengikuti GERBANG KONSUMEN (bukan sakelar ini saja):
+    // mati di sini tidak memadamkannya bila napas masih membutuhkannya,
+    // dan menyala di sini tidak perlu tahu siapa lagi yang memakai.
+    await _syncVisualizer();
   }
 
   /// Gain hasil ukur Visualizer untuk [key] (dipakai mulai putaran berikutnya).
@@ -411,6 +564,27 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _player.androidAudioSessionId,
     _playerB.androidAudioSessionId,
   ];
+
+  /// ID sesi pemain yang SEDANG berbunyi (untuk atribusi peristiwa RMS
+  /// per sesi — peristiwa Visualizer membawa sessionId-nya sendiri).
+  int? get activeAudioSessionId => _activePlayer.androidAudioSessionId;
+
+  /// Kunci trek yang benar-benar dimuat pemain berbunyi pada indeks
+  /// berjalannya — "trek berbunyi" versi PEMAIN, pembanding jujur bagi
+  /// engine.current versi antrean (Ronde Perbaikan Waveform Perangkat:
+  /// atribusi umpan RMS harus bisa dibuktikan sama/berbeda dari layar
+  /// Diagnostik). Jalur gapless: indeks sumber gabungan → [_sourceTracks].
+  /// Jalur crossfade: pemain aktif memegang trek pada [_currentFullIndex].
+  TrackKey? get soundingKey {
+    if (_xfMode) {
+      final q = engine.fullQueue;
+      if (_currentFullIndex < 0 || _currentFullIndex >= q.length) return null;
+      return q[_currentFullIndex].key;
+    }
+    final idx = _activePlayer.currentIndex;
+    if (idx == null || idx < 0 || idx >= _sourceTracks.length) return null;
+    return _sourceTracks[idx].key;
+  }
 
   /// Terapkan setelan EQ tersimpan ke satu sesi (dipanggil saat sesi baru muncul).
   Future<void> _applyEqToSession(int sessionId) async {
@@ -436,6 +610,10 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
     }
   }
+
+  /// Pelacak sesi per pemain untuk higiene efek (Ronde Kresek): memutuskan
+  /// sesi lama mana yang efeknya harus dilepas saat session-id berganti.
+  final _fxTracker = SessionFxTracker();
 
   final _sessionAppearances = StreamController<int>.broadcast();
 
@@ -485,6 +663,10 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// Bitrate aliran trek berjalan yang terakhir teresolusi (untuk label
   /// jujur D-18 di Player); null bila belum diketahui (file lokal dsb.).
   final Map<TrackKey, int> _resolvedBitrates = {};
+
+  /// Asal resolusi terakhir per trek (Tahap 3): true = jalur DIRECT-1 —
+  /// dasar keputusan memanggil [directRejectedHook] pada galat putar.
+  final Map<TrackKey, bool> _resolvedDirect = {};
   int? get currentBitrate {
     final cur = engine.current;
     return cur == null ? null : _resolvedBitrates[cur.key];
@@ -501,6 +683,10 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// D-09: pengawas posisi macet + timernya.
   final StallWatchdog _stallWatchdog = StallWatchdog();
   Timer? _stallTimer;
+
+  /// Pengawas koherensi sesi (Ronde Bug Notifikasi): niat putar tanpa
+  /// sumber / idle macet — diberi makan dari detak 1 detik yang sama.
+  final SessionCoherenceWatchdog _coherence = SessionCoherenceWatchdog();
 
   /// Hak lanjut-otomatis pasca-interupsi (matriks interupsi 2.2; laporan
   /// riyan 2026-10-24): hanya lahir bila interupsi sistem menjeda putaran
@@ -657,27 +843,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   /// (konteks + antrean + riwayat + posisi), lalu putar. Pasangan simpan
   /// ada di app.dart (kait SleepService.onFire).
   Future<void> restoreSleepSession(Map<String, Object?> snap) async {
-    final keys = <TrackKey>{};
-    for (final section in [
-      'seeds',
-      'manual',
-      'continuation',
-      'autoplay',
-      'played',
-    ]) {
-      final raw = snap[section];
-      if (raw is List) {
-        for (final e in raw) {
-          if (e is Map) keys.add(TrackKey(e['p'] as String, e['i'] as String));
-        }
-      }
-    }
-    final cur = snap['currentRef'] as String?;
-    if (cur != null && cur.contains('|')) {
-      keys.add(
-        TrackKey(cur.split('|')[0], cur.split('|').sublist(1).join('|')),
-      );
-    }
+    final keys = collectSnapshotKeys(snap);
     if (keys.isEmpty) return;
     final tracks = await db.tracksByKeys(keys.toList());
     final byKey = {for (final t in tracks) t.key: t};
@@ -781,6 +947,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     resolveAdaptive: (t) async {
       final info = await provider.resolveStream(t, effectiveQuality);
       if (info.bitrate != null) _resolvedBitrates[t.key] = info.bitrate!;
+      _resolvedDirect[t.key] = info.viaDirectPath;
       return info;
     },
     resolveMuxed: (t) => provider.resolveMuxedFallback(t),
@@ -788,7 +955,21 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     isLocal: (t) => t.providerId == 'local',
     // F2 Batch 2: trek terunduh diputar dari berkas lokalnya (juga saat offline).
     localFileFor: (t) => downloadedPaths[t.key],
+    // Tahap 3: penolakan URL adaptif oleh edge dilaporkan ke resolver
+    // (kabel dipasang bootstrap ke layanan DIRECT-1).
+    onAdaptiveRejected: (t) => directRejectedHook?.call(t),
   );
+
+  /// Kabel pemulihan DIRECT-1 (Tahap 3, dipasang bootstrap): dipanggil
+  /// saat URL DIRECT sebuah trek ditolak edge — dari anak proxy tangga
+  /// (sesudah coba-ulang jendelanya) dan dari jalur galat putar di bawah
+  /// untuk anak URI (percobaan segar ≤2). Resolver menyegarkan sesi
+  /// minter satu kali / mengecualikan trek dari laporan ini.
+  void Function(Track track)? directRejectedHook;
+
+  /// Tahap 3: resolver DIRECT terbukti pulih sesudah penolakan —
+  /// kembalikan pemenang lengket tangga ke anak adaptif.
+  void resetLadderToAdaptive() => _ladder.resetSticky();
   DateTime _trackStartedAt = DateTime.now();
   Duration _lastPosition = Duration.zero;
 
@@ -809,6 +990,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   bool _refilling = false;
   bool _refillPending = false;
   bool _advancingFromCompleted = false;
+  bool _advanceVerifyPending = false;
   Future<void> _chain = Future.value();
 
   /// Token generasi perintah putar (cacat v4.4 — ketukan menumpuk): setiap
@@ -1081,19 +1263,60 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (_activePlayer.playing) unawaited(_pauseFromSystem());
     });
 
+    // Penjaga kesehatan Visualizer (Ronde 8050): rantai ukur yang
+    // mati diam-diam di perangkat ditegaskan ulang dari sini.
+    _startVisWatchdog();
+
     // F2 Batch 2: sesi audio baru (pemain mulai berbunyi) → terapkan EQ
-    // tersimpan + mulai Visualizer bila normalisasi nyala.
+    // tersimpan + mulai Visualizer bila ada konsumennya (gerbang tiga
+    // konsumen: normalisasi / napas / perekam waveform — Sisipan G-1).
+    // Ronde Kresek: sesi dilacak per pemain (SessionFxTracker). Bila id
+    // BERGANTI, efek sesi lama WAJIB dilepas sebelum yang baru diterapkan —
+    // sebelumnya Equalizer per sesi tidak pernah release() sehingga setiap
+    // pergantian sesi meninggalkan instance yatim di sesi mati, dan
+    // Visualizer lama tetap menempel. Kemunculan pertama + setiap
+    // pergantian dicatat ke Log insiden bersama jumlah instance efek native
+    // dan keadaan normalisasi/EQ, supaya perangkat nyata menghasilkan bukti
+    // pembeda laju putaran sesi (di emulator id terbukti stabil lintas
+    // ganti lagu; hanya berputar saat pemain dibuat ulang penuh).
+    var fxSlot = 0;
     for (final p in [_player, _playerB]) {
+      final slot = fxSlot++;
       p.androidAudioSessionIdStream.listen((id) async {
         if (id == null) return;
         _sessionAppearances.add(id);
+        final decision = _fxTracker.onAppear(slot, id);
+        final prev = decision.releasePrevious;
+        Map<String, Object?>? countsBefore;
+        if (prev != null) {
+          countsBefore = await _fx.fxCounts();
+          await _fx.eqRelease(prev);
+          await _fx.visStop(prev);
+        }
         await _applyEqToSession(id);
-        if (normalizationOn) {
-          final ok = await _fx.visStart(id);
-          if (!ok) {
+        // Visualizer lewat sinkronisasi terserialisasi yang sama
+        // dengan jalur gerbang (Ronde 8050) — sesi baru otomatis
+        // masuk cakupan keadaan terakhir; tidak ada lagi jalur mulai
+        // terpisah yang bisa balapan meninggalkan sesi tanpa
+        // Visualizer atau sebaliknya.
+        await _syncVisualizer();
+        if (decision.isFirst || prev != null) {
+          final countsAfter = await _fx.fxCounts();
+          final eqOn = await db.pref<bool>('audiofx.enabled') ?? false;
+          final fxState =
+              'normalisasi=${normalizationOn ? 'nyala' : 'mati'} '
+              'napasVis=${breathVisWanted ? 'nyala' : 'mati'} '
+              'gelombangVis=${waveformVisWanted ? 'nyala' : 'mati'} '
+              'eq=${eqOn ? 'nyala' : 'mati'} fx=$countsAfter';
+          if (prev != null) {
             Observability.instance.log(
-              'vis-gagal-mulai',
-              'sesi $id: ${_fx.lastVisError ?? 'alasan tak terbaca'}',
+              'sesi-audio-berganti',
+              'pemain $slot: $prev -> $id; fxSebelum=$countsBefore; $fxState',
+            );
+          } else {
+            Observability.instance.log(
+              'sesi-audio-muncul',
+              'pemain $slot: sesi $id; $fxState',
             );
           }
         }
@@ -1238,6 +1461,33 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         );
         unawaited(_onPlayerError(StateError('posisi macet (watchdog)')));
       }
+      // Pengawas koherensi sesi (Ronde Bug Notifikasi): niat putar menyala
+      // tetapi pemain tak bersumber / proses idle menetap = sesi zombi —
+      // keadaan di balik notifikasi polos "Clai sedang berjalan". Sembuhkan
+      // di tempat dan catat insiden KHUSUS ('sesi-zombi') agar kejadian
+      // berikutnya meninggalkan bukti yang terbaca sebelum data dihapus.
+      final fault = _coherence.feed(
+        intentPlaying: p.playing,
+        hasSource: p.audioSource != null,
+        processingIdle: p.processingState == ProcessingState.idle,
+        positionMs: p.position.inMilliseconds,
+        now: DateTime.now(),
+      );
+      if (fault == CoherenceFault.sourcelessIntent) {
+        Observability.instance.log(
+          'sesi-zombi',
+          'niat putar tanpa sumber >4 dtk (trek berjalan: ${engine.current?.title ?? 'null'}) — niat dimatikan agar sesi media kembali koheren',
+        );
+        unawaited(p.stop());
+      } else if (fault == CoherenceFault.stuckIdle) {
+        Observability.instance.log(
+          'sesi-zombi',
+          'proses idle macet >10 dtk dengan sumber terpasang ("${engine.current?.title}") — pemulihan L-10',
+        );
+        unawaited(
+          _onPlayerError(StateError('proses idle macet (pengawas koherensi sesi)')),
+        );
+      }
     });
     // Pengawas isi ulang (v4.4.2): pemicu berbasis peristiwa bisa terlewat
     // dalam interleaving async yang jarang (terbukti di emulator: sesi radio
@@ -1310,18 +1560,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       offlineMode = await db.pref<bool>('offline.enabled') ?? false;
       final snap = await db.loadQueueSnapshot();
       if (snap == null) return;
-      final keys = <TrackKey>{};
-      for (final section in ['seeds', 'manual', 'continuation', 'autoplay']) {
-        for (final e in (snap[section] as List)) {
-          if (e is Map) keys.add(TrackKey(e['p'] as String, e['i'] as String));
-        }
-      }
-      final cur = snap['currentRef'] as String?;
-      if (cur != null && cur.contains('|')) {
-        keys.add(
-          TrackKey(cur.split('|')[0], cur.split('|').sublist(1).join('|')),
-        );
-      }
+      final keys = collectSnapshotKeys(snap);
       final tracks = await db.tracksByKeys(keys.toList());
       // File lokal tidak ada di katalog tracks (provider 'local' menyimpan metadatanya sendiri di snapshot mendatang);
       // restorasi melewati kunci yang tak ditemukan dengan aman.
@@ -1337,6 +1576,25 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (autoplayPref != null) {
         engine.autoplayEnabled = autoplayPref;
         if (!autoplayPref) engine.clearAutoplay();
+      }
+      // Jatuh-bersih (Ronde Bug Notifikasi): snapshot MENYATAKAN sesi
+      // (currentRef dan/atau entri seksi) tetapi tak satu pun treknya ada
+      // di katalog — sesi itu tidak akan pernah bisa dipulihkan, dan
+      // menyimpannya hanya membuat setiap start mengulang kehampaan yang
+      // sama. Buang snapshotnya: sesi mulai bersih, insiden tercatat.
+      final snapHadContent = snap['currentRef'] is String ||
+          ['seeds', 'manual', 'continuation', 'autoplay'].any(
+            (s) => snap[s] is List && (snap[s] as List).isNotEmpty,
+          );
+      if (snapHadContent &&
+          engine.current == null &&
+          engine.fullQueue.isEmpty) {
+        Observability.instance.log(
+          'restore-gagal',
+          'snapshot menyatakan sesi tetapi tak satu pun treknya ditemukan di katalog — snapshot dibuang agar start berikutnya bersih',
+        );
+        await db.deleteQueueSnapshot();
+        return;
       }
       // D-06 (audit kepatuhan, L-16): positionMs selama ini disimpan tiap
       // ±15 dtk tetapi tak pernah dibaca — sesi pulih selalu mulai 0:00.
@@ -1366,6 +1624,16 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       syncShuffleState();
     } catch (e) {
       Observability.instance.log('restore-gagal', e.toString());
+      // Snapshot beracun (galat BENTUK DATA, bukan galat DB/IO sesaat)
+      // akan gagal identik di setiap start dingin — buang agar kegagalan
+      // tidak menetap sampai pemilik menghapus data aplikasi.
+      if (e is FormatException || e is TypeError) {
+        try {
+          await db.deleteQueueSnapshot();
+        } catch (_) {
+          /* pembuangan gagal: insiden di atas tetap jadi bukti */
+        }
+      }
     }
   }
 
@@ -1455,7 +1723,11 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   /// Pembangunan sumber yang JUJUR (matriks missing-states Phase 2): kegagalan tidak lagi
   /// ditelan diam-diam oleh rantai serial — dicatat & diberitahukan ke UI lewat [notices].
-  Future<void> _buildOrNotify({
+  /// Mengembalikan TRUE hanya bila pembangunan terkomit; pemanggil yang akan
+  /// menyalakan putar WAJIB memeriksa ini (Ronde Bug Notifikasi): setAudioSource
+  /// yang gagal dapat meninggalkan sumber RUSAK tetap terpasang di pemain,
+  /// jadi `audioSource == null` BUKAN bukti kegagalan yang bisa diandalkan.
+  Future<bool> _buildOrNotify({
     required int fromFullIndex,
     required bool autoplay,
     required String what,
@@ -1470,11 +1742,12 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         gen: gen,
         firstOnly: firstOnly,
       );
+      return true;
     } catch (e, st) {
       // v4.3: muat yang disela muat lebih baru = perilaku normal, BUKAN insiden.
-      if (isInterruptionError(e)) return;
+      if (isInterruptionError(e)) return false;
       // v4.4: pembangunan yang dikalahkan ketukan lebih baru juga normal.
-      if (e is _Superseded) return;
+      if (e is _Superseded) return false;
       // v4.1: catat rantai galat LENGKAP (kode + pesan + sebab) — log v4 hanya memuat
       // "(0) Source error" generik sehingga sebab sebenarnya tak terlihat.
       Observability.instance.log(
@@ -1487,6 +1760,7 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       } else {
         notices.add(l10n.noticePrepareFail(what));
       }
+      return false;
     }
   }
 
@@ -1542,6 +1816,20 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         // v4.3: anak tangga yang gugur karena disela muat lain bukan kegagalan.
         if (isInterruptionError(e)) return;
         if (e is _Superseded) return;
+        // Tahap 3: kegagalan anak ADAPTIF di dalam tangga tidak pernah
+        // mencapai _onPlayerError (tangga maju sendiri di sini) — tanpa
+        // laporan ini resolver DIRECT tak tahu URL-nya ditolak: sesi
+        // minter basi tak disegarkan dan cache resolver menyajikan URL
+        // tertolak yang sama berulang. Terbukti di emulator build
+        // 6030/6031 (sabotase sig: putar pulih lewat muxed, tetapi
+        // direct-sesi-segar tak pernah tercatat). Trek ketat jendela
+        // ialah yang kegagalannya menggugurkan anak tangga ini.
+        if (rung == LoadLadder.rungAdaptiveUri && window.isNotEmpty) {
+          final head = window.first;
+          if (_resolvedDirect[head.key] == true) {
+            directRejectedHook?.call(head);
+          }
+        }
         Observability.instance.log(
           'tangga-muat-gagal',
           'anak ${rung + 1}/${LoadLadder.rungCount} (${LoadLadder.rungLabel(rung)}) untuk $what: ${describeError(e, st)}',
@@ -1897,6 +2185,9 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> _advanceIntoContinuation() async {
     if (_advancingFromCompleted) return;
     _advancingFromCompleted = true;
+    final beforeKey = engine.current?.key;
+    final nextKey =
+        engine.effectiveQueue.isNotEmpty ? engine.effectiveQueue.first.key : null;
     try {
       await _rebuildTail();
       if (_player.hasNext) {
@@ -1910,6 +2201,49 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } finally {
       _advancingFromCompleted = false;
     }
+    // Verifikasi perpindahan (cacat vonis perangkat Tahap 3, lihat
+    // _verifyAdvance): upaya maju di atas terbukti bisa hilang balapan.
+    if (beforeKey != null && nextKey != null && nextKey != beforeKey) {
+      _verifyAdvance(beforeKey, nextKey, 'lanjut-otomatis');
+    }
+  }
+
+  /// Penjaga hasil upaya maju (Next manual & sambungan otomatis).
+  ///
+  /// Cacat terukur di emulator (build 6032, dua episode konteks trek
+  /// tunggal dari Pencarian): sesudah trek sambungan-Pertama selesai
+  /// secara alami — dan juga saat Next ditekan di tengah trek itu —
+  /// upaya maju (bangun ulang ekor + seekToNext, atau seekToNext saja)
+  /// hilang balapan dengan pemasangan sumber: pemutar menyiapkan ULANG
+  /// trek yang sama dari ±0 dan antrean tak berpindah, tanpa satu pun
+  /// catatan galat; trek yang sama lalu berputar ulang di setiap akhir
+  /// alaminya. Mesin antrean, resolusi trek berikutnya, dan isi ulang
+  /// semuanya terbukti sehat — yang gugur ialah perpindahan periodenya.
+  /// jumpTo (bangun sumber penuh dari target) terbukti menyembuhkan
+  /// keadaan ini seketika, jadi: bila 1,5 dtk sesudah upaya maju trek
+  /// berjalan BELUM berpindah padahal putaran masih hidup (berbunyi
+  /// atau completed), eskalasi ke jumpTo menuju target yang sama.
+  /// Jeda pengguna yang disengaja (tak berbunyi & tak completed) tidak
+  /// pernah dioverride.
+  void _verifyAdvance(TrackKey fromKey, TrackKey toKey, String what) {
+    if (_advanceVerifyPending) return;
+    _advanceVerifyPending = true;
+    Future.delayed(const Duration(milliseconds: 1500), () async {
+      _advanceVerifyPending = false;
+      if (_xfMode) return;
+      final nowKey = engine.current?.key;
+      if (nowKey == null || nowKey != fromKey) return; // sudah berpindah
+      if (!_player.playing &&
+          _player.processingState != ProcessingState.completed) {
+        return; // jeda disengaja pengguna — jangan dioverride
+      }
+      Observability.instance.log('eskalasi-lompat',
+          '$what: trek tak berpindah 1,5 dtk sesudah upaya maju — lompat paksa ke sambungan');
+      try {
+        await jumpTo(toKey);
+        await _player.play();
+      } catch (_) {}
+    });
   }
 
   /// Coba lagi isi ulang Putar Otomatis (tombol di layar Antrian, v4.3).
@@ -2868,6 +3202,21 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _patternPress();
       return;
     }
+    // Penjaga sesi kosong (Ronde Bug Notifikasi): perintah putar TANPA trek
+    // berjalan — mis. klik sesi media dari kartu sistem yang hidup lebih
+    // lama dari sesi aplikasi (pemulihan media sistem / sesi yang gagal
+    // dipulihkan) — tidak boleh menyalakan niat putar pada pemain kosong:
+    // niat itu menetap playing=true/proses=idle tanpa batas dan sesi media
+    // tampil sebagai notifikasi polos "Clai sedang berjalan" tanpa metadata
+    // & tanpa kontrol yang bekerja (terbukti emulator P2 + log HP pemilik
+    // 2026-11-04: main-putar → playing=true proses=idle, jeda "null").
+    if (engine.current == null) {
+      Observability.instance.log(
+        'main-putar-tanpa-sesi',
+        'perintah putar diabaikan: tidak ada trek berjalan',
+      );
+      return;
+    }
     if (_xfMode) {
       // Sesi yang dipulihkan dari penyimpanan (proses baru) belum punya sumber di
       // pemutar — play() polos pada pemutar kosong adalah no-op SENYAP.
@@ -2879,7 +3228,20 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           _activePlayer.audioSource == null &&
           engine.current != null) {
         final seek = _pendingRestoreSeek ?? Duration.zero;
-        await _xfPlayCurrent(engine.current!, initialPosition: seek);
+        try {
+          await _xfPlayCurrent(engine.current!, initialPosition: seek);
+        } catch (e) {
+          // Pembangunan trek pulih gagal (Ronde Bug Notifikasi): jangan
+          // biarkan galat lolos tanpa keadaan — catat, segarkan cache trek
+          // ini (URL tersimpan bisa jadi biang TYPE_SOURCE), dan kembali
+          // TANPA niat putar pada pemain tak bersumber.
+          Observability.instance.log(
+            'putar-gagal-tanpa-sumber',
+            '"${engine.current!.title}" (crossfade): ${describeError(e)}',
+          );
+          await db.clearStreamCacheFor(engine.current!.key);
+          return;
+        }
         _pendingRestoreSeek = null;
         if (seek > Duration.zero) {
           try {
@@ -2903,7 +3265,16 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         pendingTransitionMode = null;
         if (_xfMode) {
           final seek = _pendingRestoreSeek ?? Duration.zero;
-          await _xfPlayCurrent(engine.current!, initialPosition: seek);
+          try {
+            await _xfPlayCurrent(engine.current!, initialPosition: seek);
+          } catch (e) {
+            Observability.instance.log(
+              'putar-gagal-tanpa-sumber',
+              '"${engine.current!.title}" (crossfade, mode tertunda): ${describeError(e)}',
+            );
+            await db.clearStreamCacheFor(engine.current!.key);
+            return;
+          }
           _pendingRestoreSeek = null;
           if (seek > Duration.zero) {
             try {
@@ -2915,11 +3286,33 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
       final idx = _currentFullIndex;
       if (idx >= 0) {
-        await _buildOrNotify(
+        final built = await _buildOrNotify(
           fromFullIndex: idx,
           autoplay: false,
           what: 'sesi yang dipulihkan',
         );
+        // Ronde Bug Notifikasi: pembangunan gagal di SEMUA anak tangga
+        // (galatnya sudah dicatat _buildOrNotify) — memanggil
+        // _player.play() di titik ini hanya menyalakan niat zombi
+        // playing=true/proses=idle yang tak pernah berbunyi (terbukti
+        // emulator P1). Berhenti di sini: catat insiden khusus, bersihkan
+        // sisa sumber rusak yang mungkin tertinggal terpasang oleh
+        // setAudioSource yang gagal, buang cache aliran trek ini (URL
+        // tersimpan kedaluwarsa adalah pemicu anak-1 yang terbukti), dan
+        // biarkan ketukan berikutnya mencoba segar.
+        if (!built) {
+          Observability.instance.log(
+            'putar-gagal-tanpa-sumber',
+            '"${engine.current!.title}": pembangunan sumber sesi pulih gagal total — niat putar tidak dinyalakan',
+          );
+          try {
+            await _player.stop();
+          } catch (_) {
+            /* pemain memang belum tentu bersumber */
+          }
+          await db.clearStreamCacheFor(engine.current!.key);
+          return;
+        }
         // D-06: terapkan posisi tersimpan dengan seek eksplisit — jangan
         // hanya mengandalkan initialPosition setAudioSource (bisa terbuang
         // senyap untuk sumber proxy/resolving; terbukti di emulator:
@@ -2934,6 +3327,15 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           }
           _lastPosition = seek;
         }
+      } else {
+        // Trek berjalan tidak ditemukan di antrean penuh: tidak ada yang
+        // bisa dibangun — sama seperti di atas, jangan nyalakan niat pada
+        // pemain kosong.
+        Observability.instance.log(
+          'putar-gagal-tanpa-sumber',
+          '"${engine.current!.title}": trek berjalan di luar antrean — niat putar tidak dinyalakan',
+        );
+        return;
       }
     }
     await _player.play();
@@ -3043,6 +3445,11 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _stopXfMonitor();
     await _player.stop();
     await _playerB.stop();
+    // Ronde Kresek: handler berhenti = semua efek native dilepas (EQ +
+    // Visualizer kedua pemain), jangan biarkan instance menempel ke sesi
+    // pemain yang sudah berhenti.
+    await _fx.fxReleaseAll();
+    _fxTracker.clear();
     await super.stop();
   }
 
@@ -3072,6 +3479,9 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       return;
     }
     final cur = engine.current;
+    final curKey = cur?.key;
+    final nextKey =
+        engine.effectiveQueue.isNotEmpty ? engine.effectiveQueue.first.key : null;
     // Prev/next manual: skip < 30 dtk yang diinisiasi pengguna pada trek berjalan = sinyal negatif bila melompat.
     if (cur != null &&
         _player.position < const Duration(seconds: 30) &&
@@ -3101,6 +3511,13 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
     if (!hasNext && engine.effectiveQueue.isEmpty)
       notices.add(l10n.noticeQueueEnded);
+    // Verifikasi lompatan (cacat vonis perangkat Tahap 3): satu
+    // pencetan Next WAJIB berarti satu lompatan — bila trek berjalan
+    // belum berpindah sesudah jeda singkat, eskalasi ke jumpTo
+    // (lihat _verifyAdvance).
+    if (curKey != null && nextKey != null && nextKey != curKey) {
+      _verifyAdvance(curKey, nextKey, 'skip-manual');
+    }
     if (resumeAfterSkip == true && !_player.playing) await _player.play();
   }
 
@@ -3189,6 +3606,12 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       final attempts = (_urlAttempts[attemptKey] ?? 0) + 1;
       _urlAttempts[attemptKey] = attempts;
       if (attempts <= 2 && cur.providerId != 'local') {
+        // Sama seperti cabang gapless di bawah: trek DIRECT-1 yang
+        // ditolak edge dilaporkan dulu (Tahap 3) — tanpa ini, putar
+        // ulang crossfade hanya mengambil URL (tersabotase/ditolak)
+        // yang sama dari cache resolver dan pemulihan DIRECT tak
+        // pernah menyala. Terbukti di emulator build 6030.
+        if (_resolvedDirect[cur.key] == true) directRejectedHook?.call(cur);
         await db.clearStreamCache();
         try {
           await _xfPlayCurrent(cur);
@@ -3215,6 +3638,10 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final attempts = (_urlAttempts[attemptKey] ?? 0) + 1;
     _urlAttempts[attemptKey] = attempts;
     if (attempts <= 2 && cur.providerId != 'local') {
+      // Trek DIRECT-1 yang ditolak edge: laporkan dulu agar resolusi
+      // ulang menyegarkan sesi minter SATU kali (Tahap 3) — bukan sekadar
+      // URL segar dari sesi yang sama-sama ditolak.
+      if (_resolvedDirect[cur.key] == true) directRejectedHook?.call(cur);
       // Segarkan URL (buang cache) lalu coba lagi trek yang sama.
       await db.clearStreamCache();
       try {

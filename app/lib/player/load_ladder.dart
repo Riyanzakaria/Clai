@@ -38,6 +38,14 @@ class LoadLadder {
     'Referer': 'https://music.youtube.com/',
   };
 
+  /// Header untuk SATU info aliran: pasangan UA–URL dihormati — info yang
+  /// membawa [StreamInfo.userAgent] sendiri (jalur DIRECT-1) diambil
+  /// dengan UA penerbitnya, info lain dengan UA bawaan di atas.
+  static Map<String, String> headersFor(StreamInfo info) => {
+        ...streamHeaders,
+        if (info.userAgent != null) 'User-Agent': info.userAgent!,
+      };
+
   static String rungLabel(int rung) => switch (rung) {
         rungAdaptiveUri => 'URI adaptif + header',
         rungMuxedUri => 'URI muxed (itag 18) + header',
@@ -61,6 +69,12 @@ class LoadLadder {
   /// berkas ini tanpa menyentuh tangga — berlaku juga di mode offline.
   final String? Function(Track track)? localFileFor;
 
+  /// Kabel pemulihan penolakan (Tahap 3): dipanggil anak proxy saat URL
+  /// adaptif sebuah trek ditolak edge (403 sesudah coba-ulang) dan proxy
+  /// beralih ke cadangan muxed — resolver menyegarkan sesi/mengecualikan
+  /// trek dari laporan ini.
+  final void Function(Track track)? onAdaptiveRejected;
+
   int _sticky = rungAdaptiveUri;
 
   LoadLadder({
@@ -69,6 +83,7 @@ class LoadLadder {
     required this.tagFor,
     required this.isLocal,
     this.localFileFor,
+    this.onAdaptiveRejected,
   });
 
   /// Anak tangga pemenang sesi saat ini — titik mulai setiap pemuatan berikutnya.
@@ -82,6 +97,14 @@ class LoadLadder {
   int advance() {
     _sticky = (_sticky + 1) % rungCount;
     return _sticky;
+  }
+
+  /// Kembalikan pemenang lengket ke anak adaptif (Tahap 3): dipanggil
+  /// saat resolver DIRECT terbukti pulih sesudah penolakan — tanpa ini,
+  /// SATU 403 transien saat muat mendemosi jalur adaptif untuk seluruh
+  /// sesi proses, padahal resolver sudah sehat lagi.
+  void resetSticky() {
+    _sticky = rungAdaptiveUri;
   }
 
   /// Jalankan satu pemuatan menaiki tangga: [attempt] membangun & memasang sumber
@@ -130,7 +153,7 @@ class LoadLadder {
         try {
           final info = await resolveAdaptive(t);
           return AudioSource.uri(Uri.parse(info.url),
-              headers: streamHeaders, tag: tagFor(t));
+              headers: headersFor(info), tag: tagFor(t));
         } catch (e) {
           if (strict) rethrow;
           return _proxyChild(t);
@@ -145,7 +168,7 @@ class LoadLadder {
         }
         if (info != null) {
           return AudioSource.uri(Uri.parse(info.url),
-              headers: streamHeaders, tag: tagFor(t));
+              headers: headersFor(info), tag: tagFor(t));
         }
         if (strict) {
           throw StateError('aliran muxed tidak tersedia untuk "${t.title}"'
@@ -162,5 +185,7 @@ class LoadLadder {
         () => resolveAdaptive(t),
         resolveFallback: () => resolveMuxed(t),
         tag: tagFor(t),
+        onPrimaryRejected:
+            onAdaptiveRejected == null ? null : () => onAdaptiveRejected!(t),
       );
 }
