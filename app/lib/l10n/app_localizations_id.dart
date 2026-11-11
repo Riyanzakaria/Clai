@@ -459,7 +459,9 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get aboutVersion => 'Clai 1.0.1';
+  String aboutVersion(String version) {
+    return 'Clai $version';
+  }
 
   @override
   String get aboutBody =>
@@ -634,6 +636,26 @@ class AppLocalizationsId extends AppLocalizations {
   String get homeSavedSongs => 'Lagu Tersimpan';
 
   @override
+  String homeResumeFrom(Object time) {
+    return 'Lanjut dari $time';
+  }
+
+  @override
+  String get homeQuickPlay => 'Cepat putar';
+
+  @override
+  String get homeTopWeek => 'Paling sering minggu ini';
+
+  @override
+  String get homeTopWeekEmpty =>
+      'Belum ada lagu yang sering diputar minggu ini — yang kamu putar akan terhitung di sini.';
+
+  @override
+  String homePlayCount(int count) {
+    return '$count× diputar';
+  }
+
+  @override
   String songCount(int count) {
     return '$count lagu';
   }
@@ -715,6 +737,10 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get playerAutoplayCard =>
       'Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.';
+
+  @override
+  String get playerAutoplayStrip =>
+      'Putar Otomatis aktif — menyambung lagu terkait';
 
   @override
   String get queueSmartShuffleNote =>
@@ -1425,6 +1451,39 @@ class AppLocalizationsId extends AppLocalizations {
   String get diagRun => 'Jalankan Diagnostik';
 
   @override
+  String get diagRunClients => 'Uji Klien InnerTube';
+
+  @override
+  String get diagPlayWinner => 'Bukti Putar Klien';
+
+  @override
+  String get diagRunPoToken => 'Uji PoToken';
+
+  @override
+  String get diagRunCrossing => 'Uji Penyeberangan F3';
+
+  @override
+  String get diagRunDecipher => 'Uji Decipher F3';
+
+  @override
+  String get diagRunSabr => 'Uji SABR F3';
+
+  @override
+  String get diagRunSabrCeiling => 'Uji Plafon SABR';
+
+  @override
+  String get diagRunWebView => 'Probe WebView Tamu';
+
+  @override
+  String get diagOpenLoginLab => 'Lab Login';
+
+  @override
+  String get diagRunLogin => 'Matriks L (Login)';
+
+  @override
+  String get diagRunTahap2 => 'Matriks U (Tahap 2)';
+
+  @override
   String get diagRunning => 'Berjalan…';
 
   @override
@@ -1961,6 +2020,16 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String diagBreathLine(String text) {
+    return 'Napas (U1): $text';
+  }
+
+  @override
+  String diagWaveformLine(String text) {
+    return 'Waveform: $text';
+  }
+
+  @override
   String get diagGateNone => 'Belum ada sampel sesi ini.';
 
   @override
@@ -1998,4 +2067,183 @@ class AppLocalizationsId extends AppLocalizations {
   String contentDownloadingCount(int done, int total) {
     return '$done/$total';
   }
+
+  @override
+  String get homeContinue => 'Lanjutkan';
+
+  @override
+  String get setThemeDynamic => 'Tema Dinamis';
+
+  @override
+  String get setThemeDynamicSub =>
+      'Warna suasana mengikuti sampul lagu yang diputar; kaca dan cahaya ambien ikut menyala. Mati = tampilan klasik.';
+
+  @override
+  String get setAmbientStrength => 'Kekuatan Ambien';
+
+  @override
+  String get ambientCalm => 'Tenang';
+
+  @override
+  String get ambientLively => 'Hidup';
+
+  @override
+  String get setAmbientBreathing => 'Ambien Bernapas';
+
+  @override
+  String get setAmbientBreathingSub =>
+      'Cahaya di Player berdenyut sangat halus mengikuti kerasnya musik. Mati saat lagu dijeda.';
+
+  @override
+  String get setReduceEffects => 'Kurangi Efek';
+
+  @override
+  String get setReduceEffectsSub =>
+      'Matikan napas ambien, peralihan warna, dan getaran sentuh.';
+
+  @override
+  String get setGreetingName => 'Nama sapaan';
+
+  @override
+  String get setGreetingNameSub =>
+      'Nama yang menyapa kamu di Beranda. Kosongkan untuk sapaan tanpa nama.';
+
+  @override
+  String get greetingNameHint => 'Nama kamu';
+
+  @override
+  String get setAmbientStrengthSub =>
+      'Seberapa pekat warna lagu mewarnai layar';
+
+  @override
+  String get searchChartsKicker => 'Charts · Minggu Ini';
+
+  @override
+  String get searchMoodGenreKicker => 'Mood & Genre';
+
+  @override
+  String collectionStats(int songs, int playlists) {
+    return '$songs lagu · $playlists playlist · semua milikmu';
+  }
+
+  @override
+  String get collectionLikedSongs => 'Lagu yang Disukai';
+
+  @override
+  String get collectionAutoPlaylist => 'Playlist otomatis';
+
+  @override
+  String collectionDownloadsMeta(int count, String size) {
+    return '$count lagu · $size di perangkat';
+  }
+
+  @override
+  String collectionLocalMeta(int count) {
+    return '$count berkas di perangkat ini';
+  }
+
+  @override
+  String get collectionYourArtists => 'Artis Kamu';
+
+  @override
+  String get collectionLastPlayedToday => 'terakhir diputar hari ini';
+
+  @override
+  String get collectionLastPlayedYesterday => 'terakhir diputar kemarin';
+
+  @override
+  String collectionLastPlayedDays(int days) {
+    return 'terakhir diputar $days hari lalu';
+  }
+
+  @override
+  String collectionLastPlayedWeeks(int weeks) {
+    return 'terakhir diputar $weeks minggu lalu';
+  }
+
+  @override
+  String collectionLastPlayedMonths(int months) {
+    return 'terakhir diputar $months bulan lalu';
+  }
+
+  @override
+  String collectionLastPlayedYears(int years) {
+    return 'terakhir diputar $years tahun lalu';
+  }
+
+  @override
+  String collectionStatsFull(int songs, int playlists, int artists) {
+    return '$songs lagu · $playlists playlist · $artists artis';
+  }
+
+  @override
+  String get collectionLastPlayedKicker => 'Terakhir Diputar';
+
+  @override
+  String get collectionYours => 'Milikmu';
+
+  @override
+  String get radioKicker => 'Radio Lagu';
+
+  @override
+  String get radioSeedCaption => 'Dari lagu ini';
+
+  @override
+  String get radioResults => 'Hasil Radio';
+
+  @override
+  String get radioComposing => 'Menyusun radio…';
+
+  @override
+  String get catalogWord => 'Katalog';
+
+  @override
+  String get spNoCatalog => 'Tidak ada di katalog';
+
+  @override
+  String get spSectionTracks => 'Trek';
+
+  @override
+  String get dlSectionDownloaded => 'Terunduh';
+
+  @override
+  String dlStorageUsedBy(int count) {
+    return 'dipakai oleh $count lagu unduhan';
+  }
+
+  @override
+  String get localFormatsFound => 'format ditemukan';
+
+  @override
+  String get localScanning => 'Memindai…';
+
+  @override
+  String get localScanningCaption => 'Memindai folder musik…';
+
+  @override
+  String get collectionAll => 'Semua';
+
+  @override
+  String get spKicker => 'Playlist Spotify';
+
+  @override
+  String get localOnDevice => 'berkas di perangkat ini';
+
+  @override
+  String get localScanHeadline => 'Folder musik perangkatmu';
+
+  @override
+  String get localResults => 'Hasil Pindai';
+
+  @override
+  String get setSectionFlow => 'Alur Putar';
+
+  @override
+  String get setSectionDeviceGuides => 'Panduan Perangkat';
+
+  @override
+  String get a11yBack => 'Kembali';
+
+  @override
+  String get lyrCreditShort => 'Sumber lirik: LRCLIB (lrclib.net)';
 }

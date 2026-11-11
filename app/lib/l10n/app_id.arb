@@ -191,7 +191,15 @@
       }
     }
   },
-  "aboutVersion": "Clai 1.0.1",
+  "aboutVersion": "Clai {version}",
+  "@aboutVersion": {
+    "description": "About page title: app name + the package versionName read dynamically from the installed package (never hardcoded).",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "aboutBody": "Pemutar musik sumber terbuka (GPL-3.0) yang dibangun clean-room: tanpa kode atau aset dari layanan lain. Katalog dan lagu berasal dari layanan musik pihak ketiga lewat API tidak resmi — dinyatakan terbuka di README repo; arsitektur provider memungkinkan sumber lain ditambahkan tanpa menyentuh player. Kamu juga bisa menempel tautan playlist publik dari aplikasi musik lain: daftar lagunya dibaca, lalu dicocokkan ke katalog di sini — tanpa akun. Lirik dari LRCLIB; pengayaan sampul dari MusicBrainz/Cover Art Archive; scrobble opsional ke ListenBrainz dengan token milikmu sendiri. Semua data pribadimu — koleksi, riwayat, unduhan — hanya tersimpan di HP-mu.",
   "logTitle": "Log insiden",
   "logEmpty": "Belum ada insiden tercatat.",
@@ -271,6 +279,23 @@
   "homePlayAgain": "Putar Lagi",
   "homeYourCollection": "Koleksi Kamu",
   "homeSavedSongs": "Lagu Tersimpan",
+  "homeResumeFrom": "Lanjut dari {time}",
+  "@homeResumeFrom": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "homeQuickPlay": "Cepat putar",
+  "homeTopWeek": "Paling sering minggu ini",
+  "homeTopWeekEmpty": "Belum ada lagu yang sering diputar minggu ini — yang kamu putar akan terhitung di sini.",
+  "homePlayCount": "{count}× diputar",
+  "@homePlayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "songCount": "{count} lagu",
   "@songCount": {
     "placeholders": {
@@ -324,6 +349,7 @@
   "playerTimer": "Timer",
   "playerVoice": "Suara",
   "playerAutoplayCard": "Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.",
+  "playerAutoplayStrip": "Putar Otomatis aktif — menyambung lagu terkait",
   "queueSmartShuffleNote": "Acak Cerdas — mengurut ulang Lanjutan (artis disebar, favorit didorong). Tidak menambah lagu baru.",
   "queueEmpty": "Antrean kosong. Putar sebuah lagu untuk memulai.",
   "queueNowPlaying": "Sedang Diputar",
@@ -750,6 +776,17 @@
   "diagTitle": "Diagnostik Putar",
   "diagIntro": "Menguji rantai putar per mata rantai (resolusi → unduh → ExoPlayer polos → +header → muxed → jalur aplikasi → pipa lokal) untuk lagu Song & item Video, lengkap dengan galat natif dari logcat proses. Hasilnya satu laporan teks — salin & kirim ke pengembang bila lagu tidak bunyi.",
   "diagRun": "Jalankan Diagnostik",
+  "diagRunClients": "Uji Klien InnerTube",
+  "diagPlayWinner": "Bukti Putar Klien",
+  "diagRunPoToken": "Uji PoToken",
+  "diagRunCrossing": "Uji Penyeberangan F3",
+  "diagRunDecipher": "Uji Decipher F3",
+  "diagRunSabr": "Uji SABR F3",
+  "diagRunSabrCeiling": "Uji Plafon SABR",
+  "diagRunWebView": "Probe WebView Tamu",
+  "diagOpenLoginLab": "Lab Login",
+  "diagRunLogin": "Matriks L (Login)",
+  "diagRunTahap2": "Matriks U (Tahap 2)",
   "diagRunning": "Berjalan…",
   "diagCopy": "Salin Laporan",
   "diagCopied": "Laporan disalin.",
@@ -1080,6 +1117,22 @@
       "pct": {}
     }
   },
+  "diagBreathLine": "Napas (U1): {text}",
+  "@diagBreathLine": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "diagWaveformLine": "Waveform: {text}",
+  "@diagWaveformLine": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
   "diagGateNone": "Belum ada sampel sesi ini.",
   "a11yClose": "Tutup",
   "contentDownloadQueued": "{count} lagu diantrekan untuk diunduh.",
@@ -1107,5 +1160,132 @@
         "type": "int"
       }
     }
-  }
+  },
+  "homeContinue": "Lanjutkan",
+  "setThemeDynamic": "Tema Dinamis",
+  "setThemeDynamicSub": "Warna suasana mengikuti sampul lagu yang diputar; kaca dan cahaya ambien ikut menyala. Mati = tampilan klasik.",
+  "setAmbientStrength": "Kekuatan Ambien",
+  "ambientCalm": "Tenang",
+  "ambientLively": "Hidup",
+  "setAmbientBreathing": "Ambien Bernapas",
+  "setAmbientBreathingSub": "Cahaya di Player berdenyut sangat halus mengikuti kerasnya musik. Mati saat lagu dijeda.",
+  "setReduceEffects": "Kurangi Efek",
+  "setReduceEffectsSub": "Matikan napas ambien, peralihan warna, dan getaran sentuh.",
+  "setGreetingName": "Nama sapaan",
+  "setGreetingNameSub": "Nama yang menyapa kamu di Beranda. Kosongkan untuk sapaan tanpa nama.",
+  "greetingNameHint": "Nama kamu",
+  "setAmbientStrengthSub": "Seberapa pekat warna lagu mewarnai layar",
+  "searchChartsKicker": "Charts · Minggu Ini",
+  "searchMoodGenreKicker": "Mood & Genre",
+  "collectionStats": "{songs} lagu · {playlists} playlist · semua milikmu",
+  "@collectionStats": {
+    "placeholders": {
+      "songs": {
+        "type": "int"
+      },
+      "playlists": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionLikedSongs": "Lagu yang Disukai",
+  "collectionAutoPlaylist": "Playlist otomatis",
+  "collectionDownloadsMeta": "{count} lagu · {size} di perangkat",
+  "@collectionDownloadsMeta": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "collectionLocalMeta": "{count} berkas di perangkat ini",
+  "@collectionLocalMeta": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionYourArtists": "Artis Kamu",
+  "collectionLastPlayedToday": "terakhir diputar hari ini",
+  "collectionLastPlayedYesterday": "terakhir diputar kemarin",
+  "collectionLastPlayedDays": "terakhir diputar {days} hari lalu",
+  "@collectionLastPlayedDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionLastPlayedWeeks": "terakhir diputar {weeks} minggu lalu",
+  "@collectionLastPlayedWeeks": {
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionLastPlayedMonths": "terakhir diputar {months} bulan lalu",
+  "@collectionLastPlayedMonths": {
+    "placeholders": {
+      "months": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionLastPlayedYears": "terakhir diputar {years} tahun lalu",
+  "@collectionLastPlayedYears": {
+    "placeholders": {
+      "years": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionStatsFull": "{songs} lagu · {playlists} playlist · {artists} artis",
+  "@collectionStatsFull": {
+    "placeholders": {
+      "songs": {
+        "type": "int"
+      },
+      "playlists": {
+        "type": "int"
+      },
+      "artists": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionLastPlayedKicker": "Terakhir Diputar",
+  "collectionYours": "Milikmu",
+  "radioKicker": "Radio Lagu",
+  "radioSeedCaption": "Dari lagu ini",
+  "radioResults": "Hasil Radio",
+  "radioComposing": "Menyusun radio…",
+  "catalogWord": "Katalog",
+  "spNoCatalog": "Tidak ada di katalog",
+  "spSectionTracks": "Trek",
+  "dlSectionDownloaded": "Terunduh",
+  "dlStorageUsedBy": "dipakai oleh {count} lagu unduhan",
+  "@dlStorageUsedBy": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "localFormatsFound": "format ditemukan",
+  "localScanning": "Memindai…",
+  "localScanningCaption": "Memindai folder musik…",
+  "collectionAll": "Semua",
+  "spKicker": "Playlist Spotify",
+  "localOnDevice": "berkas di perangkat ini",
+  "localScanHeadline": "Folder musik perangkatmu",
+  "localResults": "Hasil Pindai",
+  "setSectionFlow": "Alur Putar",
+  "setSectionDeviceGuides": "Panduan Perangkat",
+  "a11yBack": "Kembali",
+  "lyrCreditShort": "Sumber lirik: LRCLIB (lrclib.net)"
 }

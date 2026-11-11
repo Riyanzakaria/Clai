@@ -896,11 +896,11 @@ abstract class AppLocalizations {
   /// **'{count} catatan — tidak dikirim ke mana pun.'**
   String setLogCount(int count);
 
-  /// No description provided for @aboutVersion.
+  /// About page title: app name + the package versionName read dynamically from the installed package (never hardcoded).
   ///
   /// In id, this message translates to:
-  /// **'Clai 1.0.1'**
-  String get aboutVersion;
+  /// **'Clai {version}'**
+  String aboutVersion(String version);
 
   /// No description provided for @aboutBody.
   ///
@@ -1208,6 +1208,36 @@ abstract class AppLocalizations {
   /// **'Lagu Tersimpan'**
   String get homeSavedSongs;
 
+  /// No description provided for @homeResumeFrom.
+  ///
+  /// In id, this message translates to:
+  /// **'Lanjut dari {time}'**
+  String homeResumeFrom(Object time);
+
+  /// No description provided for @homeQuickPlay.
+  ///
+  /// In id, this message translates to:
+  /// **'Cepat putar'**
+  String get homeQuickPlay;
+
+  /// No description provided for @homeTopWeek.
+  ///
+  /// In id, this message translates to:
+  /// **'Paling sering minggu ini'**
+  String get homeTopWeek;
+
+  /// No description provided for @homeTopWeekEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada lagu yang sering diputar minggu ini — yang kamu putar akan terhitung di sini.'**
+  String get homeTopWeekEmpty;
+
+  /// No description provided for @homePlayCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count}× diputar'**
+  String homePlayCount(int count);
+
   /// No description provided for @songCount.
   ///
   /// In id, this message translates to:
@@ -1351,6 +1381,12 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.'**
   String get playerAutoplayCard;
+
+  /// No description provided for @playerAutoplayStrip.
+  ///
+  /// In id, this message translates to:
+  /// **'Putar Otomatis aktif — menyambung lagu terkait'**
+  String get playerAutoplayStrip;
 
   /// No description provided for @queueSmartShuffleNote.
   ///
@@ -2528,6 +2564,72 @@ abstract class AppLocalizations {
   /// **'Jalankan Diagnostik'**
   String get diagRun;
 
+  /// No description provided for @diagRunClients.
+  ///
+  /// In id, this message translates to:
+  /// **'Uji Klien InnerTube'**
+  String get diagRunClients;
+
+  /// No description provided for @diagPlayWinner.
+  ///
+  /// In id, this message translates to:
+  /// **'Bukti Putar Klien'**
+  String get diagPlayWinner;
+
+  /// No description provided for @diagRunPoToken.
+  ///
+  /// In id, this message translates to:
+  /// **'Uji PoToken'**
+  String get diagRunPoToken;
+
+  /// No description provided for @diagRunCrossing.
+  ///
+  /// In id, this message translates to:
+  /// **'Uji Penyeberangan F3'**
+  String get diagRunCrossing;
+
+  /// No description provided for @diagRunDecipher.
+  ///
+  /// In id, this message translates to:
+  /// **'Uji Decipher F3'**
+  String get diagRunDecipher;
+
+  /// No description provided for @diagRunSabr.
+  ///
+  /// In id, this message translates to:
+  /// **'Uji SABR F3'**
+  String get diagRunSabr;
+
+  /// No description provided for @diagRunSabrCeiling.
+  ///
+  /// In id, this message translates to:
+  /// **'Uji Plafon SABR'**
+  String get diagRunSabrCeiling;
+
+  /// No description provided for @diagRunWebView.
+  ///
+  /// In id, this message translates to:
+  /// **'Probe WebView Tamu'**
+  String get diagRunWebView;
+
+  /// No description provided for @diagOpenLoginLab.
+  ///
+  /// In id, this message translates to:
+  /// **'Lab Login'**
+  String get diagOpenLoginLab;
+
+  /// No description provided for @diagRunLogin.
+  ///
+  /// In id, this message translates to:
+  /// **'Matriks L (Login)'**
+  String get diagRunLogin;
+
+  /// No description provided for @diagRunTahap2.
+  ///
+  /// In id, this message translates to:
+  /// **'Matriks U (Tahap 2)'**
+  String get diagRunTahap2;
+
   /// No description provided for @diagRunning.
   ///
   /// In id, this message translates to:
@@ -3416,6 +3518,18 @@ abstract class AppLocalizations {
   /// **'Percobaan putar: {attempts} · gagal {failures} ({pct}%)'**
   String diagGateFail(int attempts, int failures, Object pct);
 
+  /// No description provided for @diagBreathLine.
+  ///
+  /// In id, this message translates to:
+  /// **'Napas (U1): {text}'**
+  String diagBreathLine(String text);
+
+  /// No description provided for @diagWaveformLine.
+  ///
+  /// In id, this message translates to:
+  /// **'Waveform: {text}'**
+  String diagWaveformLine(String text);
+
   /// No description provided for @diagGateNone.
   ///
   /// In id, this message translates to:
@@ -3481,6 +3595,318 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'{done}/{total}'**
   String contentDownloadingCount(int done, int total);
+
+  /// No description provided for @homeContinue.
+  ///
+  /// In id, this message translates to:
+  /// **'Lanjutkan'**
+  String get homeContinue;
+
+  /// No description provided for @setThemeDynamic.
+  ///
+  /// In id, this message translates to:
+  /// **'Tema Dinamis'**
+  String get setThemeDynamic;
+
+  /// No description provided for @setThemeDynamicSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Warna suasana mengikuti sampul lagu yang diputar; kaca dan cahaya ambien ikut menyala. Mati = tampilan klasik.'**
+  String get setThemeDynamicSub;
+
+  /// No description provided for @setAmbientStrength.
+  ///
+  /// In id, this message translates to:
+  /// **'Kekuatan Ambien'**
+  String get setAmbientStrength;
+
+  /// No description provided for @ambientCalm.
+  ///
+  /// In id, this message translates to:
+  /// **'Tenang'**
+  String get ambientCalm;
+
+  /// No description provided for @ambientLively.
+  ///
+  /// In id, this message translates to:
+  /// **'Hidup'**
+  String get ambientLively;
+
+  /// No description provided for @setAmbientBreathing.
+  ///
+  /// In id, this message translates to:
+  /// **'Ambien Bernapas'**
+  String get setAmbientBreathing;
+
+  /// No description provided for @setAmbientBreathingSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Cahaya di Player berdenyut sangat halus mengikuti kerasnya musik. Mati saat lagu dijeda.'**
+  String get setAmbientBreathingSub;
+
+  /// No description provided for @setReduceEffects.
+  ///
+  /// In id, this message translates to:
+  /// **'Kurangi Efek'**
+  String get setReduceEffects;
+
+  /// No description provided for @setReduceEffectsSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Matikan napas ambien, peralihan warna, dan getaran sentuh.'**
+  String get setReduceEffectsSub;
+
+  /// No description provided for @setGreetingName.
+  ///
+  /// In id, this message translates to:
+  /// **'Nama sapaan'**
+  String get setGreetingName;
+
+  /// No description provided for @setGreetingNameSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Nama yang menyapa kamu di Beranda. Kosongkan untuk sapaan tanpa nama.'**
+  String get setGreetingNameSub;
+
+  /// No description provided for @greetingNameHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Nama kamu'**
+  String get greetingNameHint;
+
+  /// No description provided for @setAmbientStrengthSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Seberapa pekat warna lagu mewarnai layar'**
+  String get setAmbientStrengthSub;
+
+  /// No description provided for @searchChartsKicker.
+  ///
+  /// In id, this message translates to:
+  /// **'Charts · Minggu Ini'**
+  String get searchChartsKicker;
+
+  /// No description provided for @searchMoodGenreKicker.
+  ///
+  /// In id, this message translates to:
+  /// **'Mood & Genre'**
+  String get searchMoodGenreKicker;
+
+  /// No description provided for @collectionStats.
+  ///
+  /// In id, this message translates to:
+  /// **'{songs} lagu · {playlists} playlist · semua milikmu'**
+  String collectionStats(int songs, int playlists);
+
+  /// No description provided for @collectionLikedSongs.
+  ///
+  /// In id, this message translates to:
+  /// **'Lagu yang Disukai'**
+  String get collectionLikedSongs;
+
+  /// No description provided for @collectionAutoPlaylist.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist otomatis'**
+  String get collectionAutoPlaylist;
+
+  /// No description provided for @collectionDownloadsMeta.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu · {size} di perangkat'**
+  String collectionDownloadsMeta(int count, String size);
+
+  /// No description provided for @collectionLocalMeta.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} berkas di perangkat ini'**
+  String collectionLocalMeta(int count);
+
+  /// No description provided for @collectionYourArtists.
+  ///
+  /// In id, this message translates to:
+  /// **'Artis Kamu'**
+  String get collectionYourArtists;
+
+  /// No description provided for @collectionLastPlayedToday.
+  ///
+  /// In id, this message translates to:
+  /// **'terakhir diputar hari ini'**
+  String get collectionLastPlayedToday;
+
+  /// No description provided for @collectionLastPlayedYesterday.
+  ///
+  /// In id, this message translates to:
+  /// **'terakhir diputar kemarin'**
+  String get collectionLastPlayedYesterday;
+
+  /// No description provided for @collectionLastPlayedDays.
+  ///
+  /// In id, this message translates to:
+  /// **'terakhir diputar {days} hari lalu'**
+  String collectionLastPlayedDays(int days);
+
+  /// No description provided for @collectionLastPlayedWeeks.
+  ///
+  /// In id, this message translates to:
+  /// **'terakhir diputar {weeks} minggu lalu'**
+  String collectionLastPlayedWeeks(int weeks);
+
+  /// No description provided for @collectionLastPlayedMonths.
+  ///
+  /// In id, this message translates to:
+  /// **'terakhir diputar {months} bulan lalu'**
+  String collectionLastPlayedMonths(int months);
+
+  /// No description provided for @collectionLastPlayedYears.
+  ///
+  /// In id, this message translates to:
+  /// **'terakhir diputar {years} tahun lalu'**
+  String collectionLastPlayedYears(int years);
+
+  /// No description provided for @collectionStatsFull.
+  ///
+  /// In id, this message translates to:
+  /// **'{songs} lagu · {playlists} playlist · {artists} artis'**
+  String collectionStatsFull(int songs, int playlists, int artists);
+
+  /// No description provided for @collectionLastPlayedKicker.
+  ///
+  /// In id, this message translates to:
+  /// **'Terakhir Diputar'**
+  String get collectionLastPlayedKicker;
+
+  /// No description provided for @collectionYours.
+  ///
+  /// In id, this message translates to:
+  /// **'Milikmu'**
+  String get collectionYours;
+
+  /// No description provided for @radioKicker.
+  ///
+  /// In id, this message translates to:
+  /// **'Radio Lagu'**
+  String get radioKicker;
+
+  /// No description provided for @radioSeedCaption.
+  ///
+  /// In id, this message translates to:
+  /// **'Dari lagu ini'**
+  String get radioSeedCaption;
+
+  /// No description provided for @radioResults.
+  ///
+  /// In id, this message translates to:
+  /// **'Hasil Radio'**
+  String get radioResults;
+
+  /// No description provided for @radioComposing.
+  ///
+  /// In id, this message translates to:
+  /// **'Menyusun radio…'**
+  String get radioComposing;
+
+  /// No description provided for @catalogWord.
+  ///
+  /// In id, this message translates to:
+  /// **'Katalog'**
+  String get catalogWord;
+
+  /// No description provided for @spNoCatalog.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada di katalog'**
+  String get spNoCatalog;
+
+  /// No description provided for @spSectionTracks.
+  ///
+  /// In id, this message translates to:
+  /// **'Trek'**
+  String get spSectionTracks;
+
+  /// No description provided for @dlSectionDownloaded.
+  ///
+  /// In id, this message translates to:
+  /// **'Terunduh'**
+  String get dlSectionDownloaded;
+
+  /// No description provided for @dlStorageUsedBy.
+  ///
+  /// In id, this message translates to:
+  /// **'dipakai oleh {count} lagu unduhan'**
+  String dlStorageUsedBy(int count);
+
+  /// No description provided for @localFormatsFound.
+  ///
+  /// In id, this message translates to:
+  /// **'format ditemukan'**
+  String get localFormatsFound;
+
+  /// No description provided for @localScanning.
+  ///
+  /// In id, this message translates to:
+  /// **'Memindai…'**
+  String get localScanning;
+
+  /// No description provided for @localScanningCaption.
+  ///
+  /// In id, this message translates to:
+  /// **'Memindai folder musik…'**
+  String get localScanningCaption;
+
+  /// No description provided for @collectionAll.
+  ///
+  /// In id, this message translates to:
+  /// **'Semua'**
+  String get collectionAll;
+
+  /// No description provided for @spKicker.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist Spotify'**
+  String get spKicker;
+
+  /// No description provided for @localOnDevice.
+  ///
+  /// In id, this message translates to:
+  /// **'berkas di perangkat ini'**
+  String get localOnDevice;
+
+  /// No description provided for @localScanHeadline.
+  ///
+  /// In id, this message translates to:
+  /// **'Folder musik perangkatmu'**
+  String get localScanHeadline;
+
+  /// No description provided for @localResults.
+  ///
+  /// In id, this message translates to:
+  /// **'Hasil Pindai'**
+  String get localResults;
+
+  /// No description provided for @setSectionFlow.
+  ///
+  /// In id, this message translates to:
+  /// **'Alur Putar'**
+  String get setSectionFlow;
+
+  /// No description provided for @setSectionDeviceGuides.
+  ///
+  /// In id, this message translates to:
+  /// **'Panduan Perangkat'**
+  String get setSectionDeviceGuides;
+
+  /// No description provided for @a11yBack.
+  ///
+  /// In id, this message translates to:
+  /// **'Kembali'**
+  String get a11yBack;
+
+  /// No description provided for @lyrCreditShort.
+  ///
+  /// In id, this message translates to:
+  /// **'Sumber lirik: LRCLIB (lrclib.net)'**
+  String get lyrCreditShort;
 }
 
 class _AppLocalizationsDelegate

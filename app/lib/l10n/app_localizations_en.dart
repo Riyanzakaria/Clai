@@ -459,7 +459,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aboutVersion => 'Clai 1.0.1';
+  String aboutVersion(String version) {
+    return 'Clai $version';
+  }
 
   @override
   String get aboutBody =>
@@ -634,6 +636,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSavedSongs => 'Saved Songs';
 
   @override
+  String homeResumeFrom(Object time) {
+    return 'Resume from $time';
+  }
+
+  @override
+  String get homeQuickPlay => 'Quick play';
+
+  @override
+  String get homeTopWeek => 'Most played this week';
+
+  @override
+  String get homeTopWeekEmpty =>
+      'Nothing on repeat this week yet — what you play will count here.';
+
+  @override
+  String homePlayCount(int count) {
+    return '$count plays';
+  }
+
+  @override
   String songCount(int count) {
     return '$count songs';
   }
@@ -715,6 +737,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get playerAutoplayCard =>
       'Autoplay is on — when this context ends, Clai continues with related songs. The music doesn\'t stop midway.';
+
+  @override
+  String get playerAutoplayStrip =>
+      'Autoplay on — continuing with related songs';
 
   @override
   String get queueSmartShuffleNote =>
@@ -1423,6 +1449,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diagRun => 'Run Diagnostics';
 
   @override
+  String get diagRunClients => 'Test InnerTube Clients';
+
+  @override
+  String get diagPlayWinner => 'Client Playback Proof';
+
+  @override
+  String get diagRunPoToken => 'PoToken Probe';
+
+  @override
+  String get diagRunCrossing => 'F3 Crossing Probe';
+
+  @override
+  String get diagRunDecipher => 'F3 Decipher Probe';
+
+  @override
+  String get diagRunSabr => 'F3 SABR Probe';
+
+  @override
+  String get diagRunSabrCeiling => 'SABR Ceiling Probe';
+
+  @override
+  String get diagRunWebView => 'Guest WebView Probe';
+
+  @override
+  String get diagOpenLoginLab => 'Login Lab';
+
+  @override
+  String get diagRunLogin => 'Matrix L (Login)';
+
+  @override
+  String get diagRunTahap2 => 'Matrix U (Stage 2)';
+
+  @override
   String get diagRunning => 'Running…';
 
   @override
@@ -1958,6 +2017,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String diagBreathLine(String text) {
+    return 'Breath (U1): $text';
+  }
+
+  @override
+  String diagWaveformLine(String text) {
+    return 'Waveform: $text';
+  }
+
+  @override
   String get diagGateNone => 'No samples yet this session.';
 
   @override
@@ -1995,4 +2064,183 @@ class AppLocalizationsEn extends AppLocalizations {
   String contentDownloadingCount(int done, int total) {
     return '$done/$total';
   }
+
+  @override
+  String get homeContinue => 'Continue';
+
+  @override
+  String get setThemeDynamic => 'Dynamic Theme';
+
+  @override
+  String get setThemeDynamicSub =>
+      'Ambient colour follows the playing cover; glass and ambient glow turn on. Off = the classic look.';
+
+  @override
+  String get setAmbientStrength => 'Ambient Strength';
+
+  @override
+  String get ambientCalm => 'Calm';
+
+  @override
+  String get ambientLively => 'Lively';
+
+  @override
+  String get setAmbientBreathing => 'Breathing Ambience';
+
+  @override
+  String get setAmbientBreathingSub =>
+      'The glow on the Player pulses very subtly with the music\'s loudness. Stops when paused.';
+
+  @override
+  String get setReduceEffects => 'Reduce Effects';
+
+  @override
+  String get setReduceEffectsSub =>
+      'Turn off ambient breathing, colour transitions, and touch vibration.';
+
+  @override
+  String get setGreetingName => 'Greeting name';
+
+  @override
+  String get setGreetingNameSub =>
+      'The name that greets you on Home. Leave empty for a greeting without a name.';
+
+  @override
+  String get greetingNameHint => 'Your name';
+
+  @override
+  String get setAmbientStrengthSub =>
+      'How strongly the song\'s colour tints the screen';
+
+  @override
+  String get searchChartsKicker => 'Charts · This Week';
+
+  @override
+  String get searchMoodGenreKicker => 'Mood & Genres';
+
+  @override
+  String collectionStats(int songs, int playlists) {
+    return '$songs songs · $playlists playlists · all yours';
+  }
+
+  @override
+  String get collectionLikedSongs => 'Liked Songs';
+
+  @override
+  String get collectionAutoPlaylist => 'Automatic playlist';
+
+  @override
+  String collectionDownloadsMeta(int count, String size) {
+    return '$count songs · $size on this device';
+  }
+
+  @override
+  String collectionLocalMeta(int count) {
+    return '$count files on this device';
+  }
+
+  @override
+  String get collectionYourArtists => 'Your Artists';
+
+  @override
+  String get collectionLastPlayedToday => 'last played today';
+
+  @override
+  String get collectionLastPlayedYesterday => 'last played yesterday';
+
+  @override
+  String collectionLastPlayedDays(int days) {
+    return 'last played $days days ago';
+  }
+
+  @override
+  String collectionLastPlayedWeeks(int weeks) {
+    return 'last played $weeks weeks ago';
+  }
+
+  @override
+  String collectionLastPlayedMonths(int months) {
+    return 'last played $months months ago';
+  }
+
+  @override
+  String collectionLastPlayedYears(int years) {
+    return 'last played $years years ago';
+  }
+
+  @override
+  String collectionStatsFull(int songs, int playlists, int artists) {
+    return '$songs songs · $playlists playlists · $artists artists';
+  }
+
+  @override
+  String get collectionLastPlayedKicker => 'Last Played';
+
+  @override
+  String get collectionYours => 'Yours';
+
+  @override
+  String get radioKicker => 'Song Radio';
+
+  @override
+  String get radioSeedCaption => 'From this song';
+
+  @override
+  String get radioResults => 'Radio Results';
+
+  @override
+  String get radioComposing => 'Building your radio…';
+
+  @override
+  String get catalogWord => 'Catalogue';
+
+  @override
+  String get spNoCatalog => 'Not in the catalogue';
+
+  @override
+  String get spSectionTracks => 'Tracks';
+
+  @override
+  String get dlSectionDownloaded => 'Downloaded';
+
+  @override
+  String dlStorageUsedBy(int count) {
+    return 'used by $count downloaded songs';
+  }
+
+  @override
+  String get localFormatsFound => 'formats found';
+
+  @override
+  String get localScanning => 'Scanning…';
+
+  @override
+  String get localScanningCaption => 'Scanning music folders…';
+
+  @override
+  String get collectionAll => 'All';
+
+  @override
+  String get spKicker => 'Spotify Playlist';
+
+  @override
+  String get localOnDevice => 'files on this device';
+
+  @override
+  String get localScanHeadline => 'Your device\'s music folders';
+
+  @override
+  String get localResults => 'Scan Results';
+
+  @override
+  String get setSectionFlow => 'Playback Flow';
+
+  @override
+  String get setSectionDeviceGuides => 'Device Guides';
+
+  @override
+  String get a11yBack => 'Back';
+
+  @override
+  String get lyrCreditShort => 'Lyrics source: LRCLIB (lrclib.net)';
 }

@@ -133,7 +133,7 @@
   "setDiagSub": "Test the playback chain and copy its report.",
   "setLogTitle": "Incident log (on device)",
   "setLogCount": "{count} entries — never sent anywhere.",
-  "aboutVersion": "Clai 1.0.1",
+  "aboutVersion": "Clai {version}",
   "aboutBody": "An open-source music player (GPL-3.0), built clean-room: no code or assets from other services. The catalogue and songs come from a third-party music service through an unofficial API — declared openly in the repo README; the provider architecture lets other sources be added without touching the player. You can also paste a public playlist link from another music app: its track list is read, then matched to the catalogue here — no account needed. Lyrics from LRCLIB; artwork enrichment from MusicBrainz/Cover Art Archive; optional scrobbling to ListenBrainz with your own token. All your personal data — library, history, downloads — lives only on your phone.",
   "logTitle": "Incident log",
   "logEmpty": "No incidents recorded yet.",
@@ -185,6 +185,23 @@
   "homePlayAgain": "Play Again",
   "homeYourCollection": "Your Collection",
   "homeSavedSongs": "Saved Songs",
+  "homeResumeFrom": "Resume from {time}",
+  "@homeResumeFrom": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "homeQuickPlay": "Quick play",
+  "homeTopWeek": "Most played this week",
+  "homeTopWeekEmpty": "Nothing on repeat this week yet — what you play will count here.",
+  "homePlayCount": "{count} plays",
+  "@homePlayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "songCount": "{count} songs",
   "shelfBecauseArtist": "Because you often play {artist}",
   "shelfRarelyPlayed": "Saved but rarely played",
@@ -209,6 +226,7 @@
   "playerTimer": "Timer",
   "playerVoice": "Voice",
   "playerAutoplayCard": "Autoplay is on — when this context ends, Clai continues with related songs. The music doesn't stop midway.",
+  "playerAutoplayStrip": "Autoplay on — continuing with related songs",
   "queueSmartShuffleNote": "Smart Shuffle — reorders Up Next (artists spread out, favorites pushed up). Never adds new songs.",
   "queueEmpty": "The queue is empty. Play a song to start.",
   "queueNowPlaying": "Now Playing",
@@ -405,6 +423,17 @@
   "diagTitle": "Playback Diagnostics",
   "diagIntro": "Tests the playback chain link by link (resolution → download → plain ExoPlayer → +headers → muxed → app path → local pipeline) for a Song track & a Video item, including native errors from the process logcat. The result is one text report — copy & send it to the developer if a song won't play.",
   "diagRun": "Run Diagnostics",
+  "diagRunClients": "Test InnerTube Clients",
+  "diagPlayWinner": "Client Playback Proof",
+  "diagRunPoToken": "PoToken Probe",
+  "diagRunCrossing": "F3 Crossing Probe",
+  "diagRunDecipher": "F3 Decipher Probe",
+  "diagRunSabr": "F3 SABR Probe",
+  "diagRunSabrCeiling": "SABR Ceiling Probe",
+  "diagRunWebView": "Guest WebView Probe",
+  "diagOpenLoginLab": "Login Lab",
+  "diagRunLogin": "Matrix L (Login)",
+  "diagRunTahap2": "Matrix U (Stage 2)",
   "diagRunning": "Running…",
   "diagCopy": "Copy Report",
   "diagCopied": "Report copied.",
@@ -617,6 +646,22 @@
       "pct": {}
     }
   },
+  "diagBreathLine": "Breath (U1): {text}",
+  "@diagBreathLine": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "diagWaveformLine": "Waveform: {text}",
+  "@diagWaveformLine": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
   "diagGateNone": "No samples yet this session.",
   "a11yClose": "Close",
   "contentDownloadQueued": "{count} tracks queued for download.",
@@ -634,5 +679,77 @@
   "ocrCheckAgain": "Check Again",
   "artistNotFound": "Artist not found",
   "contentDownloaded": "Downloaded",
-  "contentDownloadingCount": "{done}/{total}"
+  "contentDownloadingCount": "{done}/{total}",
+  "homeContinue": "Continue",
+  "setThemeDynamic": "Dynamic Theme",
+  "setThemeDynamicSub": "Ambient colour follows the playing cover; glass and ambient glow turn on. Off = the classic look.",
+  "setAmbientStrength": "Ambient Strength",
+  "ambientCalm": "Calm",
+  "ambientLively": "Lively",
+  "setAmbientBreathing": "Breathing Ambience",
+  "setAmbientBreathingSub": "The glow on the Player pulses very subtly with the music's loudness. Stops when paused.",
+  "setReduceEffects": "Reduce Effects",
+  "setReduceEffectsSub": "Turn off ambient breathing, colour transitions, and touch vibration.",
+  "setGreetingName": "Greeting name",
+  "setGreetingNameSub": "The name that greets you on Home. Leave empty for a greeting without a name.",
+  "greetingNameHint": "Your name",
+  "setAmbientStrengthSub": "How strongly the song's colour tints the screen",
+  "searchChartsKicker": "Charts · This Week",
+  "searchMoodGenreKicker": "Mood & Genres",
+  "collectionStats": "{songs} songs · {playlists} playlists · all yours",
+  "collectionLikedSongs": "Liked Songs",
+  "collectionAutoPlaylist": "Automatic playlist",
+  "collectionDownloadsMeta": "{count} songs · {size} on this device",
+  "collectionLocalMeta": "{count} files on this device",
+  "collectionYourArtists": "Your Artists",
+  "collectionLastPlayedToday": "last played today",
+  "collectionLastPlayedYesterday": "last played yesterday",
+  "collectionLastPlayedDays": "last played {days} days ago",
+  "collectionLastPlayedWeeks": "last played {weeks} weeks ago",
+  "collectionLastPlayedMonths": "last played {months} months ago",
+  "collectionLastPlayedYears": "last played {years} years ago",
+  "collectionStatsFull": "{songs} songs · {playlists} playlists · {artists} artists",
+  "@collectionStatsFull": {
+    "placeholders": {
+      "songs": {
+        "type": "int"
+      },
+      "playlists": {
+        "type": "int"
+      },
+      "artists": {
+        "type": "int"
+      }
+    }
+  },
+  "collectionLastPlayedKicker": "Last Played",
+  "collectionYours": "Yours",
+  "radioKicker": "Song Radio",
+  "radioSeedCaption": "From this song",
+  "radioResults": "Radio Results",
+  "radioComposing": "Building your radio…",
+  "catalogWord": "Catalogue",
+  "spNoCatalog": "Not in the catalogue",
+  "spSectionTracks": "Tracks",
+  "dlSectionDownloaded": "Downloaded",
+  "dlStorageUsedBy": "used by {count} downloaded songs",
+  "@dlStorageUsedBy": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "localFormatsFound": "formats found",
+  "localScanning": "Scanning…",
+  "localScanningCaption": "Scanning music folders…",
+  "collectionAll": "All",
+  "spKicker": "Spotify Playlist",
+  "localOnDevice": "files on this device",
+  "localScanHeadline": "Your device's music folders",
+  "localResults": "Scan Results",
+  "setSectionFlow": "Playback Flow",
+  "setSectionDeviceGuides": "Device Guides",
+  "a11yBack": "Back",
+  "lyrCreditShort": "Lyrics source: LRCLIB (lrclib.net)"
 }
