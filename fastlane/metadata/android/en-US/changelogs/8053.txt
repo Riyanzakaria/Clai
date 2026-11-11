@@ -1,0 +1,3 @@
+Full-quality sound: songs now play in the catalogue's best quality instead of a low-quality fallback.
+A fresh look that follows your album art, a redesigned player with a spinning vinyl and a real measured waveform, a rebuilt queue, and full-screen lyrics that are never cut off.
+Smoother scrolling, a snappier search keyboard, and many small fixes.
