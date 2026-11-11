@@ -507,6 +507,60 @@ List<ExploreShelf> parseHomeFeedShelves(Map<String, dynamic> json, {String provi
   return shelves;
 }
 
+/// Urai halaman Mood & Genre sumber (`FEmusic_moods_and_genres`) menjadi
+/// seksi-seksi ubin kategori. Bentuk sumber (terverifikasi dari implementasi
+/// rujukan innertubex): tiap seksi adalah `gridRenderer` berjudul dari
+/// `gridHeaderRenderer`, itemnya `musicNavigationButtonRenderer` dengan
+/// `buttonText` (judul), `solid.leftStripeColor` (warna garis khas), dan
+/// `clickCommand.browseEndpoint` (tujuan nyata kategori itu). Item tanpa
+/// judul/tujuan dibuang; duplikat per (browseId+params) dibuang.
+List<MoodGenreSection> parseMoodGenreSections(Map<String, dynamic> json) {
+  final sections = <MoodGenreSection>[];
+  final seen = <String>{};
+  void walk(Object? n) {
+    if (n is Map) {
+      for (final e in n.entries) {
+        if (e.key == 'gridRenderer') {
+          final grid = asMap(e.value);
+          if (grid == null) continue;
+          final header = asMap(asMap(grid['header'])?['gridHeaderRenderer']);
+          final title = runsText(header?['title']) ?? '';
+          final items = <MoodGenreItem>[];
+          for (final raw in asList(grid['items'])) {
+            final btn = asMap(asMap(raw)?['musicNavigationButtonRenderer']);
+            if (btn == null) continue;
+            final text = simpleText(btn['buttonText'])?.trim() ?? '';
+            final endpoint = asMap(asMap(btn['clickCommand'])?['browseEndpoint']);
+            final browseId = endpoint?['browseId'] as String?;
+            if (text.isEmpty || browseId == null) continue;
+            final params = endpoint?['params'] as String?;
+            if (!seen.add('$browseId|$params')) continue;
+            final stripe = (asMap(btn['solid'])?['leftStripeColor'] as num?)?.toInt() ?? 0;
+            items.add(MoodGenreItem(
+              title: text,
+              stripeColor: stripe,
+              browseId: browseId,
+              params: params,
+            ));
+          }
+          if (items.isNotEmpty) {
+            sections.add(MoodGenreSection(title: title, items: items));
+          }
+        } else {
+          walk(e.value);
+        }
+      }
+    } else if (n is List) {
+      for (final v in n) {
+        walk(v);
+      }
+    }
+  }
+
+  walk(json);
+  return sections;
+}
+
 /// Pisahkan hasil pencarian mentah menjadi kategori berdasarkan judul shelf.
 SearchResults parseSearchResponse(Map<String, dynamic> json) {
   // Toleran: kategorikan dari keseluruhan pohon (shelf sumber dapat bergeser susunannya).
