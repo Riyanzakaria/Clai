@@ -152,7 +152,7 @@ void main() {
       expect(r.offset, 0);
     });
 
-    test('403 pada URL utama → beralih ke cadangan muxed & lengket', () async {
+    test('403 pada URL utama → coba-ulang dulu, lalu beralih ke cadangan muxed & lengket', () async {
       final hits = <String>[];
       final src = ResolvingAudioSource(track, () async => info('https://contoh/adaptif'),
           resolveFallback: () async => info('https://contoh/muxed'),
@@ -163,14 +163,18 @@ void main() {
             }
             return FetchedBytes(statusCode: 206, contentLength: 10,
                 contentRange: 'bytes $start-${start + 9}/100', body: Stream.value(List.filled(10, 3)));
-          });
+          })
+        // Tahap 3: coba-ulang sebelum vonis adalah perilaku baku kini
+        // (dulu tes ini menegaskan "sekali coba" — digantikan instruksi
+        // penanganan error 2026-11-08: 403 pertama bukan kematian).
+        ..retryDelays = [Duration.zero, Duration.zero];
       final r1 = await src.request(0, null);
       expect(r1.contentLength, 10);
       expect(src.fallbackActive, isTrue);
       final r2 = await src.request(10, 20);
       expect(r2.contentLength, 10);
-      // adaptif hanya dicoba sekali; sesudahnya semua ke muxed
-      expect(hits.where((h) => h.contains('adaptif')).length, 1);
+      // adaptif dicoba 1+2 coba-ulang pada jendela pertama; sesudahnya lengket ke muxed
+      expect(hits.where((h) => h.contains('adaptif')).length, 3);
       expect(hits.where((h) => h.contains('muxed')).length, 2);
     });
 

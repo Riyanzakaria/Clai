@@ -172,32 +172,37 @@ void main() {
 
   group('butir B — gradasi chrome bawah', () {
     test(
-      'tanpa aksen: gradasi netral 3 hentian, zona nav semi-transparan '
-      '(Koreksi Gradasi)',
+      'tanpa aksen: gradasi netral profil Perbaikan Scrim (0,88 → 0,97 '
+      'tertutup kartu → 0,99 tepi bawah kartu → 1,00 zona nav)',
       () {
-        final colors = chromeScrimColors(null);
-        expect(colors.length, 3);
-        expect(colors[0], ClaiColors.base.withValues(alpha: kScrimNavTopAlpha));
-        expect(colors[1], ClaiColors.base.withValues(alpha: kScrimNavMidAlpha));
-        expect(colors[2], ClaiColors.base.withValues(alpha: kScrimBottomAlpha));
-        expect(kChromeScrimStops, [0, 0.5, 1.0]);
+        final g = chromeScrimGradient(null, 71);
+        expect(g.colors.length, 5);
+        expect(g.colors[0], ClaiColors.base.withValues(alpha: 0.88));
+        expect(g.colors[1], ClaiColors.base.withValues(alpha: 0.97));
+        expect(g.colors[2], ClaiColors.base.withValues(alpha: 0.99));
+        expect(g.colors[3], ClaiColors.base.withValues(alpha: 1.0));
+        expect(g.colors[4], ClaiColors.base.withValues(alpha: 1.0));
+        expect(g.stops, [0, 6 / 71, 16 / 71, 40 / 71, 1.0]);
       },
     );
 
     test(
-      'dengan aksen: tinta aman semi-transparan, memudar ke base di tepi bawah',
+      'dengan aksen: tinta aman mengikuti profil yang sama, menggeser '
+      'ke base di zona nav',
       () {
         const tonal = Color(0xFF5D191F);
-        final colors = chromeScrimColors(tonal);
+        final g = chromeScrimGradient(tonal, 71);
+        final colors = g.colors;
         final surface = readableAccentSurface(tonal);
-        expect(colors[0], surface.withValues(alpha: kScrimNavTopAlpha));
-        expect(colors[1], surface.withValues(alpha: kScrimNavMidAlpha));
+        expect(colors[0], surface.withValues(alpha: 0.88));
+        expect(colors[1], surface.withValues(alpha: 0.97));
+        expect(colors[2], surface.withValues(alpha: 0.99));
         expect(
-          colors[2],
+          colors[4],
           Color.lerp(surface, ClaiColors.base, 0.5)!
-              .withValues(alpha: kScrimBottomAlpha),
+              .withValues(alpha: 1.0),
         );
-        // Zona nav (hentian bawah) tetap kontras untuk label redup —
+        // Zona nav (hentian terminal) tetap kontras untuk label redup —
         // dinilai pada piksel EFEKTIF: tinta beralfa di atas latar dasar
         // (keadaan konten tergelap di balik chrome).
         ({int r, int g, int b}) rgbOf(Color c) => (
@@ -205,9 +210,9 @@ void main() {
           g: (c.g * 255).round(),
           b: (c.b * 255).round(),
         );
-        final bottomRgb = rgbOf(colors[2]);
+        final bottomRgb = rgbOf(colors[4]);
         final baseRgb = rgbOf(ClaiColors.base);
-        final a = colors[2].a;
+        final a = colors[4].a;
         final effective = (
           r: (a * bottomRgb.r + (1 - a) * baseRgb.r).round(),
           g: (a * bottomRgb.g + (1 - a) * baseRgb.g).round(),

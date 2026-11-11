@@ -74,6 +74,21 @@ void main() {
       expect(e.continuation.map((x) => x.id), ['4']);
     });
 
+    test('jumpTo mencatat trek yang ditinggalkan ke riwayat sesi (lengan E)', () {
+      // Regresi vonis T3: trek berjalan yang dilompati hilang dari played
+      // sehingga isi-ulang menawarkannya lagi di sesi yang sama.
+      final e = QueueEngine();
+      e.playContext(PlayContext(kind: 'album', label: 'A', tracks: [t('1'), t('2'), t('3'), t('4')]), 0);
+      e.jumpTo(const TrackKey('ytmusic', '3'));
+      expect(e.played.map((x) => x.id), ['1']);
+      // Lompat ke trek yang sama dengan yang berjalan: tidak dicatat ganda.
+      e.jumpTo(const TrackKey('ytmusic', '3'));
+      expect(e.played.map((x) => x.id), ['1']);
+      // Lompat berikutnya mencatat trek yang ditinggalkan lagi.
+      e.jumpTo(const TrackKey('ytmusic', '4'));
+      expect(e.played.map((x) => x.id), ['1', '3']);
+    });
+
     test('snapshot & restore membulatkan antrean', () {
       final e = QueueEngine();
       final all = [t('1'), t('2'), t('3'), t('m')];
