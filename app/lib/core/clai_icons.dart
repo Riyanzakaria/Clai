@@ -280,6 +280,10 @@ class ClaiIcons {
     p.close();
     return p;
   }
+  static final arrowBack = ClaiIconData(stroke: _join([
+    _seg(19.5, 12, 5, 12),
+    _s((p) => p..moveTo(11.3, 5.8)..lineTo(5.2, 12)..lineTo(11.3, 18.2)),
+  ]));
   static final chevronDown = ClaiIconData(stroke: _s((p) => p..moveTo(5.5, 9.3)..lineTo(12, 15.8)..lineTo(18.5, 9.3)));
   static final chevronRight = ClaiIconData(stroke: _s((p) => p..moveTo(9.3, 5.5)..lineTo(15.8, 12)..lineTo(9.3, 18.5)));
   static final close = ClaiIconData(stroke: _join([_seg(6, 6, 18, 18), _seg(18, 6, 6, 18)]));
@@ -399,4 +403,55 @@ class ClaiIcons {
     stroke: _circ(12, 12, 8.8),
     fill: _s((p) => p..moveTo(10.2, 8.7)..lineTo(15.7, 12)..lineTo(10.2, 15.3)..close()),
   );
+
+  // --- Ronde Koreksi Komposisi F3 (papan 04 & 06): glif yang memang
+  // digambar papan tetapi belum ada di set — digambar dalam bahasa yang
+  // sama (kisi 24, coretan 1,8, ujung membulat), bukan glyph pinjaman.
+  /// Tangkap: empat siku bingkai pindai + garis lintang (papan 04).
+  static final capture = ClaiIconData(stroke: _join([
+    _s((p) => p..moveTo(8.5, 4)..lineTo(5.2, 4)..lineTo(4, 5.2)..lineTo(4, 8.5)),
+    _s((p) => p..moveTo(15.5, 4)..lineTo(18.8, 4)..lineTo(20, 5.2)..lineTo(20, 8.5)),
+    _s((p) => p..moveTo(8.5, 20)..lineTo(5.2, 20)..lineTo(4, 18.8)..lineTo(4, 15.5)),
+    _s((p) => p..moveTo(15.5, 20)..lineTo(18.8, 20)..lineTo(20, 18.8)..lineTo(20, 15.5)),
+    _seg(4.5, 12, 19.5, 12),
+  ]));
+
+  /// Kontras: lingkaran separuh terisi (Tema Dinamis, papan 06).
+  static final contrast = ClaiIconData(
+    stroke: _circ(12, 12, 8.6),
+    fill: _s((p) => p..addArc(
+        Rect.fromCircle(center: const Offset(12, 12), radius: 8.6),
+        -math.pi / 2, math.pi)),
+  );
+
+  /// Matahari: cakram + delapan sinar (Kekuatan Ambien, papan 06).
+  static final sun = ClaiIconData(stroke: _join([
+    _circ(12, 12, 4.1),
+    _seg(12, 3.4, 12, 5.4), _seg(12, 18.6, 12, 20.6),
+    _seg(3.4, 12, 5.4, 12), _seg(18.6, 12, 20.6, 12),
+    _seg(5.9, 5.9, 7.3, 7.3), _seg(16.7, 16.7, 18.1, 18.1),
+    _seg(18.1, 5.9, 16.7, 7.3), _seg(7.3, 16.7, 5.9, 18.1),
+  ]));
+
+  /// Denyut: garis nadi (Ambien Bernapas, papan 06).
+  static final pulse = ClaiIconData(stroke: _s((p) => p
+    ..moveTo(3, 12)..lineTo(7.8, 12)..lineTo(10.3, 6.2)..lineTo(13.7, 17.8)
+    ..lineTo(16.2, 12)..lineTo(21, 12)));
+
+  /// Bola dunia: lingkaran + meridian (Bahasa, hub Pengaturan).
+  static final globe = ClaiIconData(stroke: _join([
+    _circ(12, 12, 8.6),
+    _s((p) => p..addOval(Rect.fromCenter(
+        center: const Offset(12, 12), width: 9.5, height: 17.2))),
+    _seg(3.4, 12, 20.6, 12),
+  ]));
+
+  /// Pengukur: busur + jarum (Kurangi Efek, papan 06).
+  static final gauge = ClaiIconData(stroke: _join([
+    _s((p) => p..addArc(
+        Rect.fromCircle(center: const Offset(12, 14.5), radius: 8),
+        math.pi, math.pi)),
+    _seg(12, 14.5, 15.8, 9.8),
+    _seg(4, 19.5, 20, 19.5),
+  ]));
 }

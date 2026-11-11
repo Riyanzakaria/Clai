@@ -33,3 +33,49 @@ class ClaiSpace {
 class ClaiRadius {
   static const cover = 8.0, card = 16.0, sheet = 20.0, pill = 999.0;
 }
+
+/// Token v4.0 (DS v4.0 — "Volt Dimodernkan", Workstream E F3): lapis
+/// SUASANA di samping lapis sinyal Volt. Volt tetap satu-satunya aksen
+/// fungsional; nilai-nilai di sini hanya mengatur tinta sampul
+/// ("Sampul Hidup") dan bahan kaca. Matematika derivasinya hidup di
+/// `services/ambient_theme.dart` (murni & teruji).
+class ClaiAmbient {
+  /// Latar pekat di balik gugus chrome (resep papan varian Beranda A):
+  /// di bawah tepi atas kartu mini, konten TIDAK lagi menembus — gradasi
+  /// panjang di atas kartulah yang meleburkan konten ke pekat ini.
+  static const chromeBacking = Color(0xFF060609);
+
+  /// Resep kaca (DS v4.0 §3-P2): blur latar + tint tinta + tepi cahaya.
+  static const glassBlur = 24.0;
+  static const glassTintAlpha = 0.15; // pita resep 0,12–0,18
+  static const glassEdgeAlpha = 0.20;
+
+  /// Plafon kekuatan wash per kekuatan ambien terpilih (KD-3).
+  /// Ronde Sapuan 8045 (vonis perangkat pemilik 2026-11-10): plafon
+  /// Hidup NAIK 0,28 → 0,44 — pada 0,28 ruangan Beranda tidak terbaca
+  /// mengambil warna sampul ("kurang pekat dalam mode Hidup").
+  /// Penjaga keterbacaan tetap berhak menurunkan dari plafon ini
+  /// (undakan penjaga di ambient_theme.dart); Tenang TIDAK berubah.
+  static const washCapLively = 0.44; // "Hidup" (bawaan terpilih)
+  static const washCapCalm = 0.16; // "Tenang"
+
+  /// Plafon wash di Player: ruang lagu itu sendiri boleh lebih pekat.
+  /// 8045: 0,40 → 0,50 (kepala ruang untuk ayunan napas yang terlihat).
+  static const washCapPlayer = 0.50;
+
+  /// Dosis tinta layar tugas/baca relatif terhadap dosis layar pahlawan.
+  static const taskDose = 0.40;
+
+  /// Alfa glow di balik sampul Player (amb/glow).
+  /// 8045 (vonis "ambien bernapas belum berfungsi"): sinyal napas di
+  /// HP pemilik TERBUKTI berayun penuh (level 1,00 · faktor 1,30) —
+  /// kegagalannya VISIBILITAS: pada alfa dasar 0,45 ayunan ±30%
+  /// hanya menggerakkan ±0,135 alfa di rim glow yang sempit. Dasar
+  /// naik ke 0,65 → ayunan ±0,195 alfa pada bidang glow yang sama,
+  /// frekuensi amplop tetap < 0,15 Hz (Anggaran Gerak utuh).
+  static const glowAlpha = 0.65;
+
+  /// Jendela "tinta menetap": ganti trek lebih cepat dari ini tidak
+  /// mengganti tinta sampai trek bertahan selama jendela ini (anti-kedip).
+  static const settleWindow = Duration(milliseconds: 1500);
+}
