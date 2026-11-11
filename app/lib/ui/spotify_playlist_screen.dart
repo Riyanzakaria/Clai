@@ -9,12 +9,23 @@ import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../providers/spotify/spotify_web.dart';
 import '../l10n/l10n.dart';
+import '../services/ambient_theme.dart';
+import 'cover_accent_glow.dart';
 import 'widgets.dart';
 
 /// Halaman playlist publik Spotify (F2 butir 4): metadata dibaca TANPA akun
 /// lewat token web anonim; audio TIDAK dari Spotify — setiap trek dicocokkan
-/// ke YouTube Music dan yang diputar adalah hasil cocoknya. Trek yang tidak
+/// ke katalog dan yang diputar adalah hasil cocoknya. Trek yang tidak
 /// tercocokkan DITANDAI jujur, tidak pernah diganti lagu lain diam-diam.
+///
+/// Gelombang 2 (8048): komposisi papan — kepala (kicker + nama display
+/// 28 + garis asal + garis kejujuran), PANEL pencocokan (hitungan besar
+/// tabular, bilah Volt = proporsi cocok persis, tombol Putar yang Cocok
+/// bernada sampul diperdalam), lalu daftar Trek. Perilaku mesin
+/// pencocokan (3 pekerja, prioritaskan ketukan, coba-lagi paksa) utuh;
+/// tombol Putar tetap bisa diketuk selama pencocokan berjalan (perilaku
+/// terbangun: memutar yang sudah cocok) — papan menggambarnya redup,
+/// tetapi mengunci fungsi yang hidup bukan penyesuaian komposisi.
 class SpotifyPlaylistScreen extends ConsumerStatefulWidget {
   final String playlistId;
   const SpotifyPlaylistScreen({super.key, required this.playlistId});
@@ -151,95 +162,291 @@ class _SpotifyPlaylistScreenState extends ConsumerState<SpotifyPlaylistScreen> {
   Widget build(BuildContext context) {
     final pl = _pl;
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.spTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
       body: _loading
-          ? const LoadingSkeleton()
+          ? _withBackChip(context, const LoadingSkeleton())
           : _error != null
-              ? ErrorState(message: _error!, onRetry: _load)
+              ? _withBackChip(
+                  context, ErrorState(message: _error!, onRetry: _load))
               : pl == null
-                  ? EmptyState(icon: ClaiIcons.queue, message: context.l10n.spUnavailable)
+                  ? _withBackChip(
+                      context,
+                      EmptyState(
+                          icon: ClaiIcons.queue,
+                          message: context.l10n.spUnavailable))
                   : Column(children: [
-                      _header(pl),
-                      Expanded(child: ListView.builder(
-                        padding: EdgeInsets.only(bottom: bottomChromeClearance(context)),
-                        itemCount: pl.tracks.length,
-                        itemBuilder: (context, i) => _row(pl, i),
-                      )),
+                      _header(context, pl),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: EdgeInsets.only(
+                              bottom: bottomChromeClearance(context)),
+                          itemCount: pl.tracks.length,
+                          itemBuilder: (context, i) => _row(pl, i),
+                        ),
+                      ),
                     ]),
     );
   }
 
-  Widget _header(SpotifyPlaylistData pl) {
-    final matchedCount = _states.where((s) => s == _MState.matched).length;
-    final doneCount = _states.where((s) => s == _MState.matched || s == _MState.unmatched).length;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          CoverArt(url: pl.imageUrl, size: 110, label: pl.name, radius: 12),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(pl.name, maxLines: 3, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ClaiColors.ink, height: 1.2)),
-            const SizedBox(height: 6),
-            Text(context.l10n.spOwnerLine(pl.totalCount, pl.ownerName.isEmpty ? 'Spotify' : pl.ownerName),
-                style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
-            const SizedBox(height: 6),
-            Text(context.l10n.spMeta,
-                style: const TextStyle(color: ClaiColors.inkFaint, fontSize: 12, height: 1.4)),
-          ])),
-        ]),
-        if (pl.description.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Text(pl.description, maxLines: 3, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13, height: 1.45)),
-        ],
-        const SizedBox(height: 10),
-        Row(children: [
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: ClaiColors.accent, foregroundColor: ClaiColors.onAccent),
-            onPressed: _playAll,
-            icon: ClaiIcon(ClaiIcons.play, size: 18, color: ClaiColors.onAccent),
-            label: Text(context.l10n.spPlayMatched),
+  Widget _withBackChip(BuildContext context, Widget child) => Stack(
+        children: [
+          Positioned.fill(child: child),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 12,
+            left: 16,
+            child: const GlassBackChip(),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(
-              doneCount < pl.tracks.length
-                  ? context.l10n.spMatching(matchedCount, pl.tracks.length)
-                  : context.l10n.spMatched(matchedCount, pl.tracks.length),
-              style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 12.5))),
-        ]),
-        if (pl.nonTrackItems > 0)
-          Padding(padding: const EdgeInsets.only(top: 6),
-              child: Text(context.l10n.spSkippedItems(pl.nonTrackItems),
-                  style: const TextStyle(color: ClaiColors.inkFaint, fontSize: 12))),
-        if (pl.truncated)
-          Padding(padding: const EdgeInsets.only(top: 6),
-              child: Text(context.l10n.spHuge,
-                  style: const TextStyle(color: ClaiColors.inkFaint, fontSize: 12))),
-      ]),
+        ],
+      );
+
+  Widget _header(BuildContext context, SpotifyPlaylistData pl) {
+    final l = context.l10n;
+    final matchedCount = _states.where((s) => s == _MState.matched).length;
+    final doneCount = _states
+        .where((s) => s == _MState.matched || s == _MState.unmatched)
+        .length;
+    final matching = doneCount < pl.tracks.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              16, MediaQuery.paddingOf(context).top + 12, 16, 0),
+          child: const GlassBackChip(),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DimKicker(l.spKicker),
+              const SizedBox(height: 8),
+              Text(
+                pl.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: displayStyle(28),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l.spOwnerLine(
+                    pl.totalCount, pl.ownerName.isEmpty ? 'Spotify' : pl.ownerName),
+                style: const TextStyle(
+                    color: ClaiColors.inkSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                l.spMeta,
+                style: const TextStyle(
+                    color: ClaiColors.inkFaint, fontSize: 12, height: 1.4),
+              ),
+              if (pl.description.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  pl.description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: ClaiColors.inkSecondary, fontSize: 13, height: 1.45),
+                ),
+              ],
+            ],
+          ),
+        ),
+        // PANEL PENCOCOKAN.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: ClaiColors.surface1,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    matching
+                        ? l.spMatching(matchedCount, pl.tracks.length)
+                        : l.spMatched(matchedCount, pl.tracks.length),
+                    maxLines: 1,
+                    style: heroStyle(28),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: pl.tracks.isEmpty
+                        ? 0
+                        : matchedCount / pl.tracks.length,
+                    minHeight: 6,
+                    backgroundColor: ClaiColors.surface3,
+                    valueColor:
+                        const AlwaysStoppedAnimation<Color>(ClaiColors.accent),
+                  ),
+                ),
+                if (pl.nonTrackItems > 0) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    l.spSkippedItems(pl.nonTrackItems),
+                    style: const TextStyle(
+                        color: ClaiColors.inkFaint, fontSize: 12),
+                  ),
+                ],
+                if (pl.truncated) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    l.spHuge,
+                    style: const TextStyle(
+                        color: ClaiColors.inkFaint, fontSize: 12),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                CoverAccentBuilder(
+                  artworkUrl: pl.imageUrl,
+                  builder: (context, tonal) {
+                    final tone = tonal == null
+                        ? ClaiColors.accent
+                        : deepToneFromColor(tonal);
+                    final onTone = onProgressTone(tone);
+                    return Material(
+                      color: tone,
+                      borderRadius: BorderRadius.circular(999),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: _playAll,
+                        child: SizedBox(
+                          height: 52,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ClaiIcon(ClaiIcons.play, size: 20, color: onTone),
+                              const SizedBox(width: 8),
+                              Text(
+                                l.spPlayMatched,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: onTone,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+          child: DimKicker(l.spSectionTracks),
+        ),
+      ],
     );
   }
 
   Widget _row(SpotifyPlaylistData pl, int i) {
     final t = pl.tracks[i];
     final st = _states[i];
-    return ListTile(
-      leading: CoverArt(url: t.artworkUrl, size: 48, label: t.title, radius: 6),
-      title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: ClaiColors.ink, fontWeight: FontWeight.w500)),
-      subtitle: Text(t.artistNames, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: ClaiColors.inkSecondary)),
+    if (st == _MState.unmatched) {
+      // Baris tak-cocok: diredupkan, keterangan jujur di bawah artis,
+      // TIDAK pernah disembunyikan; coba-lagi paksa tetap satu ketuk
+      // (dulu chip "Tak cocok", kini tombol teks di kanan).
+      return InkWell(
+        onTap: () => _onRowTap(i),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Row(
+            children: [
+              Opacity(
+                opacity: 0.55,
+                child: CoverArt(url: t.artworkUrl, size: 48, label: t.title, radius: 8),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Opacity(
+                  opacity: 0.55,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: ClaiColors.ink),
+                      ),
+                      Text(
+                        t.artistNames,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 13, color: ClaiColors.inkSecondary),
+                      ),
+                      Text(
+                        context.l10n.spNoCatalog,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12, color: ClaiColors.inkFaint),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _matchOne(i, force: true),
+                child: Text(
+                  context.l10n.commonRetry,
+                  style: const TextStyle(color: ClaiColors.accent),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return EntityRow(
+      artworkUrl: t.artworkUrl,
+      title: t.title,
+      subtitle: t.artistNames,
       trailing: switch (st) {
-        _MState.matching => const SizedBox(width: 18, height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2, color: ClaiColors.accent)),
-        _MState.unmatched => ActionChip(
-            label: Text(context.l10n.spNoMatch, style: const TextStyle(fontSize: 11.5, color: ClaiColors.warning)),
-            backgroundColor: ClaiColors.surface2, side: BorderSide.none,
-            onPressed: () => _matchOne(i, force: true)),
-        _MState.matched => ClaiIcon(ClaiIcons.check, size: 18, color: ClaiColors.accent),
-        _MState.unknown => Text(t.duration == null ? '' : formatDuration(t.duration!),
-            style: const TextStyle(color: ClaiColors.inkFaint, fontSize: 12)),
+        _MState.matching => const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: ClaiColors.accent)),
+        _MState.matched => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (t.duration != null) ...[
+                Text(
+                  formatDuration(t.duration!),
+                  style: const TextStyle(
+                    color: ClaiColors.inkFaint,
+                    fontSize: 12,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              ClaiIcon(ClaiIcons.check, size: 18, color: ClaiColors.accent),
+            ],
+          ),
+        _ => Text(
+            t.duration == null ? '' : formatDuration(t.duration!),
+            style:
+                const TextStyle(color: ClaiColors.inkFaint, fontSize: 12),
+          ),
       },
       onTap: () => _onRowTap(i),
     );

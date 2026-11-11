@@ -124,13 +124,23 @@ class _SleepResumeCardState extends ConsumerState<SleepResumeCard> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Container(
         padding: const EdgeInsets.all(14),
+        // 8045: garis tepi aksen dibuang (hukum DS: kedalaman dari
+        // tonal, bukan garis) — ikon bulan kini berkotak tonal dan
+        // tombol Lanjut = pil isi Volt seperti aksi utama lain.
         decoration: BoxDecoration(
-            color: ClaiColors.surface2,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ClaiColors.accent.withValues(alpha: 0.35))),
+            color: ClaiColors.surface1,
+            borderRadius: BorderRadius.circular(16)),
         child: Row(children: [
-          ClaiIcon(ClaiIcons.moon, color: ClaiColors.accent),
-          const SizedBox(width: 10),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: ClaiColors.surface2,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(child: ClaiIcon(ClaiIcons.moon, color: ClaiColors.accent, size: 20)),
+          ),
+          const SizedBox(width: 12),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,10 +156,15 @@ class _SleepResumeCardState extends ConsumerState<SleepResumeCard> {
                     style: const TextStyle(
                         color: ClaiColors.inkSecondary, fontSize: 13)),
               ])),
-          TextButton(
+          FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: ClaiColors.accent,
+                foregroundColor: ClaiColors.onAccent,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                minimumSize: const Size(0, 36),
+              ),
               onPressed: _resume,
-              child: Text(context.l10n.sleepCardResume,
-                  style: const TextStyle(color: ClaiColors.accent))),
+              child: Text(context.l10n.sleepCardResume)),
           IconButton(
               icon: ClaiIcon(ClaiIcons.close, color: ClaiColors.inkFaint),
               onPressed: _dismiss),

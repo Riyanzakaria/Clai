@@ -8,6 +8,7 @@ import '../app.dart';
 import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../services/voice_service.dart';
+import 'widgets.dart';
 
 Future<void> openVoiceSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -54,25 +55,15 @@ class _VoiceSheetState extends ConsumerState<VoiceSheet> {
   @override
   Widget build(BuildContext context) {
     final voice = ref.watch(voiceServiceProvider);
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 14, 20, 28 + bottomInset),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Center(
-            child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: ClaiColors.surface3,
-                    borderRadius: BorderRadius.circular(2)))),
+        const Center(child: SheetHandle()),
         const SizedBox(height: 18),
         Row(children: [
           Expanded(
-              child: Text(context.l10n.voiceTitle,
-                  style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: ClaiColors.ink))),
+              child: Text(context.l10n.voiceTitle, style: displayStyle(20))),
           IconButton(
               icon: ClaiIcon(ClaiIcons.close, color: ClaiColors.inkSecondary),
               onPressed: () async {
@@ -129,15 +120,24 @@ class _VoiceSheetState extends ConsumerState<VoiceSheet> {
         ],
         if (voice.state == VoiceState.awaitingChoice)
           for (var i = 0; i < voice.candidates.length; i++)
-            ListTile(
-              title: Text(voice.candidates[i].title,
-                  style: const TextStyle(color: ClaiColors.ink)),
-              subtitle: Text(voice.candidates[i].artistNames,
-                  style: const TextStyle(color: ClaiColors.inkSecondary)),
-              leading: CircleAvatar(
-                  backgroundColor: ClaiColors.surface2,
+            EntityRow(
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: ClaiColors.surface2,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
                   child: Text('${i + 1}',
-                      style: const TextStyle(color: ClaiColors.accent))),
+                      style: const TextStyle(
+                          color: ClaiColors.accent,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ),
+              title: voice.candidates[i].title,
+              subtitle: brandSafeSubtitle(voice.candidates[i].artistNames),
               onTap: () => voice.handleText(i == 0 ? 'first' : 'second'),
             ),
         const Spacer(),
@@ -146,10 +146,8 @@ class _VoiceSheetState extends ConsumerState<VoiceSheet> {
             child: TextField(
               controller: _typed,
               style: const TextStyle(color: ClaiColors.ink),
-              decoration: InputDecoration(
+              decoration: claiFieldDecoration(
                 hintText: context.l10n.voiceInputHint,
-                hintStyle: TextStyle(color: ClaiColors.inkFaint),
-                border: OutlineInputBorder(),
               ),
               onSubmitted: (v) {
                 if (v.trim().isEmpty) return;

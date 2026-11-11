@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app.dart';
 import '../core/clai_icons.dart';
+import '../core/display_text.dart';
 import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../l10n/l10n.dart';
 import '../player/queue_engine.dart' as qe;
+import '../services/ambient_theme.dart';
+import 'glass.dart';
 import 'widgets.dart';
 
 /// Daftar satu seksi antrean yang bisa diurut-ulang (putaran v4, cacat 3).
@@ -77,7 +80,27 @@ class QueueSectionList extends StatelessWidget {
   }
 }
 
-/// Layar Antrian (DS 6.10 v3.1): ringkasan skala, saring > 50 trek, empat seksi selalu terpisah & berlabel asal.
+/// Nomor tampil (1-based) sebuah baris antrean pada urutan yang
+/// TERLIHAT pemakai (sesudah saring): seksi manual bernomor dari 1;
+/// seksi lanjutan MENERUSKAN hitungan sesudah baris manual yang
+/// terlihat; seksi lain (Putar Otomatis) tanpa nomor — urutannya saran
+/// mesin, bukan susunan pemakai. Murni & teruji (Redesign 8051 mengunci
+/// perilaku papan 03 ini sebagai regresi).
+int? queueVisibleNumber({
+  required String section,
+  required int visibleManualCount,
+  required int positionInSection,
+}) =>
+    switch (section) {
+      'manual' => positionInSection + 1,
+      'continuation' => visibleManualCount + positionInSection + 1,
+      _ => null,
+    };
+
+/// Layar Antrian (DS 6.10 amendemen 4.10 — Redesign 8051): panggung
+/// hero trek berjalan, kapsul ringkasan skala, panel Acak Cerdas di
+/// bawah panggung, saring > 50 trek, seksi-seksi selalu terpisah &
+/// berlabel asal, penomoran dua digit menerus.
 class QueueScreen extends ConsumerStatefulWidget {
   const QueueScreen({super.key});
   @override
@@ -225,6 +248,22 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   /// ITEM itu — dengan "Putar Berikutnya"/"Tambah ke Antrian" berwujud
   /// PINDAH (item sudah di antrean; tanpa duplikat) dan "Hapus dari
   /// Antrian" yang sama seperti geser-hapus (dengan Urungkan).
+  /// Lencana AUTO papan 03 (butir (f), Ronde Sapuan 8045): dulu
+  /// teks Volt polos — kini lencana ber-outline Volt sesuai papan.
+  Widget _autoBadge() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          border: Border.all(color: ClaiColors.accent, width: 1),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(context.l10n.queueAutoBadge,
+            style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: ClaiColors.accent)),
+      );
+
   void _openItemMenu(String section, int index, Track t) {
     final handler = ref.read(audioHandlerProvider);
     showTrackContextSheet(
@@ -277,11 +316,25 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
     final engine = handler.engine;
+    // DS v4.0 (U3): kepala Antrean = kaca bertinta saat Tema Dinamis
+    // menyala (flexibleSpace kaca di kedua varian AppBar); tema mati →
+    // AppBar tonal v3.1 persis.
+    final amb = ref.watch(ambientControllerProvider.select(ambientUiSlice)); // 8053 B(i): irisan tanpa napas
+    final ambOn = amb.enabled;
     return ScaffoldMessenger(
       key: _messengerKey,
       child: Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: _selecting
           ? AppBar(
+              backgroundColor: ambOn ? Colors.transparent : null,
+              flexibleSpace: ambOn
+                  ? const GlassSurface(
+                      radius: 0,
+                      darken: 0.35,
+                      child: SizedBox.expand(),
+                    )
+                  : null,
               leading: IconButton(
                 icon: ClaiIcon(ClaiIcons.close),
                 tooltip: context.l10n.a11yClose,
@@ -313,6 +366,14 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               ],
             )
           : AppBar(
+              backgroundColor: ambOn ? Colors.transparent : null,
+              flexibleSpace: ambOn
+                  ? const GlassSurface(
+                      radius: 0,
+                      darken: 0.35,
+                      child: SizedBox.expand(),
+                    )
+                  : null,
               title: Text(context.l10n.queueTitle),
               actions: [
                 TextButton(
@@ -336,11 +397,10 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
       bottomNavigationBar: _selecting
           ? SafeArea(
               child: Container(
-                decoration: const BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: ClaiColors.divider),
-                  ),
-                ),
+                // 8045: bilah pilih-banyak = permukaan tonal, bukan
+                // garis rambut di tepi atasnya (bahasa DS: kedalaman
+                // dari tonal, bukan garis tepi).
+                color: ClaiColors.surface1,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 child: Row(
@@ -399,13 +459,35 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               t.title.toLowerCase().contains(_filter) || t.artistNames.toLowerCase().contains(_filter);
           List<int> visibleIdx(List<Track> section) =>
               [for (var i = 0; i < section.length; i++) if (match(section[i])) i];
-          Widget sectionHeader(String label, {Widget? trailing}) => Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-                child: Row(children: [
-                  Expanded(child: Text(label.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .6, color: ClaiColors.inkFaint))),
-                  if (trailing != null) trailing,
-                ]),
-              );
+          // Label seksi Antrian = type/micro fungsional (DS 6.10); saat
+          // Tema Dinamis menyala ia mengambil bahasa kicker KD-6 yang
+          // sama seperti kepala seksi layar lain (Volt, renggang 1,6) —
+          // Kampanye Rombak UI Total, Batch 2. Tema mati → mikro redup
+          // v3.1 persis.
+          // Redesign 8051: kicker seksi kini didahului TITIK Volt 6 dp
+          // dan boleh membawa HITUNGAN seksi terlihat ("BERIKUTNYA (3)")
+          // — bahasa frame Stitch "Antrian — Clai (Redesign)".
+          Widget sectionHeader(String label, {Widget? trailing, int? count}) {
+            final shown = count != null ? '$label ($count)' : label;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
+              child: Row(children: [
+                if (ambOn) ...[
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                        color: ClaiColors.accent, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(child: ambOn
+                    ? KickerLabel(shown)
+                    : Text(shown.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .6, color: ClaiColors.inkFaint))),
+                if (trailing != null) trailing,
+              ]),
+            );
+          }
           // Satu baris item lanjutan, sadar mode:
           // - normal: ketuk = lompat putar; ⋮ = menu konteks penuh atas
           //   item itu (Butir 3); tekan-lama = masuk mode pilih (Butir 2);
@@ -414,25 +496,25 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           // - pilih: ketuk = alih centang; ⋮ dan gagang disembunyikan
           //   agar ketukan murni untuk memilih (Butir 3c).
           Widget queueRow(String section, int index, Track t,
-              {Widget? trail, bool auto = false}) {
+              {Widget? trail, bool auto = false, int? number}) {
             if (_selecting) {
               return SongRow(
                 track: t,
                 showMenu: false,
+                number: number,
+                twoDigitNumber: number != null,
+                dimmed: auto,
                 selected: _isSelected(section, t),
                 onTap: () => _toggleSelected(section, t),
-                trailing: auto
-                    ? Text(context.l10n.queueAutoBadge,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: ClaiColors.accent))
-                    : null,
+                trailing: auto ? _autoBadge() : null,
               );
             }
             return SongRow(
               track: t,
               showMenu: true,
+              number: number,
+              twoDigitNumber: number != null,
+              dimmed: auto,
               onTap: () => handler.jumpTo(t.key),
               onLongPress: () => _enterSelection(section, t),
               onMenuPressed: () => _openItemMenu(section, index, t),
@@ -442,9 +524,22 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
 
           Widget sectionList(String section, List<Track> tracks) {
             final idxs = visibleIdx(tracks);
+            // Papan 03 (butir (f)): baris Berikutnya BERNOMOR sesuai
+            // urutan putar yang TERLIHAT pemakai: seksi manual dulu,
+            // lalu kelanjutan konteks (continuation) meneruskan hitungan
+            // yang sama — di kebanyakan konteks daftar manual kosong dan
+            // yang terlihat memang continuation-nya. Seksi lain (Putar
+            // Otomatis) tanpa nomor: urutannya saran mesin, bukan antrean
+            // yang disusun pemakai.
+            int? numberFor(int engineIndex) => queueVisibleNumber(
+                  section: section,
+                  visibleManualCount: visibleIdx(engine.manual).length,
+                  positionInSection: idxs.indexOf(engineIndex),
+                );
             if (_selecting) {
               return Column(children: [
-                for (final i in idxs) queueRow(section, i, tracks[i]),
+                for (final i in idxs)
+                  queueRow(section, i, tracks[i], number: numberFor(i)),
               ]);
             }
             return QueueSectionList(
@@ -456,6 +551,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 engineIndex,
                 t,
                 trail: handle,
+                number: numberFor(engineIndex),
               ),
               onReorder: (o, n) => handler.moveInQueue(section, o, n),
               onDismissed: (index, t) => _onRemoved(section, index, t),
@@ -470,7 +566,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               t,
               auto: auto,
               trail: auto
-                  ? Text(context.l10n.queueAutoBadge, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ClaiColors.accent))
+                  ? _autoBadge()
                   : ClaiIcon(ClaiIcons.dragHandle, color: ClaiColors.inkFaint, size: 20),
             );
             return Dismissible(
@@ -483,54 +579,217 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             );
           }
 
-          return ListView(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Text(summary,
-                  style: const TextStyle(fontSize: 13, color: ClaiColors.inkSecondary, fontFeatures: [FontFeature.tabularFigures()])),
-            ),
-            // Smart Shuffle (F2): hanya mengurut ulang Lanjutan — tidak menambah lagu.
+          // PANGGUNG HERO trek berjalan (Redesign 8051, DS 6.10
+          // amendemen 4.10 — frame Stitch "Antrian — Clai (Redesign)",
+          // keputusan pemilik 2026-11-10 20:42): trek berjalan bukan
+          // lagi kartu kaca berisi SongRow 48, melainkan panel panggung
+          // berwarna sampulnya sendiri (wash pahlawan palet ambien di
+          // atas surface-1, mengalir lintas-trek via TintCrossfade;
+          // tema mati → tonal surface-2), judul BESAR Clash Display
+          // berwarna Volt (doktrin Bab 1: judul sedang diputar selalu
+          // Volt), sampul 64 TERSARANG dalam wadah gelap, batang EQ
+          // menimpa sudut sampul, durasi tabular (disembunyikan bila
+          // belum termuat — tidak pernah karangan), dan ⋮ menu konteks
+          // trek yang sama persis seperti baris lama. Trek berjalan
+          // tetap di LUAR alam seleksi dan tanpa gestur lain —
+          // perilaku terkunci tidak berubah, hanya komposisinya.
+          Widget nowStage() {
+            final cur = engine.current!;
+            final panelColor = ambOn
+                ? Color.alphaBlend(
+                    amb.palette
+                        .washColor(AmbientSurfaceKind.hero, amb.strength),
+                    ClaiColors.surface1)
+                : ClaiColors.surface2;
+            Widget stage(Color color) => Container(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Row(children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: ClaiColors.base.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Stack(children: [
+                        CoverArt(
+                          url: cur.artworkUrl,
+                          size: 64,
+                          label: cur.title,
+                          radius: 10,
+                        ),
+                        Positioned(
+                          right: 3,
+                          bottom: 3,
+                          child: StreamBuilder<dynamic>(
+                            stream: handler.playbackState.stream,
+                            initialData: handler.playbackState.valueOrNull,
+                            builder: (context, ps) => EqualizerBars(
+                                animating: ps.data?.playing ?? false),
+                          ),
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            cleanDisplayTitle(cur.title),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: displayStyle(22)
+                                .copyWith(color: ClaiColors.accent),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            cleanDisplayArtist(cur.artistNames),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: ClaiColors.inkSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (cur.duration != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        formatDuration(cur.duration!),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: ClaiColors.inkSecondary,
+                            fontFeatures: [FontFeature.tabularFigures()]),
+                      ),
+                    ],
+                    IconButton(
+                      icon: ClaiIcon(ClaiIcons.moreVert,
+                          color: ClaiColors.inkSecondary),
+                      tooltip: context.l10n.a11yTrackOptions,
+                      onPressed: () =>
+                          showTrackContextSheet(context, ref, cur),
+                    ),
+                  ]),
+                );
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+              child: ambOn
+                  ? TintCrossfade(
+                      target: panelColor,
+                      reduceMotion: amb.reduceEffects,
+                      builder: (context, c) => stage(c),
+                    )
+                  : stage(panelColor),
+            );
+          }
+
+          return FiniteScrollPage(children: [
+            // Kicker seksi SEDANG DIPUTAR dipertahankan di atas
+            // panggung (penyesuaian arsitektur kita atas frame Stitch:
+            // tata bahasa kicker+titik yang sama seperti seksi lain,
+            // dan label seksi tetap ada untuk pembaca layar).
+            sectionHeader(context.l10n.queueNowPlaying),
+            nowStage(),
+            // KAPSUL ringkasan skala (Redesign 8051): kartu ringkasan
+            // papan 03 menyusut menjadi kapsul telemetri — titik Volt
+            // 6 dp + satu baris tabular yang isinya persis sama
+            // ("{n} trek · {total}{+}"); kejujuran penanda "+" tidak
+            // berubah.
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(children: [
-                Expanded(child: Text(
-                    context.l10n.queueSmartShuffleNote,
-                    style: const TextStyle(fontSize: 13, color: ClaiColors.inkSecondary, height: 1.4))),
-                Switch(
-                  value: engine.shuffle == qe.ShuffleMode.smart,
-                  activeThumbColor: ClaiColors.accent,
-                  onChanged: (v) => handler.setSmartShuffle(v),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: ClaiColors.surface2,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                          color: ClaiColors.accent, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(summary,
+                        style: const TextStyle(fontSize: 13, color: ClaiColors.inkSecondary, fontFeatures: [FontFeature.tabularFigures()])),
+                  ]),
                 ),
-              ]),
+              ),
+            ),
+            // Panel ACAK CERDAS (Redesign 8051): pindah ke BAWAH
+            // panggung & kapsul — panel tonal mandiri dengan kotak ikon
+            // tonal (§6.14); isi, sakelar, dan perilaku persis seperti
+            // kartu lamanya (hanya mengurut ulang Lanjutan, tidak
+            // pernah menambah lagu).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: ClaiColors.surface1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                child: Row(children: [
+                  tonalIconBox(ClaiIcons.shuffle),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(
+                      context.l10n.queueSmartShuffleNote,
+                      style: const TextStyle(fontSize: 13, color: ClaiColors.inkSecondary, height: 1.4))),
+                  Switch(
+                    value: engine.shuffle == qe.ShuffleMode.smart,
+                    onChanged: (v) => handler.setSmartShuffle(v),
+                  ),
+                ]),
+              ),
             ),
             if (full.length > 50)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: TextField(
                   decoration: InputDecoration(hintText: context.l10n.queueFilterHint, prefixIcon: ClaiIcon(ClaiIcons.search),
-                      filled: true, fillColor: ClaiColors.surface1, border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.all(Radius.circular(10)))),
+                      filled: true, fillColor: ClaiColors.surface1, border: const OutlineInputBorder(borderSide: BorderSide.none, borderRadius: BorderRadius.all(Radius.circular(999)))),
                   onChanged: (v) => setState(() => _filter = v.trim().toLowerCase()),
                 ),
               ),
-            sectionHeader(context.l10n.queueNowPlaying),
-            SongRow(track: engine.current!, showMenu: true),
             if (engine.manual.isNotEmpty) ...[
-              sectionHeader(context.l10n.queueUpNext),
+              sectionHeader(context.l10n.queueUpNext,
+                  count: visibleIdx(engine.manual).length),
               sectionList('manual', engine.manual),
             ],
             if (engine.continuation.isNotEmpty) ...[
-              sectionHeader(context.l10n.queueContinuation(engine.context?.label ?? context.l10n.queueContextFallback)),
+              sectionHeader(context.l10n.queueContinuation(engine.context?.label ?? context.l10n.queueContextFallback),
+                  count: visibleIdx(engine.continuation).length),
               sectionList('continuation', engine.continuation),
             ],
             sectionHeader(context.l10n.queueAutoplayHeader(engine.seeds.isNotEmpty ? engine.seeds.first.title : (engine.current?.title ?? '')),
                 trailing: Switch(
                   value: engine.autoplaySessionOn,
-                  activeThumbColor: ClaiColors.accent,
                   onChanged: (v) => handler.setAutoplaySession(v),
                 )),
             if (!engine.autoplayEnabled)
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Text(context.l10n.queueAutoplayOff, style: const TextStyle(fontSize: 13, color: ClaiColors.inkFaint))),
+            // Garis status seksi Putar Otomatis (papan 03, butir (f)):
+            // papan menggambar SATU garis status persisten di seksi
+            // ini; keadaan aktif-berisi sebelumnya tak punya garis
+            // sama sekali. Memakai teks strip yang sama seperti
+            // Player (G-3) — satu kalimat, satu makna.
+            if (engine.autoplayActive && engine.autoplay.isNotEmpty)
+              Padding(padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+                  child: Row(children: [
+                    ClaiIcon(ClaiIcons.infinity, size: 16, color: ClaiColors.accent),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(context.l10n.playerAutoplayStrip, style: const TextStyle(fontSize: 13, color: ClaiColors.inkSecondary))),
+                  ])),
             // L-11: label offline jujur pada seksi Putar Otomatis (DS 6.10).
             if (handler.offlineMode)
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -588,7 +847,7 @@ class _BulkAction extends StatelessWidget {
       label: semanticLabel ?? label,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(

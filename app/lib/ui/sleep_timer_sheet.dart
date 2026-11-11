@@ -8,6 +8,8 @@ import '../l10n/l10n.dart';
 import '../app.dart';
 import '../core/clai_icons.dart';
 import '../core/tokens.dart';
+import 'haptics.dart';
+import 'widgets.dart';
 
 Future<void> openSleepTimerSheet(BuildContext context) {
   return showModalBottomSheet<void>(
@@ -60,19 +62,9 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Center(
-            child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: ClaiColors.surface3,
-                    borderRadius: BorderRadius.circular(2)))),
+        const Center(child: SheetHandle()),
         const SizedBox(height: 18),
-        Text(context.l10n.sleepTitle,
-            style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: ClaiColors.ink)),
+        Text(context.l10n.sleepTitle, style: displayStyle(20)),
         const SizedBox(height: 6),
         Text(
             active == null
@@ -82,35 +74,36 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
                     : context.l10n.sleepSubEndOfSong,
             style: const TextStyle(color: ClaiColors.inkSecondary, height: 1.45)),
         const SizedBox(height: 18),
+        // Baris pilihan (Ronde Sapuan 8045): tata bahasa baris
+        // lembar DS — tinggi 52, label 17, ikon berkotak tonal;
+        // centang tetap glif Clai sendiri (D-35).
         for (final m in [15, 30, 45, 60])
-          ListTile(
-            title: Text(context.l10n.sleepMinutes(m),
-                style: const TextStyle(color: ClaiColors.ink)),
-            // D-35 (DS 6.13): tanda centang memakai glif Clai sendiri,
-            // bukan Icons.check Material.
-            trailing: active?.mode == 'minutes' && active?.minutes == m
-                ? ClaiIcon(ClaiIcons.check, color: ClaiColors.accent)
-                : null,
+          _timerRow(
+            icon: ClaiIcons.moon,
+            label: context.l10n.sleepMinutes(m),
+            checked: active?.mode == 'minutes' && active?.minutes == m,
             onTap: () {
+              ClaiHaptics.timerSet();
               ref.read(sleepServiceProvider).startMinutes(m);
               Navigator.of(context).pop();
             },
           ),
-        ListTile(
-          title: Text(context.l10n.sleepEndOfSong,
-              style: const TextStyle(color: ClaiColors.ink)),
-          trailing: active?.mode == 'endOfSong'
-              ? ClaiIcon(ClaiIcons.check, color: ClaiColors.accent)
-              : null,
+        _timerRow(
+          icon: ClaiIcons.musicNote,
+          label: context.l10n.sleepEndOfSong,
+          checked: active?.mode == 'endOfSong',
           onTap: () {
+            ClaiHaptics.timerSet();
             ref.read(sleepServiceProvider).startEndOfSong();
             Navigator.of(context).pop();
           },
         ),
         if (active != null)
-          ListTile(
-            title: Text(context.l10n.sleepCancel,
-                style: const TextStyle(color: ClaiColors.warning)),
+          _timerRow(
+            icon: ClaiIcons.close,
+            label: context.l10n.sleepCancel,
+            labelColor: ClaiColors.warning,
+            iconColor: ClaiColors.warning,
             onTap: () {
               ref.read(sleepServiceProvider).cancel();
               Navigator.of(context).pop();
@@ -119,4 +112,33 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
       ]),
     );
   }
+}
+
+
+/// Satu baris pilihan lembar Timer (DS 6.8): kotak ikon tonal 40,
+/// label 17, centang Volt di kanan bila pilihan ini yang aktif.
+Widget _timerRow({
+  required ClaiIconData icon,
+  required String label,
+  bool checked = false,
+  Color labelColor = ClaiColors.ink,
+  Color iconColor = ClaiColors.accent,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 52),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(children: [
+        tonalIconBox(icon, size: 40, iconSize: 20, color: iconColor),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(label,
+              style: TextStyle(color: labelColor, fontSize: 17)),
+        ),
+        if (checked) ClaiIcon(ClaiIcons.check, color: ClaiColors.accent),
+      ]),
+    ),
+  );
 }

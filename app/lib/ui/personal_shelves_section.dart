@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/l10n.dart';
 
 import '../app.dart';
-import '../core/tokens.dart';
 import '../services/track_metadata_healer.dart';
 import '../domain/models.dart';
+import 'glass.dart';
 import 'widgets.dart';
 
 /// Rak personal Beranda (F2 Batch 2): dirakit SEPENUHNYA dari data lokal —
@@ -120,16 +120,9 @@ class _PersonalShelvesSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
+        SectionHeader(
+          title,
           padding: const EdgeInsets.fromLTRB(16, 26, 16, 6),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: ClaiColors.ink,
-            ),
-          ),
         ),
         for (final t in _forgotten)
           SongRow(

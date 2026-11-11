@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +13,10 @@ import '../core/clai_icons.dart';
 import '../core/display_text.dart';
 import '../core/spring.dart';
 import '../core/tokens.dart';
+import 'glass.dart';
+import 'haptics.dart';
 import '../domain/models.dart';
+import '../services/waveform.dart';
 import '../l10n/l10n.dart';
 import 'content_screen.dart';
 import 'radio_screen.dart';
@@ -28,6 +32,53 @@ BoxDecoration claiCardDecoration({
 );
 
 /// Pegangan (handle) sheet baku — SATU bentuk untuk semua lembar bawah (v4.4).
+/// Halaman gulir FINITE — pola baku untuk halaman yang anak-anaknya
+/// berhingga dan tingginya sangat bervariasi (kartu grup Pengaturan,
+/// rak Beranda, panel EQ, kepala halaman konten, dst.).
+///
+/// Ronde 8052 (glitch gulir halus): `ListView(children:)` membangun
+/// anak secara malas dan MEMBUANG anak di luar jendela cache; luas
+/// gulir maksimumnya lalu hanya PERKIRAAN dari rata-rata anak yang
+/// sedang terbangun (terukur di hub Pengaturan: perkiraan awal 6311 dp
+/// runtuh ke 1807–2021 dp dan BERKEDIP di antara dua nilai saat
+/// menyeret). Setiap perkiraan ulang menyuntikkan koreksi offset yang
+/// MELAWAN seretan pengguna — isi maju lalu terpental kembali
+/// berulang-ulang, paling parah pada seretan lambat di zona dalam.
+/// Dengan seluruh anak dibangun eager di dalam Column, luas gulir
+/// dihitung dari geometri nyata dan KONSTAN sejak bingkai pertama:
+/// tidak ada perkiraan, tidak ada pembuangan, tidak ada koreksi.
+///
+/// Pakai HANYA untuk halaman finite (anak belasan, bukan daftar baris
+/// tak berhingga). Daftar baris panjang yang seragam tetap memakai
+/// builder/separated seperti biasa — rata-rata tingginya eksak.
+class FiniteScrollPage extends StatelessWidget {
+  final List<Widget> children;
+  final EdgeInsetsGeometry? padding;
+  final ScrollController? controller;
+  final ScrollPhysics? physics;
+
+  const FiniteScrollPage({
+    super.key,
+    required this.children,
+    this.padding,
+    this.controller,
+    this.physics,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: controller,
+      padding: padding,
+      physics: physics,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+}
+
 class SheetHandle extends StatelessWidget {
   const SheetHandle({super.key});
   @override
@@ -52,7 +103,8 @@ class PressableScale extends StatefulWidget {
   const PressableScale({
     super.key,
     required this.child,
-    this.pressedScale = 0.92,
+    // v4.0 (DS §6.2): skala tekan berevolusi 0,96 → 0,95.
+    this.pressedScale = 0.95,
   });
   @override
   State<PressableScale> createState() => _PressableScaleState();
@@ -72,7 +124,7 @@ class _PressableScaleState extends State<PressableScale>
 
   void _to(double target) {
     // D-05: gerak-reduksi sistem — tanpa spring; nilai ditetapkan langsung.
-    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
       _c.value = target;
       return;
     }
@@ -138,7 +190,7 @@ class CoverArt extends StatelessWidget {
             ),
     );
     if (url == null || url!.isEmpty) return placeholder;
-    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     final bucket = artworkBucketFor(size, dpr);
     final sizedUrl = artworkUrlForSize(url, bucket) ?? url!;
     // v4.4.1 (performa): decode DIBATASI seukuran tampil. Sumber persegi
@@ -197,7 +249,7 @@ class ClaiSheetScaffold extends StatelessWidget {
   const ClaiSheetScaffold({super.key, required this.children});
   @override
   Widget build(BuildContext context) {
-    final maxH = MediaQuery.of(context).size.height * 0.85;
+    final maxH = MediaQuery.sizeOf(context).height * 0.85;
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxH),
@@ -222,7 +274,31 @@ class _EqualizerBarsState extends State<EqualizerBars>
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
-  )..repeat();
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // 8053 B(ii): controller hanya berlari saat batang sungguh
+    // beranimasi. Cabang statis (animating=false) menggambar baris diam
+    // yang tidak membaca _c sama sekali, jadi menghentikan controller
+    // tidak mengubah satu piksel pun — sebelumnya ticker berputar
+    // selamanya di balik baris diam itu.
+    if (widget.animating) _c.repeat();
+  }
+
+  @override
+  void didUpdateWidget(EqualizerBars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animating != oldWidget.animating) {
+      if (widget.animating) {
+        _c.repeat();
+      } else {
+        _c.stop();
+      }
+    }
+  }
+
   @override
   void dispose() {
     _c.dispose();
@@ -295,6 +371,20 @@ class SongRow extends ConsumerWidget {
   /// sampul, baris terpilih disorot).
   final bool? selected;
 
+  /// v4.0: baris "sedang diputar" di dalam kartu kaca (Antrean) — latar
+  /// surface-2 padat diganti transparan agar kaca pembungkusnya tampil.
+  final bool glassCurrent;
+
+  /// Nomor tampil DUA DIGIT ("01", "02", …) — bahasa Antrian Redesign
+  /// 8051 (DS 6.10 amendemen 4.10). Pemanggil lain (Album, rak Beranda)
+  /// membiarkan false: nomor polos seperti sebelumnya.
+  final bool twoDigitNumber;
+
+  /// Baris diredupkan (judul ink-secondary, artis ink-faint) — bahasa
+  /// baris saran mesin Putar Otomatis di Antrian: saran tidak boleh
+  /// tampil sekuat antrean yang disusun pemakai sendiri.
+  final bool dimmed;
+
   const SongRow({
     super.key,
     required this.track,
@@ -305,6 +395,9 @@ class SongRow extends ConsumerWidget {
     this.onLongPress,
     this.onMenuPressed,
     this.selected,
+    this.glassCurrent = false,
+    this.twoDigitNumber = false,
+    this.dimmed = false,
   });
 
   @override
@@ -333,7 +426,9 @@ class SongRow extends ConsumerWidget {
                   color: selected == true
                       ? ClaiColors.accent.withValues(alpha: 0.10)
                       : isCurrent
-                          ? ClaiColors.surface2
+                          ? (glassCurrent
+                              ? Colors.transparent
+                              : ClaiColors.surface2)
                           : null,
                   padding: const EdgeInsets.symmetric(
                     horizontal: ClaiSpace.screenMargin,
@@ -372,7 +467,8 @@ class SongRow extends ConsumerWidget {
                         SizedBox(
                           width: 26,
                           child: Text(
-                            '$number',
+                            rowNumberLabel(number!,
+                                twoDigit: twoDigitNumber),
                             style: const TextStyle(
                               color: ClaiColors.inkFaint,
                               fontSize: 13,
@@ -412,16 +508,20 @@ class SongRow extends ConsumerWidget {
                                 fontWeight: FontWeight.w500,
                                 color: isCurrent
                                     ? ClaiColors.accent
-                                    : ClaiColors.ink,
+                                    : dimmed
+                                        ? ClaiColors.inkSecondary
+                                        : ClaiColors.ink,
                               ),
                             ),
                             Text(
                               cleanDisplayArtist(track.artistNames),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: ClaiColors.inkSecondary,
+                                color: dimmed && !isCurrent
+                                    ? ClaiColors.inkFaint
+                                    : ClaiColors.inkSecondary,
                               ),
                             ),
                           ],
@@ -461,6 +561,12 @@ class SongRow extends ConsumerWidget {
     );
   }
 }
+
+/// Label nomor baris daftar: polos ("7"), atau DUA DIGIT ("07") bila
+/// [twoDigit] — bahasa penomoran Antrian Redesign 8051. Angka ≥ 100
+/// tampil apa adanya (antrean pemilik bisa ratusan trek).
+String rowNumberLabel(int number, {bool twoDigit = false}) =>
+    twoDigit ? '$number'.padLeft(2, '0') : '$number';
 
 String formatDuration(Duration d) {
   final m = d.inMinutes;
@@ -502,6 +608,60 @@ class BoundedDropdown<T> extends StatelessWidget {
   );
 }
 
+/// Ubin dropdown BERTUMPUK — pola baku DS §6.14 (Ronde Perbaikan Audit
+/// 8047). Pola lama (dropdown sebagai `trailing` ListTile) terbukti
+/// meremas kolom judul/subjudul pada lebar 360 dp: judul patah di
+/// tengah kata ("Langu/age"), subjudul 5–16 baris dalam kolom ±110 dp
+/// (bukti audit: hub Bahasa, skema Menyetir, kualitas Putar). Di pola
+/// ini judul + subjudul selebar ubin penuh, dan dropdown
+/// [BoundedDropdown] tak terbatas menempati barisnya sendiri di
+/// bawahnya. Semua baris pengaturan berpola nilai-pilihan memakai ini;
+/// dropdown `trailing` hanya sah untuk nilai pendek pada baris tanpa
+/// subjudul panjang — dan pola bertumpuk tetap pilihan baku.
+class DropdownTile<T> extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final Widget? leading;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?>? onChanged;
+  const DropdownTile({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.leading,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      ListTile(
+        leading: leading,
+        title: Text(title, style: const TextStyle(color: ClaiColors.ink)),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle!,
+                style: const TextStyle(color: ClaiColors.inkSecondary),
+              ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: BoundedDropdown<T>(
+          value: value,
+          items: items,
+          onChanged: onChanged,
+          maxWidth: double.infinity,
+        ),
+      ),
+    ],
+  );
+}
+
 /// Rak sampul horizontal (Ronde Poles Beranda butir 4): kartu sampul 112
 /// dengan judul–artis bersih di bawahnya; ketuk kartu memutar daftar rak
 /// dari trek itu. Beranda lama menampilkan semua rak sebagai baris daftar
@@ -524,16 +684,9 @@ class CoverRail extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
+        SectionHeader(
+          title,
           padding: const EdgeInsets.fromLTRB(16, 26, 16, 10),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: ClaiColors.ink,
-            ),
-          ),
         ),
         SizedBox(
           height: 152,
@@ -583,7 +736,7 @@ class CoverRail extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 11,
                               color: ClaiColors.inkSecondary,
                             ),
                           ),
@@ -600,6 +753,34 @@ class CoverRail extends StatelessWidget {
     );
   }
 }
+
+/// Penyaring merek untuk byline (aturan pemilik 2026-10-25: sumber
+/// katalog tidak pernah dinamai di teks aplikasi). Nama kanal milik
+/// platform itu sendiri ("YouTube Charts" dsb.) menjadi string kosong;
+/// nama artis/pengguna nyata tidak disentuh. Ditemukan ronde Koreksi
+/// Komposisi: byline kartu Charts menampilkan nama kanal platform.
+String brandSafeByline(String raw) =>
+    raw.toLowerCase().contains('youtube') ? '' : raw;
+
+/// Varian strapline halaman konten ("A • B • C"): segmen yang menamai
+/// platform dibuang, segmen jujur lain dipertahankan; kosong total →
+/// null (pemanggil menyembunyikan barisnya / menyimpan tanpa subjudul).
+String? brandSafeSubtitle(String? raw) {
+  if (raw == null) return null;
+  final kept = raw
+      .split('•')
+      .map((s) => s.trim())
+      .where((s) => s.isNotEmpty && !s.toLowerCase().contains('youtube'))
+      .toList();
+  return kept.isEmpty ? null : kept.join(' • ');
+}
+
+/// Subjudul baris halaman Mood (audit 8047): byline mentah umpan Mood
+/// ("Playlist • YouTube Music") dulu tampil apa adanya — menamai merek
+/// sumber di UI, melanggar aturan merek. Kini melewati saringan yang
+/// sama seperti permukaan lain; tak bersisa → label jenis barisnya.
+String moodRowSubtitle(String rawByline, String kindLabel) =>
+    brandSafeSubtitle(rawByline) ?? kindLabel;
 
 /// Lembar Menu Konteks (DS 6.8) — urutan baku, sama di semua layar; varian antrean menambah aksi destruktif terakhir.
 Future<void> showTrackContextSheet(
@@ -619,7 +800,10 @@ Future<void> showTrackContextSheet(
   final liked = lib.isLiked(track.key);
   await showModalBottomSheet<void>(
     context: claiRootContext(context),
-    backgroundColor: ClaiColors.surface2,
+    // v4.0: lembar konteks = KACA bertinta lagu berjalan (U3) — latar
+    // digambar GlassSurface di dalam; tema mati → fallback tonal
+    // surface-2 persis seperti sebelumnya.
+    backgroundColor: Colors.transparent,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(
         top: Radius.circular(ClaiRadius.sheet),
@@ -635,7 +819,7 @@ Future<void> showTrackContextSheet(
         leading: ClaiIcon(icon, color: color ?? ClaiColors.ink, size: 24),
         title: Text(
           label,
-          style: TextStyle(color: color ?? ClaiColors.ink, fontSize: 15),
+          style: TextStyle(color: color ?? ClaiColors.ink, fontSize: 17),
         ),
         minTileHeight: 52,
         onTap: () {
@@ -643,33 +827,85 @@ Future<void> showTrackContextSheet(
           fn();
         },
       );
-      return ClaiSheetScaffold(
-        children: [
-          const SizedBox(height: 8),
-          const SheetHandle(),
-          ListTile(
-            leading: CoverArt(
-              url: track.artworkUrl,
-              size: 48,
-              label: track.title,
-            ),
-            title: Text(
-              track.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: ClaiColors.ink,
-              ),
-            ),
-            subtitle: Text(
-              track.artistNames,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: ClaiColors.inkSecondary),
-            ),
-          ),
-          const Divider(color: ClaiColors.divider, height: 1),
+      // Kepala papan 07: sampul 56 radius 12 + judul display + sub
+      // "artis · durasi" + HATI interaktif di kepala. Keadaan suka =
+      // state lokal lembar (likedNow, disemai dari perpustakaan saat
+      // lembar dibuka); hati kepala dan baris Simpan ke Koleksi
+      // mengubahnya tanpa menutup lembar. Tanpa garis pemisah di bawah
+      // kepala (papan 07).
+      var likedNow = liked;
+      return StatefulBuilder(
+        builder: (innerCtx, setSheetState) {
+          void toggleLikeNow() {
+            ClaiHaptics.like();
+            lib.toggleLike(track);
+            setSheetState(() => likedNow = !likedNow);
+          }
+
+          return GlassSurface(
+            radius: ClaiRadius.sheet,
+            topOnly: true,
+            darken: 0.55,
+            child: ClaiSheetScaffold(
+              children: [
+                const SizedBox(height: 8),
+                const SheetHandle(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 12, 12),
+                  child: Row(children: [
+                    CoverArt(
+                      url: track.artworkUrl,
+                      size: 56,
+                      label: track.title,
+                      radius: 12,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            track.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: displayStyle(20)
+                                .copyWith(color: ClaiColors.ink),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            // Gabung hanya bagian yang ada: artis kosong
+                            // di data sumber tidak boleh menyisakan
+                            // "· durasi" menggantung (temuan bukti k4).
+                            [
+                              if (track.artistNames.trim().isNotEmpty)
+                                track.artistNames,
+                              if (track.duration != null)
+                                formatDuration(track.duration!),
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: ClaiColors.inkSecondary,
+                                fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: likedNow
+                          ? context.l10n.ctxRemoveFromCollection
+                          : context.l10n.ctxSaveToCollection,
+                      onPressed: toggleLikeNow,
+                      icon: ClaiIcon(
+                        likedNow ? ClaiIcons.heartFill : ClaiIcons.heart,
+                        color: likedNow
+                            ? ClaiColors.liked
+                            : ClaiColors.inkSecondary,
+                        size: 26,
+                      ),
+                    ),
+                  ]),
+                ),
           act(
             ClaiIcons.next,
             context.l10n.ctxPlayNext,
@@ -686,12 +922,15 @@ Future<void> showTrackContextSheet(
             () => openRadioPage(context, track),
           ),
           act(
-            liked ? ClaiIcons.heartFill : ClaiIcons.heart,
-            liked
+            likedNow ? ClaiIcons.heartFill : ClaiIcons.heart,
+            likedNow
                 ? context.l10n.ctxRemoveFromCollection
                 : context.l10n.ctxSaveToCollection,
-            () => lib.toggleLike(track),
-            color: ClaiColors.liked,
+            toggleLikeNow,
+            // Audit 8047 (§6.8/Bab 2): warna liked HANYA saat keadaan
+            // tersukai aktif; baris netral (tinta baku) selain itu —
+            // dulu baris ini selalu merah muda meski belum disukai.
+            color: likedNow ? ClaiColors.liked : null,
           ),
           act(
             ClaiIcons.playlistAdd,
@@ -755,9 +994,64 @@ Future<void> showTrackContextSheet(
               color: ClaiColors.error,
             ),
           const SizedBox(height: 8),
-        ],
+              ],
+            ),
+          );
+        },
       );
     },
+  );
+}
+
+/// Kepala judul lembar pemilih playlist (papan 07: judul display di
+/// atas daftar — bukan daftar telanjang tanpa kepala).
+Widget _playlistSheetTitle(BuildContext context) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          context.l10n.ctxAddToPlaylist,
+          style: displayStyle(20).copyWith(color: ClaiColors.ink),
+        ),
+      ),
+    );
+
+/// Ubin seni baris playlist di lembar pemilih: mosaik mini dari sampul
+/// trek playlist itu sendiri (data nyata PlaylistInfo.artworkUrls);
+/// playlist kosong → ubin ikon antrean tonal.
+Widget playlistArtTile(List<String?> urls, double size) {
+  final arts =
+      urls.whereType<String>().where((u) => u.isNotEmpty).take(4).toList();
+  if (arts.isEmpty) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: ClaiColors.surface3,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+          child: ClaiIcon(ClaiIcons.queue,
+              color: ClaiColors.inkSecondary, size: size * 0.45)),
+    );
+  }
+  if (arts.length == 1) {
+    return CoverArt(url: arts.first, size: size, label: '', radius: 12);
+  }
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(12),
+    child: SizedBox(
+      width: size,
+      height: size,
+      child: GridView.count(
+        crossAxisCount: 2,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          for (final u in arts)
+            CoverArt(url: u, size: size / 2, label: '', radius: 0)
+        ],
+      ),
+    ),
   );
 }
 
@@ -779,11 +1073,13 @@ Future<void> showAddToPlaylistSheet(
       children: [
         const SizedBox(height: 8),
         const SheetHandle(),
+        _playlistSheetTitle(context),
         ListTile(
-          leading: ClaiIcon(ClaiIcons.add, color: ClaiColors.accent),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+          leading: tonalIconBox(ClaiIcons.add, size: 48, iconSize: 22),
           title: Text(
             context.l10n.ctxNewPlaylist,
-            style: const TextStyle(color: ClaiColors.ink),
+            style: const TextStyle(color: ClaiColors.ink, fontSize: 16),
           ),
           onTap: () async {
             Navigator.of(ctx).pop();
@@ -792,14 +1088,20 @@ Future<void> showAddToPlaylistSheet(
               context.l10n.ctxPlaylistName,
             );
             if (name != null && name.trim().isNotEmpty) {
-              await lib.createPlaylist(name.trim());
+              // Temuan fungsi audit 8047: dulu playlist baru dibuat
+              // lalu lembar dibuka lagi TANPA memasukkan trek yang
+              // sedang ditambahkan — playlist lahir 0 lagu. Kini trek
+              // ikut masuk ke playlist barunya lebih dulu.
+              final id = await lib.createPlaylist(name.trim());
+              await lib.addToPlaylist(id, track);
               if (context.mounted) showAddToPlaylistSheet(context, ref, track);
             }
           },
         ),
         for (final pl in lib.playlists)
           ListTile(
-            leading: ClaiIcon(ClaiIcons.queue, color: ClaiColors.inkSecondary),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+            leading: playlistArtTile(pl.artworkUrls, 48),
             title: Text(pl.name, style: const TextStyle(color: ClaiColors.ink)),
             subtitle: Text(
               context.l10n.songCount(pl.count),
@@ -901,11 +1203,13 @@ Future<bool> showAddTracksToPlaylistSheet(
       children: [
         const SizedBox(height: 8),
         const SheetHandle(),
+        _playlistSheetTitle(context),
         ListTile(
-          leading: ClaiIcon(ClaiIcons.add, color: ClaiColors.accent),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+          leading: tonalIconBox(ClaiIcons.add, size: 48, iconSize: 22),
           title: Text(
             context.l10n.ctxNewPlaylist,
-            style: const TextStyle(color: ClaiColors.ink),
+            style: const TextStyle(color: ClaiColors.ink, fontSize: 16),
           ),
           onTap: () async {
             flowStarted = true;
@@ -924,7 +1228,8 @@ Future<bool> showAddTracksToPlaylistSheet(
         ),
         for (final pl in lib.playlists)
           ListTile(
-            leading: ClaiIcon(ClaiIcons.queue, color: ClaiColors.inkSecondary),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+            leading: playlistArtTile(pl.artworkUrls, 48),
             title: Text(pl.name, style: const TextStyle(color: ClaiColors.ink)),
             subtitle: Text(
               context.l10n.songCount(pl.count),
@@ -961,8 +1266,143 @@ SnackBar claiSnackAboveChrome(BuildContext context, String message,
   );
 }
 
-Future<String?> promptText(BuildContext context, String label) async {
-  final c = TextEditingController();
+/// Dekorasi bidang teks baku DS (Ronde Sapuan 8045): isian tonal
+/// surface-3, radius 12, TANPA garis bawah Material — satu resep untuk
+/// semua bidang ketik di dialog & lembar (nama playlist, nama sapaan,
+/// tempel tautan Tangkap, token ListenBrainz, ketik suara). Bidang
+/// cari utama memakai varian pilnya sendiri (papan 04).
+InputDecoration claiFieldDecoration({String? hintText, String? labelText}) {
+  const border = OutlineInputBorder(
+    borderSide: BorderSide.none,
+    borderRadius: BorderRadius.all(Radius.circular(12)),
+  );
+  return InputDecoration(
+    hintText: hintText,
+    labelText: labelText,
+    hintStyle: const TextStyle(color: ClaiColors.inkFaint),
+    labelStyle: const TextStyle(color: ClaiColors.inkSecondary),
+    filled: true,
+    fillColor: ClaiColors.surface3,
+    border: border,
+    enabledBorder: border,
+    focusedBorder: const OutlineInputBorder(
+      borderSide: BorderSide(color: ClaiColors.accent, width: 1),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  );
+}
+
+/// Kotak ikon tonal baku (DS: ikon berkotak tonal): wadah surface-2
+/// radius 12 berisi satu ikon — dipakai baris pintu, strip, dan kartu
+/// di seluruh aplikasi agar bahasanya satu.
+Widget tonalIconBox(ClaiIconData icon,
+    {double size = 40, double iconSize = 20, Color? color}) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: ClaiColors.surface2,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Center(
+      child: ClaiIcon(icon, size: iconSize, color: color ?? ClaiColors.accent),
+    ),
+  );
+}
+
+/// Baris entitas baku DS (Ronde Sapuan 8045): sampul 48 radius 8
+/// (artis: bulat), judul 15 w500, subjudul 13 — keluarga baris yang
+/// sama dengan [SongRow] untuk entitas non-trek (album, playlist,
+/// artis). Menggantikan ListTile mentah yang tersisa di hasil Cari,
+/// halaman Mood, diskografi & artis terkait halaman konten, dan
+/// baris unduhan/Spotify. [trailing] bebas (status, chevron, aksi).
+class EntityRow extends StatelessWidget {
+  final String? artworkUrl;
+  final String title;
+  final String? subtitle;
+  final Widget? leading;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final bool round;
+  const EntityRow({
+    super.key,
+    this.artworkUrl,
+    required this.title,
+    this.subtitle,
+    this.leading,
+    this.trailing,
+    this.onTap,
+    this.round = false,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(children: [
+          leading ??
+              CoverArt(
+                url: artworkUrl,
+                size: 48,
+                label: title,
+                radius: round ? 24 : 8,
+              ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: ClaiColors.ink,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: ClaiColors.inkSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing!,
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+Future<String?> promptText(
+  BuildContext context,
+  String label, {
+  String? initialValue,
+}) async {
+  // Audit 8047: nilai awal opsional (mis. dialog ganti nama mengisi
+  // nama saat ini, terpilih semua agar mudah diganti total).
+  final c = TextEditingController(text: initialValue);
+  if (initialValue != null && initialValue.isNotEmpty) {
+    c.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: initialValue.length,
+    );
+  }
   return showDialog<String>(
     context: context,
     builder: (d) => AlertDialog(
@@ -972,11 +1412,7 @@ Future<String?> promptText(BuildContext context, String label) async {
         controller: c,
         autofocus: true,
         style: const TextStyle(color: ClaiColors.ink),
-        decoration: const InputDecoration(
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: ClaiColors.surface3),
-          ),
-        ),
+        decoration: claiFieldDecoration(),
       ),
       actions: [
         TextButton(
@@ -1138,7 +1574,7 @@ class _LoadingSkeletonState extends State<LoadingSkeleton>
 
   @override
   Widget build(BuildContext context) {
-    final reduced = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (reduced && _pulse.isAnimating) _pulse.stop();
     if (!reduced && !_pulse.isAnimating) _pulse.repeat(reverse: true);
     return AnimatedBuilder(
@@ -1228,7 +1664,7 @@ class _MarqueeTextState extends State<MarqueeText> {
 
   @override
   Widget build(BuildContext context) {
-    final reduced = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (reduced) {
       return Text(
         widget.text,
@@ -1325,4 +1761,341 @@ class ErrorState extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Pita waveform ukur untuk permukaan ringkas (Kampanye Rombak UI —
+/// kartu Lanjutkan Beranda): gambar diam dari [WaveformData] NYATA
+/// trek (DS §11.10). Ember terukur = batang (terputar [playedColor],
+/// belum [unplayedColor]); ember belum terukur = garis datar 3 dp
+/// [flatColor] — keadaan jujur, bukan batang karangan. Bukan kontrol:
+/// seek tetap urusan Player; di kartu, ketukan membuka Player.
+class WaveformStrip extends StatelessWidget {
+  final WaveformData data;
+  final double fraction;
+  final Color playedColor;
+  final Color unplayedColor;
+  final Color flatColor;
+  final double height;
+
+  const WaveformStrip({
+    super.key,
+    required this.data,
+    required this.fraction,
+    required this.playedColor,
+    required this.unplayedColor,
+    required this.flatColor,
+    this.height = 30,
+  });
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _WaveformStripPainter(
+            heights: data.displayHeights(),
+            fraction: fraction.clamp(0.0, 1.0),
+            playedColor: playedColor,
+            unplayedColor: unplayedColor,
+            flatColor: flatColor,
+          ),
+        ),
+      );
+}
+
+class _WaveformStripPainter extends CustomPainter {
+  final List<double?> heights;
+  final double fraction;
+  final Color playedColor;
+  final Color unplayedColor;
+  final Color flatColor;
+
+  const _WaveformStripPainter({
+    required this.heights,
+    required this.fraction,
+    required this.playedColor,
+    required this.unplayedColor,
+    required this.flatColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final n = heights.length;
+    if (n == 0 || size.width <= 0) return;
+    final slot = size.width / n;
+    final barW = math.min(4.0, slot * 0.52);
+    final midY = size.height / 2;
+    final paint = Paint()..strokeCap = StrokeCap.round;
+    for (var i = 0; i < n; i++) {
+      final cx = slot * (i + 0.5);
+      final h = heights[i];
+      final played = (i + 0.5) / n <= fraction;
+      if (h == null) {
+        paint
+          ..color = flatColor
+          ..strokeWidth = barW;
+        canvas.drawLine(
+          Offset(cx, midY - 1.5),
+          Offset(cx, midY + 1.5),
+          paint,
+        );
+      } else {
+        final bh = math.max(4.0, h * size.height);
+        paint
+          ..color = played ? playedColor : unplayedColor
+          ..strokeWidth = barW;
+        canvas.drawLine(
+          Offset(cx, midY - bh / 2),
+          Offset(cx, midY + bh / 2),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WaveformStripPainter old) =>
+      old.fraction != fraction ||
+      !listEquals(old.heights, heights) ||
+      old.playedColor != playedColor ||
+      old.unplayedColor != unplayedColor ||
+      old.flatColor != flatColor;
+}
+
+/// Chip kembali kaca 40 dp (Gelombang 2, pola "Kepala Hidup"): satu
+/// affordance kembali untuk layar tanpa AppBar — kaca di atas panggung
+/// sampul, tonal saat tema kaca/ambien mati (lewat [GlassSurface]).
+class GlassBackChip extends StatelessWidget {
+  final VoidCallback? onTap;
+  const GlassBackChip({super.key, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 40,
+        height: 40,
+        child: GlassSurface(
+          radius: 20,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: onTap ?? () => Navigator.of(context).maybePop(),
+            child: Center(
+              child: ClaiIcon(ClaiIcons.arrowBack, size: 20, color: ClaiColors.ink),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Kicker seksi REDUP (Gelombang 2): saudara tenang [KickerLabel] —
+/// huruf-besar berjarak warna tinta redup, untuk kepala seksi di dalam
+/// halaman konten/koleksi (papan Stitch: kicker pudar, bukan Volt;
+/// Volt tetap milik sinyal, bukan label struktural).
+class DimKicker extends StatelessWidget {
+  final String text;
+  const DimKicker(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.6,
+          color: ClaiColors.inkFaint,
+        ),
+      );
+}
+
+/// Aksi berlabel pada dok "Kepala Hidup" (Gelombang 2): ikon 24 di
+/// target sentuh 44, label mikro huruf-besar di bawahnya; keadaan aktif
+/// = ikon+label Volt + titik 4 dp (satu-satunya Volt di dok selain
+/// aksen sampul tombol putar).
+class DockAction extends StatelessWidget {
+  final ClaiIconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool active;
+  final Color? color;
+
+  /// Pengganti ikon bila keadaan membawa widget sendiri (mis. cincin
+  /// progres unduhan) — slot ikon tetap 24–28 dp di atas label.
+  final Widget? iconWidget;
+
+  const DockAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+    this.color,
+    this.iconWidget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = active ? ClaiColors.accent : (color ?? ClaiColors.inkSecondary);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 28,
+              child: Center(
+                child: iconWidget ?? ClaiIcon(icon, size: 24, color: ink),
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label.toUpperCase(),
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.1,
+                height: 1.15,
+                color: ink,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Container(
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: active ? ClaiColors.accent : Colors.transparent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Seni panggung lebar-penuh (Gelombang 2): sampul memenuhi lebar layar
+/// setinggi [height], dipotong cover; tanpa URL / gagal muat → penahan
+/// tonal berikon (tidak pernah kotak abu kosong).
+class StageArtwork extends StatelessWidget {
+  final String? url;
+  final double height;
+  const StageArtwork({super.key, required this.url, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholder = Container(
+      color: ClaiColors.surface2,
+      child: Center(
+        child: ClaiIcon(ClaiIcons.musicNote, size: 64, color: ClaiColors.surface3),
+      ),
+    );
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: url == null
+          ? placeholder
+          : Image.network(
+              artworkUrlForSize(url, 720) ?? url!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => placeholder,
+              loadingBuilder: (context, child, progress) =>
+                  progress == null ? child : placeholder,
+            ),
+    );
+  }
+}
+
+/// Warna ubin/pita Mood & Genre dari warna garis khas SUMBER: gradasi
+/// dari varian terangnya ke varian pekatnya. Warna 0/hilang → tonal
+/// netral. Murni & diuji. (Dipindah dari search_screen di Gelombang 2
+/// agar halaman Mood memakai sumber kebenaran yang sama dengan ubin
+/// Jelajah yang membukanya.)
+(Color, Color) moodTileGradient(int stripeColor) {
+  if (stripeColor == 0) {
+    return (ClaiColors.surface3, ClaiColors.surface1);
+  }
+  final hsl = HSLColor.fromColor(Color(stripeColor | 0xFF000000));
+  final light = hsl
+      .withSaturation((hsl.saturation * 0.9).clamp(0.25, 0.85))
+      .withLightness((hsl.lightness + 0.10).clamp(0.32, 0.55))
+      .toColor();
+  final dark = hsl
+      .withSaturation((hsl.saturation * 0.9).clamp(0.25, 0.85))
+      .withLightness((hsl.lightness - 0.16).clamp(0.14, 0.40))
+      .toColor();
+  return (light, dark);
+}
+
+/// Blok slider lebar-penuh untuk panel Pengaturan (pola pengaturan.md
+/// Gelombang 2): baris judul+subjudul di atas, slider memenuhi lebar
+/// panel di bawahnya — menggantikan slider 160 dp yang terjepit di
+/// trailing ListTile.
+class SettingsSliderBlock extends StatelessWidget {
+  final ClaiIconData? icon;
+  final String title;
+  final String? subtitle;
+  final double value;
+  final double min;
+  final double max;
+  final int? divisions;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeEnd;
+
+  const SettingsSliderBlock({
+    super.key,
+    this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.min,
+    required this.max,
+    this.divisions,
+    required this.onChanged,
+    this.onChangeEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            if (icon != null) ...[
+              tonalIconBox(icon!, size: 40, iconSize: 20),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: ClaiColors.ink, fontSize: 15)),
+                  if (subtitle != null)
+                    Text(subtitle!,
+                        style: const TextStyle(
+                            color: ClaiColors.inkSecondary, fontSize: 13)),
+                ],
+              ),
+            ),
+          ]),
+          Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            divisions: divisions,
+            activeColor: ClaiColors.accent,
+            onChanged: onChanged,
+            onChangeEnd: onChangeEnd,
+          ),
+        ],
+      ),
+    );
+  }
 }

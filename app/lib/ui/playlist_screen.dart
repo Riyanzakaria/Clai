@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../app.dart';
+import '../core/artwork.dart';
 import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../domain/models.dart';
@@ -28,6 +29,29 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     if (mounted) setState(() { _tracks = tracks; _loading = false; });
   }
 
+  /// Mosaik sampul kepala playlist: hingga 4 sampul berbeda dari trek
+  /// pertama (pola yang sama seperti baris Koleksi); playlist tanpa
+  /// sampul → ubin ikon antrean di surface-2.
+  Widget _mosaic(List<Track> tracks) {
+    final filled = <String>[];
+    for (final t in tracks) {
+      final u = t.artworkUrl;
+      if (u != null && u.isNotEmpty && !filled.contains(u)) filled.add(u);
+      if (filled.length >= 4) break;
+    }
+    if (filled.isEmpty) {
+      return Container(width: 72, height: 72, decoration: BoxDecoration(color: ClaiColors.surface2, borderRadius: BorderRadius.circular(12)),
+          child: ClaiIcon(ClaiIcons.queue, color: ClaiColors.inkFaint));
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(width: 72, height: 72, child: GridView.count(crossAxisCount: 2, physics: const NeverScrollableScrollPhysics(), children: [
+        for (var i = 0; i < 4; i++)
+          Image.network(artworkUrlForSize(filled[i % filled.length], 200)!, fit: BoxFit.cover, cacheWidth: 128, errorBuilder: (_, __, ___) => Container(color: ClaiColors.surface3)),
+      ])),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
@@ -38,7 +62,11 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           color: ClaiColors.surface2,
           onSelected: (v) async {
             if (v == 'rename') {
-              final name = await promptText(context, context.l10n.plNewName);
+              final name = await promptText(
+                context,
+                context.l10n.plNewName,
+                initialValue: widget.name,
+              );
               if (name != null && name.trim().isNotEmpty) {
                 await lib.renamePlaylist(widget.playlistId, name.trim());
                 if (context.mounted) Navigator.of(context).pop();
@@ -65,11 +93,31 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
           ],
         ),
       ]),
-      body: _loading
-          ? const LoadingSkeleton()
-          : _tracks.isEmpty
-              ? EmptyState(icon: ClaiIcons.queue, message: context.l10n.plEmpty)
-              : Column(children: [
+      // Audit 8047 (§7.4): kepala ringkas tampil juga saat playlist
+      // KOSONG — dulu keadaan kosong hanya AppBar + EmptyState polos,
+      // nama playlist tak terbaca sebagai kepala halaman.
+      body: Column(children: [
+                  // Kepala playlist (Kampanye Rombak UI Total, Batch 4):
+                  // mosaik sampul 72 + nama display + hitungan lagu —
+                  // pola kepala halaman yang sama seperti baris Koleksi
+                  // & halaman konten. Hitungan pindah ke sini dari baris
+                  // Putar di bawahnya; perilaku tidak berubah.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                    child: Row(children: [
+                      _mosaic(_tracks),
+                      const SizedBox(width: 14),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: displayStyle(19)),
+                          const SizedBox(height: 3),
+                          Text(context.l10n.songCount(_tracks.length), style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
+                        ],
+                      )),
+                    ]),
+                  ),
+                  if (!_loading && _tracks.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
                     child: Row(children: [
@@ -80,11 +128,14 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                               child: ClaiIcon(ClaiIcons.play, color: ClaiColors.onAccent, size: 26)),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Text(context.l10n.songCount(_tracks.length), style: const TextStyle(color: ClaiColors.inkSecondary)),
                     ]),
                   ),
-                  Expanded(child: ReorderableListView(
+                  ],
+                  Expanded(child: _loading
+                      ? const LoadingSkeleton()
+                      : _tracks.isEmpty
+                          ? EmptyState(icon: ClaiIcons.queue, message: context.l10n.plEmpty)
+                          : ReorderableListView(
                     // Butir 4: daftar kini hidup di bawah chrome melayang
                     // cangkang — baris terakhir wajib bisa keluar dari
                     // balik gugus mini player + nav.

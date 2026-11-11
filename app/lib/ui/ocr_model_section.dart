@@ -6,6 +6,7 @@ import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../l10n/l10n.dart';
 import '../services/ocr_model_service.dart';
+import 'widgets.dart';
 
 String _mb(int bytes) =>
     '${(bytes / 1048576).toStringAsFixed(1).replaceAll('.', ',')} MB';
@@ -39,10 +40,12 @@ class OcrModelSettingsSection extends ConsumerWidget {
         };
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ListTile(
-            leading: ClaiIcon(
+            leading: tonalIconBox(
                 ocr.status == OcrModelStatus.ready
                     ? ClaiIcons.checkCircle
                     : ClaiIcons.lyrics,
+                size: 40,
+                iconSize: 20,
                 color: ocr.status == OcrModelStatus.ready
                     ? ClaiColors.accent
                     : ClaiColors.inkFaint),

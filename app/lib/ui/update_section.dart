@@ -40,7 +40,7 @@ class _UpdateSettingsSectionState extends ConsumerState<UpdateSettingsSection> {
         };
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ListTile(
-            leading: ClaiIcon(ClaiIcons.refresh, color: ClaiColors.accent),
+            leading: tonalIconBox(ClaiIcons.refresh, size: 40, iconSize: 20, color: ClaiColors.accent),
             title: Text(s.updateCheck, style: const TextStyle(color: ClaiColors.ink)),
             subtitle: Text(upd.currentLabel.isEmpty ? statusText : s.updateInstalledLabel(upd.currentLabel, statusText),
                 style: const TextStyle(color: ClaiColors.inkSecondary)),
@@ -54,7 +54,7 @@ class _UpdateSettingsSectionState extends ConsumerState<UpdateSettingsSection> {
                 child: LinearProgressIndicator(value: upd.progress, color: ClaiColors.accent, backgroundColor: ClaiColors.surface3)),
           if (upd.status == UpdateStatus.available)
             ListTile(
-              leading: ClaiIcon(ClaiIcons.download, color: ClaiColors.accent),
+              leading: tonalIconBox(ClaiIcons.download, size: 40, iconSize: 20, color: ClaiColors.accent),
               title: Text(s.updateDownloadTag(upd.release?.tag ?? ''), style: const TextStyle(color: ClaiColors.ink, fontWeight: FontWeight.w600)),
               subtitle: Text(s.updateDownloadSub,
                   style: const TextStyle(color: ClaiColors.inkSecondary)),
@@ -62,36 +62,39 @@ class _UpdateSettingsSectionState extends ConsumerState<UpdateSettingsSection> {
             ),
           if (upd.status == UpdateStatus.readyToInstall)
             ListTile(
-              leading: ClaiIcon(ClaiIcons.checkCircle, color: ClaiColors.accent),
+              leading: tonalIconBox(ClaiIcons.checkCircle, size: 40, iconSize: 20, color: ClaiColors.accent),
               title: Text(s.updateInstall, style: const TextStyle(color: ClaiColors.ink, fontWeight: FontWeight.w600)),
               subtitle: Text(s.updateInstallSub,
                   style: const TextStyle(color: ClaiColors.inkSecondary)),
               onTap: () => upd.install(),
             ),
           SwitchListTile(
+            secondary: tonalIconBox(ClaiIcons.refresh, size: 40, iconSize: 20),
             title: Text(s.updateAutoCheck, style: const TextStyle(color: ClaiColors.ink)),
             subtitle: Text(s.updateAutoCheckSub,
                 style: const TextStyle(color: ClaiColors.inkSecondary)),
-            value: upd.autoCheck, activeThumbColor: ClaiColors.accent,
+            value: upd.autoCheck,
             onChanged: (v) => upd.setAutoCheck(v),
           ),
           SwitchListTile(
+            secondary: tonalIconBox(ClaiIcons.download, size: 40, iconSize: 20),
             title: Text(s.updateAutoDownload, style: const TextStyle(color: ClaiColors.ink)),
             subtitle: Text(s.updateAutoDownloadSub,
                 style: const TextStyle(color: ClaiColors.inkSecondary)),
-            value: upd.autoDownload, activeThumbColor: ClaiColors.accent,
+            value: upd.autoDownload,
             onChanged: (v) => upd.setAutoDownload(v),
           ),
           SwitchListTile(
+            secondary: tonalIconBox(ClaiIcons.wifiOff, size: 40, iconSize: 20),
             title: Text(s.updateWifiOnly, style: const TextStyle(color: ClaiColors.ink)),
             subtitle: Text(s.updateWifiOnlySub,
                 style: const TextStyle(color: ClaiColors.inkSecondary)),
-            value: upd.wifiOnly, activeThumbColor: ClaiColors.accent,
+            value: upd.wifiOnly,
             onChanged: upd.autoDownload ? (v) => upd.setWifiOnly(v) : null,
           ),
           if (_canInstall == false)
             ListTile(
-              leading: ClaiIcon(ClaiIcons.shield, color: ClaiColors.warning),
+              leading: tonalIconBox(ClaiIcons.shield, size: 40, iconSize: 20, color: ClaiColors.warning),
               title: Text(s.updateInstallPermTitle, style: const TextStyle(color: ClaiColors.ink)),
               subtitle: Text(s.updateInstallPermSub,
                   style: const TextStyle(color: ClaiColors.inkSecondary)),
@@ -142,10 +145,17 @@ class _UpdateHomeBannerState extends ConsumerState<UpdateHomeBanner> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Container(
                 padding: const EdgeInsets.all(14),
-                decoration: claiCardDecoration(),
+                // 8045: kartu banner tonal surface-1 radius 16 tanpa
+                // garis tepi (claiCardDecoration lama membawa border
+                // 1px — hukum DS: kedalaman dari tonal, bukan garis);
+                // ikon kini berkotak tonal seperti strip lain.
+                decoration: BoxDecoration(
+                  color: ClaiColors.surface1,
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  ClaiIcon(ClaiIcons.refresh, color: ClaiColors.accent),
-                  const SizedBox(width: 10),
+                  tonalIconBox(ClaiIcons.refresh, size: 40, iconSize: 20),
+                  const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(s.updateBannerTitle(r.versionName), style: const TextStyle(fontWeight: FontWeight.w600, color: ClaiColors.ink)),
                     const SizedBox(height: 4),

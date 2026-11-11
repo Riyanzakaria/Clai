@@ -9,6 +9,8 @@ import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../l10n/l10n.dart';
 import '../player/similarity.dart';
+import '../services/ambient_theme.dart';
+import 'cover_accent_glow.dart';
 import 'widgets.dart';
 
 /// Halaman Radio Lagu (F2.5, menggantikan radio ambil-alih-antrean):
@@ -19,6 +21,11 @@ import 'widgets.dart';
 /// menekan tombol Putar (benih diputar, mesin sesi radio yang ada) atau
 /// mengetuk satu item daftar (item itu diputar, jangkar benih tetap lagu
 /// asal halaman).
+///
+/// Gelombang 2 (8048): komposisi Kepala Hidup varian Radio — panggung
+/// sampul benih 260 dp + chip kaca + tombol putar sadar-keadaan (A-5,
+/// logika tak berubah) bernada sampul benih di sudut panggung; kartu
+/// benih; tiga pil aksi tonal; kepala hasil berketerangan jumlah nyata.
 class RadioScreen extends ConsumerStatefulWidget {
   final Track seed;
   const RadioScreen({super.key, required this.seed});
@@ -66,85 +73,109 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final handler = ref.watch(audioHandlerProvider);
     final seed = widget.seed;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          context.l10n.radioPageTitle(seed.title),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      body: _loading
-          ? const LoadingSkeleton()
-          : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : ListView(
+      body: _error != null
+          ? Stack(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Positioned.fill(
+                  child: ErrorState(message: _error!, onRetry: _load),
+                ),
+                Positioned(
+                  top: MediaQuery.paddingOf(context).top + 12,
+                  left: 16,
+                  child: const GlassBackChip(),
+                ),
+              ],
+            )
+          : FiniteScrollPage(
+              padding: EdgeInsets.zero,
+              children: [
+                // PANGGUNG benih 260 dp (Kepala Hidup varian Radio).
+                SizedBox(
+                  height: 260,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      CoverArt(
-                        url: seed.artworkUrl,
-                        size: 120,
-                        label: seed.title,
-                        radius: 12,
+                      StageArtwork(url: seed.artworkUrl, height: 260),
+                      const Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 130,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0x00000000), Color(0x8C000000)],
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
+                      Positioned(
+                        top: MediaQuery.paddingOf(context).top + 12,
+                        left: 16,
+                        child: const GlassBackChip(),
+                      ),
+                      Positioned(
+                        left: 20,
+                        right: 96,
+                        bottom: 16,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(seed.title, style: displayStyle(19)),
-                            if (seed.artistNames.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  seed.artistNames,
-                                  style: const TextStyle(
-                                    color: ClaiColors.inkSecondary,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                context.l10n.radioGeneratedFrom,
-                                style: const TextStyle(
-                                  color: ClaiColors.inkFaint,
-                                  fontSize: 12.5,
-                                ),
+                            Text(
+                              l.radioKicker.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.6,
+                                color: Colors.white.withValues(alpha: 0.85),
                               ),
                             ),
-                            if (_tracks.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  context.l10n.contentCountLine(
-                                    _tracks.length,
-                                    formatDuration(
-                                      _tracks.fold<Duration>(
-                                        Duration.zero,
-                                        (a, t) =>
-                                            a + (t.duration ?? Duration.zero),
-                                      ),
-                                    ),
-                                  ),
-                                  style: const TextStyle(
-                                    color: ClaiColors.inkFaint,
-                                    fontSize: 12.5,
-                                  ),
+                            const SizedBox(height: 6),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                l.radioPageTitle(seed.title),
+                                maxLines: 1,
+                                style: displayStyle(26)
+                                    .copyWith(color: ClaiColors.ink),
+                              ),
+                            ),
+                            if (seed.artistNames.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                seed.artistNames,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color:
+                                      Colors.white.withValues(alpha: 0.75),
                                 ),
                               ),
-                            const SizedBox(height: 12),
-                            // A-5 (Ronde Audit UX 2017): tombol Putar sadar-keadaan.
-                            // Dibangun ulang oleh dua aliran: queueStream (ganti
-                            // sesi) dan playbackState (putar/jeda).
-                            StreamBuilder(
+                            ],
+                          ],
+                        ),
+                      ),
+                      // Tombol Putar/Jeda A-5 di sudut panggung, bernada
+                      // sampul benih (§11.9) — logika resolve tetap.
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: CoverAccentBuilder(
+                          artworkUrl: seed.artworkUrl,
+                          builder: (context, tonal) {
+                            final tone = tonal == null
+                                ? ClaiColors.accent
+                                : deepToneFromColor(tonal);
+                            return StreamBuilder(
                               stream: handler.queueStream,
                               builder: (context, _) {
                                 return StreamBuilder(
@@ -159,8 +190,7 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                                           engine.context?.id,
                                           seed.id,
                                         );
-                                    final playing =
-                                        thisSession &&
+                                    final playing = thisSession &&
                                         (ps.data?.playing ?? false);
                                     final action = resolveRadioHeaderAction(
                                       thisSession: thisSession,
@@ -168,6 +198,9 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                                     );
                                     return RadioHeaderPlayButton(
                                       playing: playing,
+                                      size: 56,
+                                      fill: tone,
+                                      iconColor: onProgressTone(tone),
                                       onTap: () {
                                         switch (action) {
                                           case RadioHeaderAction.pause:
@@ -182,38 +215,133 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                                   },
                                 );
                               },
-                            ),
-                          ],
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Ronde Tambahan 2015 (Butir 1): baris aksi atas SELURUH
-                // daftar bangkitan — pola segmen ikon+label yang sama
-                // seperti halaman konten. Menambah ke antrean TIDAK
-                // membangun ulang pemutaran (jalur ekor handler).
-                if (_tracks.isNotEmpty)
+                // KARTU BENIH: lagu asal bangkitan, apa adanya.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: ClaiColors.surface1,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        CoverArt(
+                          url: seed.artworkUrl,
+                          size: 48,
+                          label: seed.title,
+                          radius: 8,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l.radioSeedCaption,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: ClaiColors.inkFaint,
+                                ),
+                              ),
+                              Text(
+                                seed.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: ClaiColors.ink,
+                                ),
+                              ),
+                              if (seed.artistNames.isNotEmpty)
+                                Text(
+                                  seed.artistNames,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: ClaiColors.inkSecondary,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (seed.duration != null)
+                          Text(
+                            formatDuration(seed.duration!),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: ClaiColors.inkSecondary,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Text(
+                    l.radioGeneratedFrom,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: ClaiColors.inkFaint,
+                    ),
+                  ),
+                ),
+                if (_loading) ...[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                    child: Text(
+                      l.radioComposing,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: ClaiColors.inkSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 320, child: LoadingSkeleton()),
+                ] else if (_tracks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                    child: Text(
+                      l.radioEmpty,
+                      style: const TextStyle(
+                        color: ClaiColors.inkSecondary,
+                        height: 1.45,
+                      ),
+                    ),
+                  )
+                else ...[
+                  // Tiga pil aksi tonal atas seluruh daftar bangkitan —
+                  // menambah ke antrean TIDAK membangun ulang pemutaran.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: Row(
                       children: [
                         Expanded(
-                          child: _RadioActionSegment(
+                          child: _RadioActionPill(
                             leading: ClaiIcon(
                               ClaiIcons.queue,
                               size: 18,
                               color: ClaiColors.ink,
                             ),
-                            label: context.l10n.ctxAddToQueue,
+                            label: l.ctxAddToQueue,
                             onTap: () async {
-                              final n =
-                                  await handler.enqueueAll(_tracks);
+                              final n = await handler.enqueueAll(_tracks);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   claiSnackAboveChrome(
                                     context,
-                                    context.l10n.bulkQueueAdded(n),
+                                    l.bulkQueueAdded(n),
                                   ),
                                 );
                               }
@@ -222,13 +350,13 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _RadioActionSegment(
+                          child: _RadioActionPill(
                             leading: ClaiIcon(
                               ClaiIcons.heart,
                               size: 18,
                               color: ClaiColors.ink,
                             ),
-                            label: context.l10n.ctxSaveToCollection,
+                            label: l.ctxSaveToCollection,
                             onTap: () async {
                               final n = await ref
                                   .read(libraryProvider)
@@ -238,8 +366,8 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                                   claiSnackAboveChrome(
                                     context,
                                     n > 0
-                                        ? context.l10n.bulkSaved(n)
-                                        : context.l10n.bulkSavedNone,
+                                        ? l.bulkSaved(n)
+                                        : l.bulkSavedNone,
                                   ),
                                 );
                               }
@@ -248,13 +376,13 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _RadioActionSegment(
+                          child: _RadioActionPill(
                             leading: ClaiIcon(
                               ClaiIcons.playlistAdd,
                               size: 18,
                               color: ClaiColors.ink,
                             ),
-                            label: context.l10n.ctxAddToPlaylist,
+                            label: l.ctxAddToPlaylist,
                             onTap: () => showAddTracksToPlaylistSheet(
                               context,
                               ref,
@@ -272,22 +400,19 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                       ],
                     ),
                   ),
-                if (_tracks.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-                    child: Text(
-                      context.l10n.radioEmpty,
-                      style: const TextStyle(
-                        color: ClaiColors.inkSecondary,
-                        height: 1.45,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+                    child: DimKicker(
+                      '${l.radioResults} · ${l.songCount(_tracks.length)}',
                     ),
                   ),
-                for (var i = 0; i < _tracks.length; i++)
-                  SongRow(
-                    track: _tracks[i],
-                    onTap: () => handler.startRadioFromPage(seed, _tracks, i),
-                  ),
+                  for (var i = 0; i < _tracks.length; i++)
+                    SongRow(
+                      track: _tracks[i],
+                      onTap: () =>
+                          handler.startRadioFromPage(seed, _tracks, i),
+                    ),
+                ],
                 SizedBox(height: bottomChromeClearance(context)),
               ],
             ),
@@ -317,16 +442,24 @@ bool isRadioSessionOfPage(String? kind, String? contextId, String seedId) {
   return kind == 'radio' && contextId == seedId;
 }
 
-/// Tombol Putar/Jeda header halaman Radio — widget presentasi murni:
+/// Tombol Putar/Jeda halaman Radio — widget presentasi murni:
 /// ikon mengikuti [playing], ketukan memanggil [onTap]. Keputusan aksi
-/// (pause/resume/start) tinggal di [resolveRadioHeaderAction].
+/// (pause/resume/start) tinggal di [resolveRadioHeaderAction]. Bawaan
+/// tampil Volt 48 (perilaku terbangun); panggung Kepala Hidup memakai
+/// 56 bernada sampul benih lewat parameter yang sama.
 class RadioHeaderPlayButton extends StatelessWidget {
   final bool playing;
   final VoidCallback onTap;
+  final double size;
+  final Color fill;
+  final Color iconColor;
   const RadioHeaderPlayButton({
     super.key,
     required this.playing,
     required this.onTap,
+    this.size = 48,
+    this.fill = ClaiColors.accent,
+    this.iconColor = ClaiColors.onAccent,
   });
   @override
   Widget build(BuildContext context) {
@@ -334,15 +467,12 @@ class RadioHeaderPlayButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(
-            color: ClaiColors.accent,
-            shape: BoxShape.circle,
-          ),
+          width: size,
+          height: size,
+          decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
           child: ClaiIcon(
             playing ? ClaiIcons.pause : ClaiIcons.play,
-            color: ClaiColors.onAccent,
+            color: iconColor,
             size: 26,
           ),
         ),
@@ -351,14 +481,14 @@ class RadioHeaderPlayButton extends StatelessWidget {
   }
 }
 
-/// Satu segmen baris aksi halaman Radio — pola visual yang sama dengan
-/// segmen aksi halaman konten (permukaan surface-2 radius 10, tinggi 46,
-/// ikon+label di tengah; label panjang memotong elipsis).
-class _RadioActionSegment extends StatelessWidget {
+/// Satu pil aksi tonal halaman Radio (Gelombang 2): permukaan surface-2
+/// bentuk pil penuh, tinggi minimum 44, ikon+label rata tengah; label
+/// tampil utuh sampai dua baris (larangan elipsis audit 8047 berlaku).
+class _RadioActionPill extends StatelessWidget {
   final Widget leading;
   final String label;
   final VoidCallback? onTap;
-  const _RadioActionSegment({
+  const _RadioActionPill({
     required this.leading,
     required this.label,
     required this.onTap,
@@ -372,30 +502,34 @@ class _RadioActionSegment extends StatelessWidget {
       label: label,
       child: Material(
         color: ClaiColors.surface2,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(999),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: SizedBox(
-            height: 46,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                leading,
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: enabled ? ClaiColors.ink : ClaiColors.inkFaint,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  leading,
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            enabled ? ClaiColors.ink : ClaiColors.inkFaint,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
