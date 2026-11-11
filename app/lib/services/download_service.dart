@@ -116,6 +116,11 @@ class DownloadService extends ChangeNotifier {
 
   static const maxParallel = 2;
 
+  /// Kait "unduhan selesai" (dipakai cangkang untuk haptik U6); null =
+  /// tanpa pelaporan. Dipanggil sekali per unduhan yang benar-benar
+  /// selesai, dari jalur unduhan sungguhan saja.
+  void Function(Track track)? onDownloadCompleted;
+
   DownloadService(this.db, this.provider);
 
   List<DownloadItemState> get items {
@@ -353,7 +358,7 @@ class DownloadService extends ChangeNotifier {
             bytesDone: resumeFrom, localPath: path, quality: quality.name);
         try {
           doneSize = await _fetchToFile(info.url, path,
-              resumeFrom: resumeFrom, token: token, key: k);
+              resumeFrom: resumeFrom, token: token, key: k, info: info);
           donePath = path;
           break;
         } on DioException catch (e) {
@@ -387,6 +392,9 @@ class DownloadService extends ChangeNotifier {
           localPath: donePath, checksum: checksum, quality: quality.name);
       _set(k, _items[k]!.copyWith(
           status: DownloadStatus.done, bytesTotal: size, bytesDone: size, localPath: donePath));
+      // Kait selesai (U6 haptik, dipasang cangkang): hanya transisi
+      // unduhan sungguhan yang sampai di sini yang melapor.
+      onDownloadCompleted?.call(item0.track);
     } on _QuotaFull {
       await db.saveDownloadItem(k, status: 'error',
           bytesDone: _items[k]?.bytesDone ?? 0, quality: quality.name);
@@ -442,14 +450,18 @@ class DownloadService extends ChangeNotifier {
   /// Unduh [url] ke [path] lewat aliran; lanjut dari [resumeFrom] bila >0
   /// (Range). Mengembalikan ukuran akhir berkas. Kemajuan ditulis ke state.
   Future<int> _fetchToFile(String url, String path,
-      {required int resumeFrom, required CancelToken token, required TrackKey key}) async {
+      {required int resumeFrom,
+      required CancelToken token,
+      required TrackKey key,
+      StreamInfo? info}) async {
     final resp = await _dio.get<ResponseBody>(
       url,
       cancelToken: token,
       options: Options(
         responseType: ResponseType.stream,
         headers: {
-          ...LoadLadder.streamHeaders,
+          // Pasangan UA–URL info dihormati (jalur DIRECT-1, Tahap 3).
+          ...(info == null ? LoadLadder.streamHeaders : LoadLadder.headersFor(info)),
           if (resumeFrom > 0) 'Range': 'bytes=$resumeFrom-',
         },
       ),

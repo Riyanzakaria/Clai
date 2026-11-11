@@ -137,6 +137,32 @@ class AudioFxService {
     } catch (_) {/* berhenti diam-diam */}
   }
 
+  /// Lepas instance Equalizer satu sesi (Ronde Kresek): dipanggil saat sesi
+  /// berganti, EQ dimatikan, atau handler berhenti. Sebelumnya instance
+  /// dibuat per sesi dan tidak pernah dilepas — yatim di sesi mati.
+  Future<void> eqRelease(int sessionId) async {
+    try {
+      await _ch.invokeMethod<void>('eqRelease', {'sessionId': sessionId});
+    } catch (_) {/* lepas diam-diam */}
+  }
+
+  /// Lepas SEMUA instance efek (EQ + Visualizer) di sisi native.
+  Future<void> fxReleaseAll() async {
+    try {
+      await _ch.invokeMethod<void>('fxReleaseAll');
+    } catch (_) {/* lepas diam-diam */}
+  }
+
+  /// Jumlah instance efek yang hidup di sisi native + sesi pemiliknya —
+  /// bukti pembeda kebocoran untuk Log insiden (null bila kanal gagal).
+  Future<Map<String, Object?>?> fxCounts() async {
+    try {
+      return await _ch.invokeMapMethod<String, Object>('fxCounts');
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Aliran peristiwa RMS Visualizer: {sessionId, rmsDb} ±1×/detik per sesi.
   Stream<Map<String, Object?>> get rmsEvents => _events
       .receiveBroadcastStream()

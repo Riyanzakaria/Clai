@@ -27,6 +27,45 @@ class CoverAccentService {
                 connectTimeout: const Duration(seconds: 6),
                 receiveTimeout: const Duration(seconds: 12)));
 
+  /// Warna TANDA TANGAN sampul (sudah didesaturasi 20%, sebelum campuran
+  /// tonal) — sumber tinta mesin tema "Sampul Hidup" (DS v4.0 §5).
+  /// Terpisah dari [tonalForUrl] karena palet ambien menormalisasi ulang
+  /// dari warna tanda tangan, bukan dari campuran tonal yang sudah
+  /// digelapkan ke latar. Cache sendiri ('cover-source-v1'); null bila
+  /// sampul tak tersedia/gagal — pemanggil memperlakukan sebagai "tanpa
+  /// sumber" (palet tidak aktif), tidak pernah warna palsu.
+  Future<Color?> sourceForUrl(String? url) async {
+    if (url == null) return null;
+    final sized = artworkUrlForSize(url, 200) ?? url;
+    final cached = await db.enrichment('cover-source-v1', sized);
+    if (cached.exists && cached.value != null) {
+      final rgb = rgbFromHex(cached.value!);
+      if (rgb != null) return Color.fromARGB(255, rgb.r, rgb.g, rgb.b);
+    }
+    try {
+      final res = await _dio.get<List<int>>(sized,
+          options: Options(responseType: ResponseType.bytes,
+              validateStatus: (s) => s != null && s < 500,
+              receiveTimeout: const Duration(seconds: 10)));
+      if (res.statusCode != 200 || res.data == null || res.data!.isEmpty) {
+        return null;
+      }
+      final codec = await ui.instantiateImageCodec(Uint8List.fromList(res.data!));
+      final frame = await codec.getNextFrame();
+      final img = frame.image;
+      final bytes = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+      img.dispose();
+      if (bytes == null) return null;
+      final px = bytes.buffer.asUint8List();
+      final sig = dominantSaturatedRgb(px) ?? averageRgb(px);
+      final desat = desaturateRgb(sig, 0.20);
+      await db.saveEnrichment('cover-source-v1', sized, rgbToHex(desat));
+      return Color.fromARGB(255, desat.r, desat.g, desat.b);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Warna tonal (siap pakai sebagai latar di belakang sampul) atau null.
   Future<Color?> tonalForUrl(String? url) async {
     if (url == null) return null;
