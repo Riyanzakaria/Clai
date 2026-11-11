@@ -24,6 +24,8 @@ void main() {
     'battery': ClaiIcons.battery, 'batteryAlert': ClaiIcons.batteryAlert, 'copy': ClaiIcons.copy,
     'external': ClaiIcons.external, 'cloudOff': ClaiIcons.cloudOff, 'musicNote': ClaiIcons.musicNote,
     'musicOff': ClaiIcons.musicOff, 'searchOff': ClaiIcons.searchOff, 'playCircle': ClaiIcons.playCircle,
+    'capture': ClaiIcons.capture, 'contrast': ClaiIcons.contrast, 'sun': ClaiIcons.sun,
+    'pulse': ClaiIcons.pulse, 'gauge': ClaiIcons.gauge, 'globe': ClaiIcons.globe,
   };
 
   test('semua glif katalog memiliki jalur & berada dalam kisi 24', () {

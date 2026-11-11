@@ -8,37 +8,44 @@ import 'package:clai/core/tokens.dart';
 import 'package:clai/services/cover_accent.dart';
 import 'package:clai/ui/cover_accent_glow.dart';
 
-/// Ronde Koreksi Gradasi (klarifikasi + perintah pemilik atas build 2010,
-/// 25 Okt 2026). DUA koreksi atas Butir B build 2010:
-/// 1. SEMI-TRANSPARAN: 2010 memakai warna permukaan opak penuh (alfa 1.0)
-///    persis di zona ketinggian ikon navigasi, sehingga gradasi terbaca
-///    blok warna dan konten yang digulir tidak menembus sama sekali.
-///    Kini seluruh ruas yang dilukis beralfa parsial.
-/// 2. TINGGI LUKISAN DIPANGKAS: gradasi hanya boleh hidup DI BAWAH mini
-///    player ("dibawah miniplayer, ga sampe miniplayer") — pita pudar
-///    +56 dp di atas gugus dihapus; tepi atas scrim duduk di tepi BAWAH
-///    kartu mini, menaungi margin bawah kartu + bilah nav + inset saja.
+/// Ronde Perbaikan Scrim (vonis pemilik 2026-11-09 10:06 atas tangkapan
+/// HP-nya sendiri, build 6035). Cacat yang ditunjuknya pada gradasi
+/// chrome — "yang aku maksud gradasi itu yang ini, bukan miniplayer;
+/// batas gradasi dengan miniplayer nya kan masih keliatan, harus
+/// dibikin lebih mulus":
+/// 1. Judul rak terang ("Koleksi Kamu") TERBACA menghantui di belakang
+///    ikon/label nav — profil warisan 0,32/0,55/0,85 (kalibrasi "tipis
+///    seperti Spotify", 25 Okt 2026) memang dirancang tembus cahaya.
+/// 2. Garis perbatasan yang bisa ditunjuk di tepi mini player: alfa
+///    awal 0,32 tepat di bawah kartu (warisan) dan, pada mode tema,
+///    sambungan falloff 0,85 ↔ penopang pekat tepat di tepi atas kartu.
 ///
-/// Pilihan yang dinyatakan & diuji di sini:
-/// - Profil alfa mengikuti referensi Spotify kiriman pemilik: berjangkar
-///   di BAWAH — 0.32 di tepi atas ruas (di bawah kartu) → 0.55 di tengah
-///   (zona ikon) → 0.85 di tepi paling bawah. TIPIS adalah kata kunci:
-///   konten di balik nav terbaca jelas menembus; jangkar keterbacaan
-///   seminimal yang masih membuat ikon/label terbaca.
-/// - Tinggi lukisan = [chromeScrimHeight] = margin 1 + nav 54 + inset;
-///   TIDAK memuat tinggi kartu, celah atas, atau pita pudar apa pun.
-/// - Matematika tembus cahaya dibuktikan dengan komposit alfa: piksel
-///   zona nav di atas konten terang berbeda nyata dari warna scrim
-///   murni (yang akan terlihat bila scrim opak).
+/// Standar baru yang dinyatakan & diuji di sini (kedua mode):
+/// - Gradasi mencapai alfa ≥0,97 pada titik yang masih TERTUTUP di
+///   balik kartu mini, dan ≥0,99 tepat di tepi bawah kartu — profil
+///   latar melintasi tepi kartu tanpa anak tangga yang bisa ditunjuk.
+/// - Di zona nav alfa mencapai 1,00: teks terang yang terparkir di
+///   belakang nav tersisa ≤1% cahayanya — tak terbaca.
+/// - Fade yang TERLIHAT (falloff tema di atas kartu) tetap panjang
+///   250 dp dan mulus seperti resep papan yang disetujui.
+/// Bukti piksel kasus-ujinya (judul terang diparkir di belakang nav,
+/// sebelum vs sesudah) disimpan di builds/bukti-scrim-f3.
 
-({int r, int g, int b}) _rgbOf(Color c) => (
-      r: (c.r * 255).round(),
-      g: (c.g * 255).round(),
-      b: (c.b * 255).round(),
-    );
+/// CATATAN 8046 (putusan final pemilik 2026-11-10 11:43): bagian
+/// tema-hidup dari standar di atas (falloff + lapisan penutup +
+/// fade zona nav mode tema) TERGANTIKAN — mekanismenya dihapus
+/// total dari kode dan grup tesnya diganti grup 'chrome bersih
+/// (8046)' di berkas ini. Yang tetap berlaku dari berkas ini:
+/// seluruh standar mode warisan (tema mati).
+
+({int r, int g, int b}) _rgbOf(Color c) =>
+    (r: (c.r * 255).round(), g: (c.g * 255).round(), b: (c.b * 255).round());
 
 /// Komposit "source-over" warna [fg] beralfa di atas latar [bgRgb].
-({int r, int g, int b}) _compositeOver(Color fg, ({int r, int g, int b}) bgRgb) {
+({int r, int g, int b}) _compositeOver(
+  Color fg,
+  ({int r, int g, int b}) bgRgb,
+) {
   final f = _rgbOf(fg);
   final a = fg.a;
   return (
@@ -50,8 +57,7 @@ import 'package:clai/ui/cover_accent_glow.dart';
 
 /// Alfa efektif gradasi pada posisi [t] (interpolasi linear antar
 /// hentian, sama seperti render LinearGradient).
-double _alphaAt(List<Color> colors, double t) {
-  final stops = kChromeScrimStops;
+double _alphaAt(List<Color> colors, List<double> stops, double t) {
   for (var i = 0; i < stops.length - 1; i++) {
     if (t <= stops[i + 1]) {
       final f = (t - stops[i]) / (stops[i + 1] - stops[i]);
@@ -61,8 +67,16 @@ double _alphaAt(List<Color> colors, double t) {
   return colors.last.a;
 }
 
+/// Alfa efektif pada jarak [dp] dari tepi atas lukisan setinggi
+/// [height].
+double _alphaAtDp(
+  ({List<Color> colors, List<double> stops}) g,
+  double dp,
+  double height,
+) => _alphaAt(g.colors, g.stops, dp / height);
+
 void main() {
-  group('koreksi gradasi — tinggi lukisan hanya di bawah mini player', () {
+  group('perbaikan scrim — tinggi lukisan warisan', () {
     test('chromeScrimHeight = margin bawah kartu + nav + inset, itu saja', () {
       expect(chromeScrimHeight(0), kMiniPlayerBottomMargin + kNavBarHeight);
       expect(chromeScrimHeight(0), 55);
@@ -70,136 +84,189 @@ void main() {
         chromeScrimHeight(24),
         kMiniPlayerBottomMargin + kNavBarHeight + 24,
       );
-      // Tidak memuat kartu mini, celah atas, atau pita pudar:
-      // tinggi lukisan jauh di bawah tinggi gugus penuh.
-      final clusterTanpaInset =
-          kChromeTopGap + kMiniPlayerHeight + kMiniPlayerBottomMargin + kNavBarHeight;
-      expect(chromeScrimHeight(0), lessThan(clusterTanpaInset));
     });
 
-    test('kabel sumber: pelukis memakai chromeScrimHeight & pita pudar '
-        'sudah tidak ada di app.dart', () {
+    test('tinggi lukisan = pita sudut tertutup kartu + ruas bawah kartu; '
+        'tetap jauh di bawah tinggi gugus penuh', () {
+      expect(chromeScrimPaintHeight(0), kChromeScrimTuck + 55);
+      expect(chromeScrimPaintHeight(24), kChromeScrimTuck + 55 + 24);
+      final clusterTanpaInset =
+          kChromeTopGap +
+          kMiniPlayerHeight +
+          kMiniPlayerBottomMargin +
+          kNavBarHeight;
+      expect(chromeScrimPaintHeight(0), lessThan(clusterTanpaInset));
+    });
+
+    test('kabel sumber: pelukis memakai chromeScrimPaintHeight & '
+        'chromeScrimGradient; pita pudar lama tetap tidak ada', () {
       final src = File('lib/app.dart').readAsStringSync();
-      expect(src, contains('height: chromeScrimHeight(bottomInset)'));
+      expect(src, contains('height: chromeScrimPaintHeight(bottomInset)'));
+      expect(src, contains('chromeScrimGradient('));
       expect(src, isNot(contains('kScrimFadeHeight')));
     });
   });
 
-  group('koreksi gradasi — alfa zona nav', () {
-    test('netral: seluruh hentian beralfa parsial (tak ada yang opak)', () {
-      final colors = chromeScrimColors(null);
-      expect(colors.length, 3);
-      for (final c in colors) {
-        expect(c.a, lessThan(1.0));
+  group('perbaikan scrim — profil alfa warisan baru', () {
+    const h0 = 71.0; // tinggi lukisan pada inset 0: tuck 16 + 55
+
+    test('netral: 5 hentian, alfa pita [0.88, 0.97, 0.99, 1.0] + terminal', () {
+      final g = chromeScrimGradient(null, h0);
+      expect(g.colors.length, 5);
+      expect(g.stops.length, 5);
+      expect(g.colors.map((c) => c.a).toList(), [0.88, 0.97, 0.99, 1.0, 1.0]);
+      for (final c in g.colors) {
+        expect(_rgbOf(c), _rgbOf(ClaiColors.base));
       }
-      expect(colors[0].a, kScrimNavTopAlpha);
-      expect(colors[1].a, kScrimNavMidAlpha);
-      expect(colors[2].a, kScrimBottomAlpha);
+      expect(g.stops, [0, 6 / h0, 16 / h0, 40 / h0, 1.0]);
     });
 
-    test('aksen: seluruh hentian beralfa parsial (tak ada yang opak)', () {
-      final colors = chromeScrimColors(const Color(0xFF5D191F));
-      expect(colors.length, 3);
-      for (final c in colors) {
-        expect(c.a, lessThan(1.0));
-      }
-      expect(colors[0].a, kScrimNavTopAlpha);
-      expect(colors[1].a, kScrimNavMidAlpha);
-      expect(colors[2].a, kScrimBottomAlpha);
+    test('aksen: alfa sama, rona permukaan dipertahankan lalu menggeser '
+        'ke base', () {
+      const tonal = Color(0xFF5D191F);
+      final surface = readableAccentSurface(tonal);
+      final g = chromeScrimGradient(tonal, h0);
+      expect(g.colors.map((c) => c.a).toList(), [0.88, 0.97, 0.99, 1.0, 1.0]);
+      expect(_rgbOf(g.colors[0]), _rgbOf(surface));
+      expect(_rgbOf(g.colors[1]), _rgbOf(surface));
+      expect(_rgbOf(g.colors[2]), _rgbOf(surface));
+      expect(
+        g.colors[3],
+        Color.lerp(surface, ClaiColors.base, 0.35)!.withValues(alpha: 1.0),
+      );
+      expect(
+        g.colors[4],
+        Color.lerp(surface, ClaiColors.base, 0.5)!.withValues(alpha: 1.0),
+      );
+      expect(g.colors[4], isNot(chromeScrimGradient(null, h0).colors[4]));
     });
 
-    test('profil alfa seperti referensi: tipis di atas, menggelap ke '
-        'bawah (0.32 → 0.55 → 0.85)', () {
+    test('jangkar profil: 0,97 tertutup kartu, 0,99 di tepi bawah kartu, '
+        '1,00 di zona nav; monoton tanpa anak tangga', () {
       for (final tonal in <Color?>[null, const Color(0xFF5D191F)]) {
-        final colors = chromeScrimColors(tonal);
-        expect(_alphaAt(colors, 0), 0.32);
-        expect(_alphaAt(colors, 0.5), 0.55);
-        expect(_alphaAt(colors, 1.0), 0.85);
-        // Berjangkar di bawah: alfa monoton naik ke arah tepi bawah.
-        expect(_alphaAt(colors, 0), lessThan(_alphaAt(colors, 0.5)));
-        expect(_alphaAt(colors, 0.5), lessThan(_alphaAt(colors, 1.0)));
-        // Zona ikon (±tengah ruas): tipis — konten dominan menembus.
-        final mid = _alphaAt(colors, 0.5);
-        expect(mid, greaterThan(0.40));
-        expect(mid, lessThan(0.70));
+        final g = chromeScrimGradient(tonal, h0);
+        expect(_alphaAtDp(g, 0, h0), 0.88);
+        expect(_alphaAtDp(g, 6, h0), closeTo(0.97, 1e-9));
+        // Tepi bawah kartu duduk pada dp = tuck:
+        expect(_alphaAtDp(g, kChromeScrimTuck, h0), closeTo(0.99, 1e-9));
+        expect(_alphaAtDp(g, 40, h0), 1.0);
+        expect(_alphaAtDp(g, h0, h0), 1.0);
+        var prev = _alphaAtDp(g, 0, h0);
+        for (var dp = 1; dp <= h0; dp++) {
+          final a = _alphaAtDp(g, dp.toDouble(), h0);
+          expect(
+            a,
+            greaterThanOrEqualTo(prev - 1e-9),
+            reason: 'alfa turun pada dp=$dp',
+          );
+          expect(
+            a - prev,
+            lessThanOrEqualTo(0.02),
+            reason: 'anak tangga pada dp=$dp: $prev → $a',
+          );
+          prev = a;
+        }
       }
     });
 
     test('konstanta profil yang dinyatakan', () {
-      expect(kScrimNavTopAlpha, 0.32);
-      expect(kScrimNavMidAlpha, 0.55);
-      expect(kScrimBottomAlpha, 0.85);
+      expect(kChromeScrimTuck, 16);
+      expect(kChromeScrimBandDp, [0, 6, 16, 40]);
+      expect(kChromeScrimBandAlphas, [0.88, 0.97, 0.99, 1.0]);
+      // Titik nyaris-pekat (0,97 pada +6 dp) masih di dalam pita yang
+      // tertutup kartu (tuck 16 dp) — bukan di zona terlihat.
+      expect(kChromeScrimBandDp[1], lessThan(kChromeScrimTuck));
+      // Pita tuck sejajar radius sudut bawah kartu: busur sudut kartu
+      // seluruhnya tertopang gradasi.
+      expect(kChromeScrimTuck, ClaiRadius.card);
     });
   });
 
-  group('koreksi gradasi — matematika tembus cahaya', () {
+  group('perbaikan scrim — matematika penekanan hantu', () {
     const bright = (r: 200, g: 200, b: 200);
+    const dark = (r: 10, g: 10, b: 14);
 
-    test('netral: piksel zona nav di atas konten terang ≠ scrim murni', () {
-      final colors = chromeScrimColors(null);
-      // Tengah ruas (zona ikon, alfa 0.55): konten menyumbang 45% piksel
-      // — sampul di baliknya terbaca, bukan sekadar menyirip.
-      final mid = _compositeOver(colors[1], bright);
-      final midPure = _rgbOf(colors[1]);
-      expect((mid.r - midPure.r).abs(), greaterThanOrEqualTo(25));
-      expect((mid.g - midPure.g).abs(), greaterThanOrEqualTo(25));
-      expect((mid.b - midPure.b).abs(), greaterThanOrEqualTo(25));
-      // Tepi bawah (alfa 0.85) pun masih tembus, bukan opak:
-      final bottom = _compositeOver(colors.last, bright);
-      final bottomPure = _rgbOf(colors.last);
-      expect((bottom.r - bottomPure.r).abs(), greaterThanOrEqualTo(12));
-      expect((bottom.g - bottomPure.g).abs(), greaterThanOrEqualTo(12));
-      expect((bottom.b - bottomPure.b).abs(), greaterThanOrEqualTo(12));
+    int maxChannelDiff(({int r, int g, int b}) a, ({int r, int g, int b}) b) =>
+        [
+          (a.r - b.r).abs(),
+          (a.g - b.g).abs(),
+          (a.b - b.b).abs(),
+        ].reduce((x, y) => x > y ? x : y);
+
+    test('netral: di tepi bawah kartu (alfa 0,99) konten terang vs gelap '
+        'nyaris tak bisa dibedakan (≤3/255 per kanal)', () {
+      final g = chromeScrimGradient(null, 71);
+      final overBright = _compositeOver(g.colors[2], bright);
+      final overDark = _compositeOver(g.colors[2], dark);
+      expect(maxChannelDiff(overBright, overDark), lessThanOrEqualTo(3));
     });
 
-    test('aksen: piksel zona nav di atas konten terang ≠ scrim murni', () {
-      final colors = chromeScrimColors(const Color(0xFF5D191F));
-      final mid = _compositeOver(colors[1], bright);
-      final midPure = _rgbOf(colors[1]);
-      expect((mid.r - midPure.r).abs(), greaterThanOrEqualTo(25));
-      expect((mid.g - midPure.g).abs(), greaterThanOrEqualTo(25));
-      expect((mid.b - midPure.b).abs(), greaterThanOrEqualTo(25));
-      final bottom = _compositeOver(colors.last, bright);
-      final bottomPure = _rgbOf(colors.last);
-      expect((bottom.r - bottomPure.r).abs(), greaterThanOrEqualTo(12));
-      expect((bottom.g - bottomPure.g).abs(), greaterThanOrEqualTo(12));
-      expect((bottom.b - bottomPure.b).abs(), greaterThanOrEqualTo(12));
+    test('aksen: penekanan sama kuatnya pada tinta sampul', () {
+      final g = chromeScrimGradient(const Color(0xFF5D191F), 71);
+      final overBright = _compositeOver(g.colors[2], bright);
+      final overDark = _compositeOver(g.colors[2], dark);
+      expect(maxChannelDiff(overBright, overDark), lessThanOrEqualTo(3));
     });
 
-    test('lantai keterbacaan: label redup tetap ≥4.5:1 di atas konten '
-        'terang realistis (abu 144) pada tepi bawah netral', () {
-      final bottom = chromeScrimColors(null).last;
-      final eff = _compositeOver(bottom, (r: 144, g: 144, b: 144));
-      expect(
-        contrastRatioRgb((r: 0x8A, g: 0x8F, b: 0x87), eff),
-        greaterThanOrEqualTo(4.5),
-      );
+    test('zona nav (alfa 1,00): hantu hilang penuh — konten di baliknya '
+        'tidak menyumbang apa pun', () {
+      for (final tonal in <Color?>[null, const Color(0xFF5D191F)]) {
+        final g = chromeScrimGradient(tonal, 71);
+        for (final stop in [g.colors[3], g.colors[4]]) {
+          final overBright = _compositeOver(stop, bright);
+          final overDark = _compositeOver(stop, dark);
+          expect(maxChannelDiff(overBright, overDark), 0);
+        }
+      }
     });
 
-    test('baris label (alfa ±0.70) di atas ubin terang nyata (merah muda '
-        '194,77,121): label terpilih jauh di atas ambang, label redup '
-        'tetap terbaca — kompromi "tipis" yang dinyatakan pemilik', () {
-      final atLabelRow =
-          ClaiColors.base.withValues(alpha: 0.70);
-      final eff = _compositeOver(atLabelRow, (r: 194, g: 77, b: 121));
-      expect(
-        contrastRatioRgb((r: 0xF4, g: 0xF6, b: 0xF1), eff),
-        greaterThanOrEqualTo(4.5),
-      );
-      expect(
-        contrastRatioRgb((r: 0x8A, g: 0x8F, b: 0x87), eff),
-        greaterThanOrEqualTo(4.0),
-      );
+    test('lantai keterbacaan: label redup ≥4.5:1 di atas warna terminal '
+        'netral maupun aksen (label digambar DI ATAS scrim pekat)', () {
+      for (final tonal in <Color?>[null, const Color(0xFF5D191F)]) {
+        final terminal = chromeScrimGradient(tonal, 71).colors[4];
+        expect(
+          contrastRatioRgb((r: 0x8A, g: 0x8F, b: 0x87), _rgbOf(terminal)),
+          greaterThanOrEqualTo(4.5),
+        );
+        expect(
+          contrastRatioRgb((r: 0xF4, g: 0xF6, b: 0xF1), _rgbOf(terminal)),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
     });
 
     test('rona sampul tetap terasa: zona nav beraksen berbeda dari netral', () {
       const tonal = Color(0xFF5D191F);
       final surface = readableAccentSurface(tonal);
-      final accent = chromeScrimColors(tonal);
-      expect(_rgbOf(accent[0]), _rgbOf(surface));
-      expect(_rgbOf(accent[1]), _rgbOf(surface));
-      expect(accent.last, isNot(chromeScrimColors(null).last));
+      final accent = chromeScrimGradient(tonal, 71);
+      expect(_rgbOf(accent.colors[0]), _rgbOf(surface));
+      expect(accent.colors[4], isNot(chromeScrimGradient(null, 71).colors[4]));
       expect(ClaiColors.base, isNot(surface));
+    });
+  });
+
+  // ------------------------------------------------------------ 8046
+  // Chrome bersih (putusan final pemilik 2026-11-10 11:43): tema
+  // hidup tidak melukis latar apa pun di sekitar chrome. Falloff,
+  // lapisan penutup, dan fade zona nav mode tema DIHAPUS dari
+  // kode; yang tersisa hanya scrim warisan (tema mati) + geometri
+  // daerah lukis bersama yang kini melayani warisan saja.
+  group('chrome bersih (8046) — tema hidup tanpa lukisan latar', () {
+    test('kabel sumber: mekanisme gradasi tema hidup sudah tidak '
+        'ada di app.dart; warisan tetap terpasang', () {
+      final src = File('lib/app.dart').readAsStringSync();
+      // Mekanisme yang dihapus total (nama persisnya):
+      expect(src, isNot(contains('chromeFalloff')));
+      expect(src, isNot(contains('kChromeFalloff')));
+      expect(src, isNot(contains('chromeCompletion')));
+      expect(src, isNot(contains('chromeNavFadeColors')));
+      expect(src, isNot(contains('chromeMiniTopOffset')));
+      // Cabang lukisan hanya hidup saat tema mati:
+      expect(src, contains('if (!ambOn)'));
+      // Warisan tidak disentuh — scrim + fade warisan terpasang:
+      expect(src, contains('chromeScrimGradient('));
+      expect(src, contains('chromeNavFadeLegacyGradient('));
+      expect(src, contains('ChromeBackingPainter('));
     });
   });
 }
