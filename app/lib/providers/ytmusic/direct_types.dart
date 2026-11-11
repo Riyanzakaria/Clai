@@ -192,6 +192,17 @@ String replaceQueryParam(String url, String key, String value) {
 String appendSignatureParam(String url, String sp, String sig) =>
     '$url&$sp=${Uri.encodeComponent(sig)}';
 
+/// Sinyal batal (Ronde 8054): percobaan resolusi DIRECT dibuang dari antrean
+/// rantai berseri karena pemanggilnya menyatakan pekerjaannya tidak lagi
+/// dikehendaki (perintah putar yang memintanya sudah dikalahkan ketukan yang
+/// lebih baru). BUKAN kegagalan: tidak dicatat sebagai jatuh, tidak menyentuh
+/// bucket kesehatan. Ditempatkan di berkas tipe bersama agar layanan DIRECT,
+/// provider, tangga muat, dan handler bisa mengenal kelas batal yang sama
+/// tanpa impor melingkar.
+class DirectSuperseded implements Exception {
+  const DirectSuperseded();
+}
+
 /// Rusak tanda tangan URL secara deterministik (balik char pertama nilai
 /// `sig`/`signature`; bila tak ada, rusak `pot`). HANYA untuk pementasan
 /// bukti penolakan edge (403) dari layar Diagnostik — kelas galat yang

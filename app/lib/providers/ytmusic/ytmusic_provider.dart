@@ -515,12 +515,18 @@ class YtMusicProvider implements MusicProvider {
   }
 
   @override
-  Future<StreamInfo> resolveStream(Track track, StreamQuality quality) async {
+  Future<StreamInfo> resolveStream(Track track, StreamQuality quality,
+      {bool Function()? stillWanted}) async {
     // DIRECT-1 lebih dulu (Tahap 3): format adaptif per tingkat kualitas
     // lewat konstruksi E3. Kegagalan jalur apa pun (konteks/solver/
     // minter/403) jatuh ke rantai warisan di bawah TANPA mengubah
     // perilakunya — pengguna tidak melihat jeda maupun error tambahan.
-    final direct = await directService.tryResolve(track, quality);
+    // DirectSuperseded dari layanan (pekerjaan dibuang dari antrean karena
+    // perintah pemintanya sudah dikalahkan, Ronde 8054) DIBIARKAN naik:
+    // jatuh ke rantai warisan akan membakar resolusi kedua untuk
+    // pekerjaan yang memang sudah mati.
+    final direct = await directService.tryResolve(track, quality,
+        stillWanted: stillWanted);
     if (direct != null) {
       await db.cacheStream(track.key, direct);
       return direct;
