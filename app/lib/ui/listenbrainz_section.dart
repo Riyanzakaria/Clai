@@ -4,6 +4,7 @@ import '../app.dart';
 import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../l10n/l10n.dart';
+import 'widgets.dart';
 
 /// Seksi Pengaturan: ListenBrainz (F2). Token adalah milik pengguna, diisi
 /// sendiri; fitur MATI secara default dan tidak mengirim apa pun sebelum
@@ -47,10 +48,11 @@ class _ListenBrainzSettingsSectionState extends ConsumerState<ListenBrainzSettin
     if (!_loaded) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SwitchListTile(
+        secondary: tonalIconBox(ClaiIcons.history, size: 40, iconSize: 20),
         title: Text(context.l10n.lbTitle, style: const TextStyle(color: ClaiColors.ink)),
         subtitle: Text(context.l10n.lbSub,
             style: const TextStyle(color: ClaiColors.inkSecondary)),
-        value: _enabled, activeThumbColor: ClaiColors.accent,
+        value: _enabled,
         onChanged: (v) async { await svc.setEnabled(v); if (mounted) setState(() => _enabled = v); },
       ),
       Padding(
@@ -59,20 +61,20 @@ class _ListenBrainzSettingsSectionState extends ConsumerState<ListenBrainzSettin
           controller: _tokenCtrl,
           obscureText: true,
           style: const TextStyle(color: ClaiColors.ink),
-          decoration: InputDecoration(
+          decoration: claiFieldDecoration(
             labelText: context.l10n.lbTokenLabel,
             hintText: context.l10n.lbTokenHint,
-            hintStyle: TextStyle(color: ClaiColors.inkFaint),
-            labelStyle: TextStyle(color: ClaiColors.inkSecondary),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: ClaiColors.surface3)),
-            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: ClaiColors.accent)),
           ),
         ),
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: Row(children: [
-          TextButton(
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              backgroundColor: ClaiColors.surface3,
+              foregroundColor: ClaiColors.accent,
+            ),
             onPressed: _checking ? null : () async {
               setState(() { _checking = true; _tokenStatus = null; });
               await svc.setToken(_tokenCtrl.text);
@@ -82,14 +84,14 @@ class _ListenBrainzSettingsSectionState extends ConsumerState<ListenBrainzSettin
             child: Text(_checking ? context.l10n.commonChecking : context.l10n.lbSaveCheck, style: const TextStyle(color: ClaiColors.accent)),
           ),
           if (_tokenStatus != null)
-            Expanded(child: Text(_tokenStatus!, style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 12.5))),
+            Expanded(child: Text(_tokenStatus!, style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13))),
         ]),
       ),
       ListTile(
-        leading: ClaiIcon(ClaiIcons.shield, color: ClaiColors.inkFaint),
-        title: Text(context.l10n.lbSafeTitle, style: const TextStyle(color: ClaiColors.ink, fontSize: 13.5)),
+        leading: tonalIconBox(ClaiIcons.shield, size: 40, iconSize: 20, color: ClaiColors.inkFaint),
+        title: Text(context.l10n.lbSafeTitle, style: const TextStyle(color: ClaiColors.ink, fontSize: 13)),
         subtitle: Text(context.l10n.lbSafeSub,
-            style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 12.5)),
+            style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
       ),
     ]);
   }

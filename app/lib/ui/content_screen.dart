@@ -7,10 +7,20 @@ import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../l10n/l10n.dart';
+import '../player/queue_engine.dart' as qe;
+import '../services/ambient_theme.dart';
 import '../services/download_service.dart';
+import 'cover_accent_glow.dart';
 import 'widgets.dart';
 
 /// Halaman Konten (PRD 5.3): Album / Playlist sumber / Artis.
+///
+/// Gelombang 2 (8048): komposisi "Kepala Hidup" — panggung sampul
+/// lebar-penuh 300 dp dengan teks di atas gradasi kaki panggung saja,
+/// chip kaca kembali, lalu dok aksi berlabel 16 dp di bawah panggung
+/// (Putar 56 dp bernada sampul diperdalam §11.9; Acak/Simpan/Unduh/
+/// Bagikan sebagai aksi berlabel). Perilaku D-10 (cache) & D-13
+/// (simpan/unduh) tidak berubah — yang berubah hanya komposisinya.
 class ContentScreen extends ConsumerStatefulWidget {
   final String kind; // album | playlist | artist
   final String id;
@@ -106,7 +116,7 @@ class _ContentScreenState extends ConsumerState<ContentScreen> {
       'ytmusic',
       widget.id,
       title: page.title.isEmpty ? widget.titleHint : page.title,
-      subtitle: page.subtitle,
+      subtitle: brandSafeSubtitle(page.subtitle),
       artworkUrl: page.artworkUrl,
     );
   }
@@ -129,458 +139,446 @@ class _ContentScreenState extends ConsumerState<ContentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final handler = ref.watch(audioHandlerProvider);
     final page = _page;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.titleHint,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
       body: _loading
-          ? const LoadingSkeleton()
+          ? _withBackChip(context, const LoadingSkeleton())
           : _error != null
-          ? ErrorState(message: _error!, onRetry: _load)
-          : page == null
-          ? EmptyState(
-              icon: ClaiIcons.album,
-              message: context.l10n.contentUnavailable,
-            )
-          : ListView(
-              children: [
-                if (_fromCache)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+              ? _withBackChip(
+                  context, ErrorState(message: _error!, onRetry: _load))
+              : page == null
+                  ? _withBackChip(
+                      context,
+                      EmptyState(
+                        icon: ClaiIcons.album,
+                        message: context.l10n.contentUnavailable,
                       ),
-                      decoration: BoxDecoration(
-                        color: ClaiColors.surface2,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          ClaiIcon(
-                            ClaiIcons.cloudOff,
-                            size: 18,
-                            color: ClaiColors.warning,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              context.l10n.contentFromCache,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: ClaiColors.inkSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    )
+                  : _loaded(context, page),
+    );
+  }
+
+  /// Keadaan non-isi tetap punya affordance kembali (dulu AppBar).
+  Widget _withBackChip(BuildContext context, Widget child) => Stack(
+        children: [
+          Positioned.fill(child: child),
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + 12,
+            left: 16,
+            child: const GlassBackChip(),
+          ),
+        ],
+      );
+
+  Widget _loaded(BuildContext context, ContentPage page) {
+    final l = context.l10n;
+    final handler = ref.watch(audioHandlerProvider);
+    final title = page.title.isEmpty ? widget.titleHint : page.title;
+    final kindLabel = switch (widget.kind) {
+      'album' => l.searchAlbums,
+      'playlist' => l.searchPlaylists,
+      _ => l.searchArtists,
+    };
+    final metaParts = <String>[
+      if (brandSafeSubtitle(page.subtitle) != null)
+        brandSafeSubtitle(page.subtitle)!,
+      if (page.tracks.isNotEmpty)
+        l.contentCountLine(
+          page.tracks.length,
+          formatDuration(page.tracks.fold<Duration>(
+            Duration.zero,
+            (a, t) => a + (t.duration ?? Duration.zero),
+          )),
+        ),
+    ];
+    return FiniteScrollPage(
+      padding: EdgeInsets.zero,
+      children: [
+        // PANGGUNG (Kepala Hidup): sampul lebar-penuh 300 dp; teks hidup
+        // di atas gradasi kaki panggung SAJA (hitam 0 → 55% di 150 dp
+        // terbawah) — tidak ada lelehan ke badan halaman.
+        SizedBox(
+          height: 300,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              StageArtwork(url: page.artworkUrl, height: 300),
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 150,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x00000000), Color(0x8C000000)],
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CoverArt(
-                        url: page.artworkUrl,
-                        size: 120,
-                        label: page.title,
-                        radius: 12,
+                ),
+              ),
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + 12,
+                left: 16,
+                child: const GlassBackChip(),
+              ),
+              Positioned(
+                left: 20,
+                right: 20,
+                bottom: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      kindLabel.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.6,
+                        color: Colors.white.withValues(alpha: 0.85),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              page.title.isEmpty
-                                  ? widget.titleHint
-                                  : page.title,
-                              style: displayStyle(19),
-                            ),
-                            if (page.subtitle != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  page.subtitle!,
-                                  style: const TextStyle(
-                                    color: ClaiColors.inkSecondary,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            if (page.tracks.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  context.l10n.contentCountLine(
-                                    page.tracks.length,
-                                    formatDuration(
-                                      page.tracks.fold<Duration>(
-                                        Duration.zero,
-                                        (a, t) =>
-                                            a + (t.duration ?? Duration.zero),
-                                      ),
-                                    ),
-                                  ),
-                                  style: const TextStyle(
-                                    color: ClaiColors.inkFaint,
-                                    fontSize: 12.5,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                PressableScale(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      if (page.tracks.isNotEmpty) {
-                                        handler.playTracks(
-                                          page.tracks,
-                                          0,
-                                          kind: widget.kind,
-                                          id: widget.id,
-                                          label: page.title,
-                                        );
-                                      }
-                                    },
-                                    child: Container(
-                                      width: 48,
-                                      height: 48,
-                                      decoration: const BoxDecoration(
-                                        color: ClaiColors.accent,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: ClaiIcon(
-                                        ClaiIcons.play,
-                                        color: ClaiColors.onAccent,
-                                        size: 26,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                OutlinedButton.icon(
-                                  onPressed: () {
-                                    if (page.tracks.isEmpty) return;
-                                    handler.setShuffleMode(
-                                      AudioServiceShuffleMode.all,
-                                    );
-                                    handler.playTracks(
-                                      page.tracks,
-                                      0,
-                                      kind: widget.kind,
-                                      id: widget.id,
-                                      label: context.l10n.contentShuffleContext(
-                                        page.title,
-                                      ),
-                                    );
-                                  },
-                                  icon: ClaiIcon(
-                                    ClaiIcons.shuffle,
-                                    size: 18,
-                                    color: ClaiColors.ink,
-                                  ),
-                                  label: Text(
-                                    context.l10n.contentShuffle,
-                                    style: const TextStyle(
-                                      color: ClaiColors.ink,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                    ),
+                    const SizedBox(height: 6),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        style: displayStyle(30)
+                            .copyWith(color: ClaiColors.ink),
+                      ),
+                    ),
+                    if (metaParts.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        metaParts.join(' · '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.75),
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // DOK AKSI: Putar 56 bernada sampul + empat aksi berlabel.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _stagePlayButton(context, page),
+              const SizedBox(width: 6),
+              Expanded(
+                child: StreamBuilder<dynamic>(
+                  stream: handler.queueStream,
+                  builder: (context, _) {
+                    final shuffleOn =
+                        handler.engine.shuffle != qe.ShuffleMode.off;
+                    return DockAction(
+                      icon: ClaiIcons.shuffle,
+                      label: l.contentShuffle,
+                      active: shuffleOn,
+                      onTap: page.tracks.isEmpty
+                          ? null
+                          : () {
+                              handler.setShuffleMode(
+                                AudioServiceShuffleMode.all,
+                              );
+                              handler.playTracks(
+                                page.tracks,
+                                0,
+                                kind: widget.kind,
+                                id: widget.id,
+                                label: l.contentShuffleContext(page.title),
+                              );
+                            },
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final lib = ref.watch(libraryProvider);
+                    final saved = widget.kind != 'playlist' &&
+                        lib.isSavedItem(widget.kind, 'ytmusic', widget.id);
+                    return DockAction(
+                      icon: widget.kind == 'playlist'
+                          ? ClaiIcons.playlistAdd
+                          : (saved ? ClaiIcons.heartFill : ClaiIcons.heart),
+                      label: saved ? l.contentSaved : l.contentSave,
+                      color: saved ? ClaiColors.liked : null,
+                      onTap: () => _saveToCollection(page),
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final svc = ref.watch(downloadServiceProvider);
+                    final downloadable = page.tracks
+                        .where((t) => t.providerId != 'local')
+                        .toList();
+                    final doneCount = downloadable
+                        .where((t) => svc.isDownloaded(t.key))
+                        .length;
+                    final activeCount = downloadable.where((t) {
+                      final s = svc.itemFor(t.key)?.status;
+                      return s == DownloadStatus.queued ||
+                          s == DownloadStatus.downloading ||
+                          s == DownloadStatus.paused;
+                    }).length;
+                    if (downloadable.isNotEmpty &&
+                        doneCount == downloadable.length) {
+                      return DockAction(
+                        icon: ClaiIcons.check,
+                        label: l.contentDownloaded,
+                        color: ClaiColors.accent,
+                        onTap: null,
+                      );
+                    }
+                    if (activeCount > 0) {
+                      return DockAction(
+                        icon: ClaiIcons.download,
+                        label: l.contentDownloadingCount(
+                            doneCount, downloadable.length),
+                        iconWidget: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            value: downloadable.isEmpty
+                                ? null
+                                : doneCount / downloadable.length,
+                            strokeWidth: 2,
+                            color: ClaiColors.accent,
+                          ),
+                        ),
+                        onTap: () => _downloadAll(page),
+                      );
+                    }
+                    return DockAction(
+                      icon: ClaiIcons.download,
+                      label: l.contentDownloadAll,
+                      onTap: page.tracks.isEmpty
+                          ? null
+                          : () => _downloadAll(page),
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: DockAction(
+                  icon: ClaiIcons.share,
+                  label: l.contentShare,
+                  onTap: () => Share.share(
+                    claiPageShareText(
+                      title,
+                      brandSafeSubtitle(page.subtitle) ?? '',
+                      l,
+                    ),
                   ),
                 ),
-                // Butir F (Poles Beranda): baris aksi SERAGAM lebar
-                // penuh di bawah kepala — Simpan / Unduh / Bagikan
-                // sebagai tiga segmen ikon+label selebar sama, bukan
-                // pil bertumpuk mengikuti panjang teks di kolom
-                // kepala yang sempit. Play + Shuffle tetap dominan
-                // di kepala. Semua keadaan D-13 utuh: tersimpan,
-                // progres unduhan (x/y), dan "semua terunduh".
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Builder(
-                          builder: (context) {
-                            final lib = ref.watch(libraryProvider);
-                            final saved =
-                                widget.kind != 'playlist' &&
-                                lib.isSavedItem(
-                                  widget.kind,
-                                  'ytmusic',
-                                  widget.id,
-                                );
-                            return _ActionSegment(
-                              leading: ClaiIcon(
-                                saved
-                                    ? ClaiIcons.heartFill
-                                    : ClaiIcons.playlistAdd,
-                                size: 18,
-                                color: saved
-                                    ? ClaiColors.liked
-                                    : ClaiColors.ink,
-                              ),
-                              label: saved
-                                  ? context.l10n.contentSaved
-                                  : context.l10n.contentSave,
-                              onTap: () => _saveToCollection(page),
-                            );
-                          },
-                        ),
+              ),
+            ],
+          ),
+        ),
+        if (_fromCache)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: ClaiColors.surface2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  ClaiIcon(ClaiIcons.cloudOff,
+                      size: 18, color: ClaiColors.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l.contentFromCache,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: ClaiColors.inkSecondary,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Builder(
-                          builder: (context) {
-                            final svc = ref.watch(downloadServiceProvider);
-                            final downloadable = page.tracks
-                                .where((t) => t.providerId != 'local')
-                                .toList();
-                            final doneCount = downloadable
-                                .where((t) => svc.isDownloaded(t.key))
-                                .length;
-                            final activeCount = downloadable.where((t) {
-                              final s = svc.itemFor(t.key)?.status;
-                              return s == DownloadStatus.queued ||
-                                  s == DownloadStatus.downloading ||
-                                  s == DownloadStatus.paused;
-                            }).length;
-                            if (downloadable.isNotEmpty &&
-                                doneCount == downloadable.length) {
-                              return _ActionSegment(
-                                leading: ClaiIcon(
-                                  ClaiIcons.check,
-                                  size: 18,
-                                  color: ClaiColors.accent,
-                                ),
-                                label: context.l10n.contentDownloaded,
-                                onTap: null,
-                              );
-                            }
-                            if (activeCount > 0) {
-                              return _ActionSegment(
-                                leading: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    value: downloadable.isEmpty
-                                        ? null
-                                        : doneCount / downloadable.length,
-                                    strokeWidth: 2,
-                                    color: ClaiColors.accent,
-                                  ),
-                                ),
-                                label: context.l10n.contentDownloadingCount(
-                                  doneCount,
-                                  downloadable.length,
-                                ),
-                                onTap: () => _downloadAll(page),
-                              );
-                            }
-                            return _ActionSegment(
-                              leading: ClaiIcon(
-                                ClaiIcons.download,
-                                size: 18,
-                                color: ClaiColors.ink,
-                              ),
-                              label: context.l10n.contentDownloadAll,
-                              onTap: page.tracks.isEmpty
-                                  ? null
-                                  : () => _downloadAll(page),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _ActionSegment(
-                          leading: ClaiIcon(
-                            ClaiIcons.share,
-                            size: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (widget.kind == 'artist' && page.tracks.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 6),
+            child: DimKicker(l.contentPopular),
+          ),
+        for (var i = 0; i < page.tracks.length; i++)
+          SongRow(
+            track: page.tracks[i],
+            number: widget.kind == 'album' ? i + 1 : null,
+            onTap: () => handler.playTracks(
+              page.tracks,
+              i,
+              kind: widget.kind,
+              id: widget.id,
+              label: page.title,
+            ),
+          ),
+        if (page.albums.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+            child: DimKicker(l.contentDiscography),
+          ),
+          SizedBox(
+            height: 178,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: page.albums.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, i) {
+                final a = page.albums[i];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () =>
+                      openContent(context, ref, 'album', a.id, a.title),
+                  child: SizedBox(
+                    width: 128,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CoverArt(
+                            url: a.artworkUrl,
+                            size: 128,
+                            radius: 12,
+                            label: a.title),
+                        const SizedBox(height: 8),
+                        Text(
+                          a.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                             color: ClaiColors.ink,
                           ),
-                          label: context.l10n.contentShare,
-                          onTap: () => Share.share(
-                            claiPageShareText(
-                              page.title.isEmpty
-                                  ? widget.titleHint
-                                  : page.title,
-                              page.subtitle ?? '',
-                              context.l10n,
+                        ),
+                        if (brandSafeSubtitle(a.artistNames) != null)
+                          Text(
+                            brandSafeSubtitle(a.artistNames)!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: ClaiColors.inkSecondary,
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (widget.kind == 'artist' && page.tracks.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
-                    child: Text(
-                      context.l10n.contentPopular,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: ClaiColors.ink,
-                      ),
+                      ],
                     ),
                   ),
-                for (var i = 0; i < page.tracks.length; i++)
-                  SongRow(
-                    track: page.tracks[i],
-                    number: widget.kind == 'album' ? i + 1 : null,
-                    onTap: () => handler.playTracks(
+                );
+              },
+            ),
+          ),
+        ],
+        if (page.relatedArtists.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+            child: DimKicker(l.contentSimilar),
+          ),
+          SizedBox(
+            height: 128,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: page.relatedArtists.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, i) {
+                final a = page.relatedArtists[i];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () =>
+                      openContent(context, ref, 'artist', a.id, a.name),
+                  child: SizedBox(
+                    width: 96,
+                    child: Column(
+                      children: [
+                        CoverArt(
+                            url: a.artworkUrl,
+                            size: 96,
+                            radius: 48,
+                            label: a.name),
+                        const SizedBox(height: 8),
+                        Text(
+                          a.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: ClaiColors.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+        SizedBox(height: bottomChromeClearance(context)),
+      ],
+    );
+  }
+
+  /// Tombol Putar panggung: lingkaran 56 diisi nada sampul diperdalam
+  /// (§11.9 lewat [CoverAccentBuilder] + [deepToneFromColor]); sampul
+  /// tanpa tinta / ambien mati → Volt, konsisten dengan kartu Lanjut
+  /// Beranda. Ikon putih di atas nada (penjaga kontras di fungsi nada).
+  Widget _stagePlayButton(BuildContext context, ContentPage page) {
+    final handler = ref.read(audioHandlerProvider);
+    return CoverAccentBuilder(
+      artworkUrl: page.artworkUrl,
+      builder: (context, tonal) {
+        final tone =
+            tonal == null ? ClaiColors.accent : deepToneFromColor(tonal);
+        return PressableScale(
+          child: GestureDetector(
+            onTap: page.tracks.isEmpty
+                ? null
+                : () => handler.playTracks(
                       page.tracks,
-                      i,
+                      0,
                       kind: widget.kind,
                       id: widget.id,
                       label: page.title,
                     ),
-                  ),
-                if (page.albums.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-                    child: Text(
-                      context.l10n.contentDiscography,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: ClaiColors.ink,
-                      ),
-                    ),
-                  ),
-                  for (final a in page.albums)
-                    ListTile(
-                      leading: CoverArt(
-                        url: a.artworkUrl,
-                        size: 56,
-                        label: a.title,
-                      ),
-                      title: Text(
-                        a.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: ClaiColors.ink,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        a.artistNames,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: ClaiColors.inkSecondary),
-                      ),
-                      onTap: () =>
-                          openContent(context, ref, 'album', a.id, a.title),
-                    ),
-                ],
-                if (page.relatedArtists.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-                    child: Text(
-                      context.l10n.contentSimilar,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: ClaiColors.ink,
-                      ),
-                    ),
-                  ),
-                  for (final a in page.relatedArtists)
-                    ListTile(
-                      leading: CoverArt(
-                        url: a.artworkUrl,
-                        size: 48,
-                        label: a.name,
-                      ),
-                      title: Text(
-                        a.name,
-                        style: const TextStyle(
-                          color: ClaiColors.ink,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onTap: () =>
-                          openContent(context, ref, 'artist', a.id, a.name),
-                    ),
-                ],
-                SizedBox(height: bottomChromeClearance(context)),
-              ],
-            ),
-    );
-  }
-}
-
-/// Satu segmen baris aksi halaman konten (Butir F): ikon + label di
-/// permukaan surface-2 radius 10, tinggi tetap 46 — tiga segmen berbagi
-/// lebar sama rata lewat Expanded di pemanggil, jadi lebar TIDAK pernah
-/// mengikuti panjang teks (label Inggris yang panjang memotong elipsis,
-/// bukan mendorong segmen lain). Keadaan nonaktif (onTap null) tampil
-/// dengan label samar, tanpa respons sentuh.
-class _ActionSegment extends StatelessWidget {
-  final Widget leading;
-  final String label;
-  final VoidCallback? onTap;
-  const _ActionSegment({
-    required this.leading,
-    required this.label,
-    required this.onTap,
-  });
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      child: Material(
-        color: ClaiColors.surface2,
-        borderRadius: BorderRadius.circular(10),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox(
-            height: 46,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                leading,
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: enabled ? ClaiColors.ink : ClaiColors.inkFaint,
-                    ),
-                  ),
-                ),
-              ],
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(color: tone, shape: BoxShape.circle),
+              child: ClaiIcon(
+                ClaiIcons.play,
+                color: onProgressTone(tone),
+                size: 26,
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

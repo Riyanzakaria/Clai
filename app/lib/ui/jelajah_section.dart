@@ -7,6 +7,7 @@ import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../providers/ytmusic/innertube.dart' show exploreTitleId;
+import 'glass.dart';
 import 'widgets.dart';
 
 /// Beranda Jelajah (F2, PRD 5.1): rak penemuan dari umpan YouTube Music —
@@ -62,7 +63,7 @@ class _JelajahSectionState extends ConsumerState<JelajahSection> {
           ClaiIcon(ClaiIcons.warning, size: 18, color: ClaiColors.warning),
           const SizedBox(width: 8),
           Expanded(child: Text(context.l10n.jelajahLoadFail,
-              style: TextStyle(color: ClaiColors.inkSecondary, fontSize: 13.5))),
+              style: TextStyle(color: ClaiColors.inkSecondary, fontSize: 13))),
           TextButton(onPressed: () {
             _load(_home, () => ref.read(ytMusicProvider).getHomeFeed());
             _load(_charts, () => ref.read(ytMusicProvider).getChartsFeed());
@@ -71,14 +72,14 @@ class _JelajahSectionState extends ConsumerState<JelajahSection> {
       );
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(padding: const EdgeInsets.fromLTRB(16, 26, 16, 6),
-          child: Text(context.l10n.jelajahTitle, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: ClaiColors.ink))),
+      SectionHeader(context.l10n.jelajahTitle,
+          padding: const EdgeInsets.fromLTRB(16, 26, 16, 6)),
       if (anyLoading && !anyContent)
         Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Row(children: [
               const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ClaiColors.accent)),
               const SizedBox(width: 10),
-              Text(context.l10n.jelajahLoading, style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13.5)),
+              Text(context.l10n.jelajahLoading, style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
             ])),
       ..._sourceShelves(_home, context.l10n.jelajahYtmHome, () => ref.read(ytMusicProvider).getHomeFeed()),
       ..._sourceShelves(_charts, context.l10n.jelajahCharts, () => ref.read(ytMusicProvider).getChartsFeed()),
@@ -117,7 +118,7 @@ class _ExploreShelfView extends ConsumerWidget {
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-          child: Text(exploreTitleId(shelf.title), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: ClaiColors.ink))),
+          child: Text(exploreTitleId(shelf.title), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: ClaiColors.ink))),
       if (cards.isNotEmpty)
         SizedBox(
           height: 188,
@@ -129,7 +130,7 @@ class _ExploreShelfView extends ConsumerWidget {
             itemBuilder: (context, i) {
               final c = cards[i];
               return InkWell(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 onTap: () => openContent(context, ref, c.kind, c.id, c.title),
                 child: SizedBox(
                   width: 132,

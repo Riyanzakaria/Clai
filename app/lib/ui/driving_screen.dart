@@ -7,20 +7,52 @@ import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../l10n/l10n.dart';
 import 'voice_sheet.dart';
+import 'widgets.dart';
 
 /// Layar Mode Berkendara (F2 Batch 2, PRD 5.14 A): permukaan sentuh raksasa.
 /// - Tombol ≥ 72dp (putar 120dp, sebelum/berikutnya 96dp).
 /// - Usap horizontal di mana saja: kiri → berikutnya, kanan → sebelumnya.
 /// - Sakelar pengumuman & volume-kecepatan di tempat (tanpa ke Pengaturan).
-class DrivingScreen extends ConsumerWidget {
+class DrivingScreen extends ConsumerStatefulWidget {
   const DrivingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DrivingScreen> createState() => _DrivingScreenState();
+}
+
+class _DrivingScreenState extends ConsumerState<DrivingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Audit 8047 (#16): tekan chrome cangkang selama layar ini tampil
+    // (kendali ganda + banjir Volt); perilaku Mode Mobil tak berubah.
+    // Pasca-bingkai agar pemberitahuan pendengar tidak pernah jatuh di
+    // tengah fase bangun rute; penekanan di app.dart sendiri tanpa
+    // pertukaran struktur (Opacity + IgnorePointer).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) claiChromeSuppressed.value = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      claiChromeSuppressed.value = false;
+    });
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
     final driving = ref.watch(drivingServiceProvider);
+    // Wajah (Ronde Sapuan 8045, perintah pemilik "ga hanya mobil,
+    // tapi seluruhnya app"): Mode Mobil ikut tata bahasa rombak —
+    // kicker + judul display, sampul trek berjalan, sakelar dalam
+    // kartu tonal. PERILAKU terkunci utuh: target raksasa (putar
+    // 120, sisi 96, suara 72), usap horizontal, keterbacaan besar.
     return Scaffold(
-      backgroundColor: ClaiColors.surface1,
+      backgroundColor: ClaiColors.base,
       body: SafeArea(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -37,18 +69,17 @@ class DrivingScreen extends ConsumerWidget {
             child: Column(children: [
               Row(children: [
                 Expanded(
-                    child: Text(context.l10n.drvMode,
-                        style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: ClaiColors.ink))),
-                TextButton(
+                    child: Text(context.l10n.drvMode, style: displayStyle(26))),
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ClaiColors.surface3,
+                    foregroundColor: ClaiColors.accent,
+                  ),
                   onPressed: () async {
                     await driving.setOn(false);
                     if (context.mounted) Navigator.of(context).pop();
                   },
-                  child: Text(context.l10n.drvExit,
-                      style: const TextStyle(color: ClaiColors.accent)),
+                  child: Text(context.l10n.drvExit),
                 ),
               ]),
               const SizedBox(height: 8),
@@ -61,6 +92,10 @@ class DrivingScreen extends ConsumerWidget {
                 builder: (context, snap) {
                   final item = snap.data;
                   return Column(children: [
+                    if (item?.artUri != null) ...[
+                      CoverArt(url: item!.artUri.toString(), size: 104, label: item.title, radius: 18),
+                      const SizedBox(height: 18),
+                    ],
                     Text(item?.title ?? context.l10n.drvNoSong,
                         textAlign: TextAlign.center,
                         maxLines: 2,
@@ -111,23 +146,31 @@ class DrivingScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 28),
-              SwitchListTile(
-                title: Text(context.l10n.drvAnnounce,
-                    style: const TextStyle(color: ClaiColors.ink)),
-                subtitle: Text(context.l10n.drvAnnounceSubShort,
-                    style: const TextStyle(color: ClaiColors.inkSecondary)),
-                value: driving.announceOn,
-                activeThumbColor: ClaiColors.accent,
-                onChanged: (v) => driving.setAnnounce(v),
-              ),
-              SwitchListTile(
-                title: Text(context.l10n.drvSpeedVolume,
-                    style: const TextStyle(color: ClaiColors.ink)),
-                subtitle: Text(context.l10n.drvSpeedVolumeNote,
-                    style: const TextStyle(color: ClaiColors.inkSecondary)),
-                value: driving.speedVolumeOn,
-                activeThumbColor: ClaiColors.accent,
-                onChanged: (v) => driving.setSpeedVolume(v),
+              Container(
+                decoration: BoxDecoration(
+                  color: ClaiColors.surface1,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(children: [
+                  SwitchListTile(
+                    title: Text(context.l10n.drvAnnounce,
+                        style: const TextStyle(color: ClaiColors.ink)),
+                    subtitle: Text(context.l10n.drvAnnounceSubShort,
+                        style: const TextStyle(color: ClaiColors.inkSecondary)),
+                    value: driving.announceOn,
+                    onChanged: (v) => driving.setAnnounce(v),
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16, color: ClaiColors.divider),
+                  SwitchListTile(
+                    title: Text(context.l10n.drvSpeedVolume,
+                        style: const TextStyle(color: ClaiColors.ink)),
+                    subtitle: Text(context.l10n.drvSpeedVolumeNote,
+                        style: const TextStyle(color: ClaiColors.inkSecondary)),
+                    value: driving.speedVolumeOn,
+                    onChanged: (v) => driving.setSpeedVolume(v),
+                  ),
+                ]),
               ),
               const SizedBox(height: 12),
               FilledButton.icon(

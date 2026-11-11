@@ -7,6 +7,7 @@ import '../app.dart';
 import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../services/ocr_model_service.dart';
+import 'widgets.dart';
 
 Future<void> openCaptureSheet(BuildContext context, {String? text, String? imageUri}) {
   return showModalBottomSheet<void>(
@@ -40,7 +41,7 @@ Future<void> openCaptureTextInput(BuildContext context) async {
       content: TextField(
         controller: ctrl,
         autofocus: true,
-        decoration: InputDecoration(hintText: l10n.captureHint),
+        decoration: claiFieldDecoration(hintText: l10n.captureHint),
         onSubmitted: (v) => Navigator.of(ctx).pop(v),
       ),
       actions: [
@@ -181,19 +182,9 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Center(
-            child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: ClaiColors.surface3,
-                    borderRadius: BorderRadius.circular(2)))),
+        const Center(child: SheetHandle()),
         const SizedBox(height: 18),
-        Text(context.l10n.capFromOtherApp,
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: ClaiColors.ink)),
+        Text(context.l10n.capFromOtherApp, style: displayStyle(20)),
         const SizedBox(height: 4),
         Text(
             cap.inputSummary.isEmpty
@@ -219,24 +210,9 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             itemBuilder: (context, i) {
               final item = cap.items[i];
               final ok = item.track != null;
-              return ListTile(
-                leading: ClaiIcon(
-                    ok ? ClaiIcons.checkCircle : ClaiIcons.musicOff,
-                    color: ok ? ClaiColors.accent : ClaiColors.inkFaint),
-                title: Text(
-                    ok
-                        ? '${item.track!.title} — ${item.track!.artistNames}'
-                        : item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: ClaiColors.ink)),
-                subtitle: ok
-                    ? Text(context.l10n.capFrom(item.label),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: ClaiColors.inkSecondary))
-                    : Text(item.error ?? context.l10n.capNotFound,
-                        style: const TextStyle(color: ClaiColors.inkSecondary)),
+              // Baris hasil Tangkap (Ronde Sapuan 8045): cip status
+              // tonal + tipografi keluarga baris DS, bukan ListTile.
+              return InkWell(
                 onTap: ok
                     ? () async {
                         await handler.playTracks([item.track!], 0,
@@ -244,6 +220,43 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
                         if (context.mounted) Navigator.of(context).pop();
                       }
                     : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  child: Row(children: [
+                    tonalIconBox(
+                      ok ? ClaiIcons.checkCircle : ClaiIcons.musicOff,
+                      size: 38,
+                      iconSize: 19,
+                      color: ok ? ClaiColors.accent : ClaiColors.inkFaint,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              ok
+                                  ? '${item.track!.title} — ${item.track!.artistNames}'
+                                  : item.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: ClaiColors.ink, fontSize: 15)),
+                          const SizedBox(height: 2),
+                          Text(
+                              ok
+                                  ? context.l10n.capFrom(item.label)
+                                  : (item.error ?? context.l10n.capNotFound),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: ClaiColors.inkSecondary,
+                                  fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ),
               );
             },
           ),
@@ -266,7 +279,11 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: OutlinedButton(
+              child: FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  backgroundColor: ClaiColors.surface3,
+                  foregroundColor: ClaiColors.ink,
+                ),
                 onPressed: () async {
                   for (final t in found) {
                     await handler.enqueue(t, next: false);

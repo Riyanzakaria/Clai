@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -10,6 +12,7 @@ import '../core/tokens.dart';
 import '../l10n/l10n.dart';
 import '../player/audio_handler.dart';
 import 'cover_accent_glow.dart';
+import 'haptics.dart';
 import 'player_sheet.dart';
 import 'sleep_timer_sheet.dart';
 import 'widgets.dart';
@@ -139,8 +142,18 @@ class MiniPlayer extends ConsumerStatefulWidget {
 }
 
 class _MiniPlayerState extends ConsumerState<MiniPlayer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _anim;
+
+  /// Denyut garis volt (U4): menyala sekali saat trek baru mulai, lalu
+  /// tenang. 0 = diam, 1 = baru selesai berdenyut.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+    value: 1,
+  );
+  String? _pulseItemId;
+  bool _pulseScheduled = false;
   double _dx = 0;
   double _cardWidth = 0;
   bool _thresholdCrossed = false;
@@ -158,7 +171,21 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   @override
   void dispose() {
     _anim.dispose();
+    _pulse.dispose();
     super.dispose();
+  }
+
+  /// Jadwalkan denyut garis volt untuk trek [id] (sekali per trek; tidak
+  /// pernah saat gerak dikurangi). Aman dipanggil dari build.
+  void _maybePulse(String id, bool enabled) {
+    if (_pulseItemId == id) return;
+    _pulseItemId = id;
+    if (!enabled || _pulseScheduled) return;
+    _pulseScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pulseScheduled = false;
+      if (mounted) _pulse.forward(from: 0);
+    });
   }
 
   void _springTo(double target, double velocity, {VoidCallback? onDone}) {
@@ -185,7 +212,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   }
 
   void _onDragUpdate(DragUpdateDetails d) {
-    final w = _cardWidth > 0 ? _cardWidth : MediaQuery.of(context).size.width;
+    final w = _cardWidth > 0 ? _cardWidth : MediaQuery.sizeOf(context).width;
     final next = (_dx + d.delta.dx).clamp(-w, w);
     setState(() => _dx = next);
     final over = next.abs() >= w * kMiniSwipeThresholdFraction;
@@ -198,7 +225,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   }
 
   void _onDragEnd(DragEndDetails d, ClaiAudioHandler handler) {
-    final w = _cardWidth > 0 ? _cardWidth : MediaQuery.of(context).size.width;
+    final w = _cardWidth > 0 ? _cardWidth : MediaQuery.sizeOf(context).width;
     final v = d.primaryVelocity ?? 0;
     final action = miniSwipeDecision(offsetX: _dx, width: w, velocityX: v);
     if (action == MiniSwipeAction.none) {
@@ -206,6 +233,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
       return;
     }
     HapticFeedback.mediumImpact();
+    ClaiHaptics.armSkipLanding();
     final target = action == MiniSwipeAction.next ? -w : w;
     _springTo(
       target,
@@ -226,6 +254,11 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
   @override
   Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
+    // Keadaan tema suasana (DS v4.0): kartu menjadi kaca bertinta saat
+    // Tema Dinamis menyala; mati → permukaan v3.1 persis di bawah.
+    final amb = ref.watch(ambientControllerProvider.select(ambientUiSlice)); // 8053 B(i): irisan tanpa napas
+    final ambOn = amb.enabled;
+    final reducedFx = amb.reduceEffects || reducedMotionOf(context);
     // UX2: sisa timer tidur (layanan memberi tahu tiap detik saat aktif;
     // null = tak ada timer → chip tak dirender, tata letak seperti semula).
     final sleepRemaining = ref.watch(sleepServiceProvider).remaining;
@@ -235,6 +268,9 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
       builder: (context, snap) {
         final item = snap.data;
         if (item == null) return const SizedBox.shrink();
+        // U4: trek baru → garis volt berdenyut sekali (hanya mode kaca,
+        // tidak pernah saat gerak dikurangi).
+        _maybePulse(item.id, ambOn && !reducedFx);
         return Semantics(
           button: true,
           label: context.l10n.a11yOpenPlayer,
@@ -258,15 +294,25 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                     builder: (context, tonal) => Container(
                       height: kMiniPlayerHeight,
                       margin: const EdgeInsets.fromLTRB(
-                        12,
+                        kMiniPlayerSideMargin,
                         0,
-                        12,
+                        kMiniPlayerSideMargin,
                         kMiniPlayerBottomMargin,
                       ),
                       decoration: BoxDecoration(
-                        color: miniPlayerSurfaceColor(tonal),
+                        // v4.0: mode kaca — permukaan digambar lapisan blur
+                        // + tint di dalam ClipRRect di bawah; kotak ini
+                        // hanya membawa tepi cahaya + bayangan tunggal.
+                        color: ambOn
+                            ? Colors.transparent
+                            : miniPlayerSurfaceColor(tonal),
                         borderRadius: BorderRadius.circular(ClaiRadius.card),
-                        border: Border.all(color: ClaiColors.divider, width: 1),
+                        border: Border.all(
+                          color: ambOn
+                              ? amb.palette.glassEdge
+                              : ClaiColors.divider,
+                          width: 1,
+                        ),
                         boxShadow: const [
                           BoxShadow(
                             color: Color(0x55000000),
@@ -277,7 +323,21 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(ClaiRadius.card),
-                        child: Column(
+                        child: Stack(
+                          children: [
+                            if (ambOn)
+                              Positioned.fill(
+                                child: BackdropFilter(
+                                  filter: ui.ImageFilter.blur(
+                                    sigmaX: ClaiAmbient.glassBlur,
+                                    sigmaY: ClaiAmbient.glassBlur,
+                                  ),
+                                  child: Container(
+                                    color: amb.palette.glassTint,
+                                  ),
+                                ),
+                              ),
+                            Column(
                           children: [
                             StreamBuilder<Duration>(
                               stream: handler.positionStream,
@@ -287,14 +347,14 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                     ? 0.0
                                     : (pos.data?.inMilliseconds ?? 0) /
                                           dur.inMilliseconds;
-                                return LinearProgressIndicator(
-                                  value: frac.clamp(0, 1),
-                                  minHeight: 2,
-                                  color: ClaiColors.accent,
-                                  // Di atas tinta sampul, rel progres memakai putih
-                                  // tembus agar garis lime tetap terbaca; di permukaan
-                                  // netral tetap surface3 seperti semula.
-                                  backgroundColor: tonal == null
+                                // Garis volt (U4): progres di tepi atas kartu
+                                // sebagai garis Volt bercahaya; berdenyut
+                                // sekali saat trek mulai, lalu tenang.
+                                return _VoltLine(
+                                  fraction: frac.clamp(0, 1),
+                                  pulse: _pulse,
+                                  glowing: ambOn,
+                                  background: tonal == null && !ambOn
                                       ? ClaiColors.surface3
                                       : Colors.white.withValues(alpha: 0.16),
                                 );
@@ -413,12 +473,17 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                       color: ClaiColors.ink,
                                     ),
                                     tooltip: context.l10n.a11yNext,
-                                    onPressed: () => handler.skipToNext(),
+                                    onPressed: () {
+                                      ClaiHaptics.armSkipLanding();
+                                      handler.skipToNext();
+                                    },
                                   ),
                                   const MiniSwipeEdgeHint(left: false),
                                   const SizedBox(width: 2),
                                 ],
                               ),
+                            ),
+                          ],
                             ),
                           ],
                         ),
@@ -428,6 +493,74 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                 );
               },
             ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Garis volt mini player (U4, DS v4.0): progres 2 dp di tepi atas kartu
+/// sebagai garis Volt. Dalam mode kaca ia bercahaya lembut; saat trek
+/// baru mulai, [pulse] menyalakan pendar penuh di sepanjang tepi yang
+/// meredup habis dalam ±1,1 dtk — satu denyut, lalu tenang. Mode v3.1:
+/// garis polos persis seperti sebelumnya (tanpa pendar, tanpa denyut).
+class _VoltLine extends StatelessWidget {
+  final double fraction;
+  final Animation<double> pulse;
+  final bool glowing;
+  final Color background;
+  const _VoltLine({
+    required this.fraction,
+    required this.pulse,
+    required this.glowing,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: pulse,
+      builder: (context, _) {
+        final p = glowing ? (1 - pulse.value).clamp(0.0, 1.0) : 0.0;
+        return SizedBox(
+          height: 2,
+          child: Stack(
+            children: [
+              Container(color: background),
+              FractionallySizedBox(
+                widthFactor: fraction,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: ClaiColors.accent,
+                    boxShadow: glowing
+                        ? [
+                            BoxShadow(
+                              color: ClaiColors.accent
+                                  .withValues(alpha: 0.45 + 0.4 * p),
+                              blurRadius: 4 + 7 * p,
+                            ),
+                          ]
+                        : null,
+                  ),
+                ),
+              ),
+              if (p > 0)
+                Opacity(
+                  opacity: p * 0.8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: ClaiColors.accent,
+                      boxShadow: [
+                        BoxShadow(
+                          color: ClaiColors.accent.withValues(alpha: 0.9),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       },
