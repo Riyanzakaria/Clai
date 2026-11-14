@@ -1,0 +1,1 @@
+Sleep timer: the timer icon is now the exact Bedtime moon from the design frames, with a filled moon on the active timer. It now matches the design everywhere the timer appears: player, mini player, sleep sheet, and resume card.

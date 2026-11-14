@@ -1,0 +1,3 @@
+Fixed the Play button sometimes doing nothing after the last song in the queue had finished, for example after the sleep timer. Pressing Play now restarts that song from the beginning.
+Fixed album artwork sometimes not appearing in the full player. If the large artwork fails to load, the player now falls back to the regular artwork instead of leaving a blank space.
+Fixed playback from a restored session sometimes not responding, or jumping back to the earlier song after you had already picked another one.

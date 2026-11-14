@@ -65,3 +65,50 @@ String? artworkUrlForSize(String? url, int targetPx) {
 
   return url;
 }
+
+/// URL cadangan (Ronde 8057, FIX B): varian 544 dari sampul yang sama,
+/// dipakai HANYA bila varian besar ([sizedUrl], ember > 544) gagal muat.
+///
+/// Latar: MediaItem.artUri terkurung di 544 dan varian itu terbukti
+/// andal; varian 1080 yang hanya diminta Player justru rapuh —
+/// googleusercontent =w1080 kadang gagal ambil dingin, dan i.ytimg.com
+/// yang ditulis ulang ke maxresdefault.jpg deterministik 404 untuk
+/// banyak video (varian itu memang tidak selalu ada di sumber).
+///
+/// - googleusercontent dengan lebar > 544: ditulis ulang ke w544-h544
+///   (lewat [artworkUrlForSize], flag lain utuh).
+/// - i.ytimg.com/img.youtube.com dengan kualitas di atas hqdefault
+///   (sddefault/maxresdefault): diturunkan EKSPLISIT ke hqdefault —
+///   [artworkUrlForSize] sendiri menolak menurunkan, jadi penurunan
+///   ini memang hanya milik jalur cadangan di sini.
+///
+/// Null bila tidak ada cadangan yang bermakna: input null/kosong,
+/// URL lokal/non-http, host tak dikenal / tanpa skema ukuran,
+/// varian yang sudah ≤ 544, atau ytimg yang sudah ≤ hqdefault.
+String? artworkFallbackUrl(String? sizedUrl) {
+  if (sizedUrl == null || sizedUrl.isEmpty) return null;
+  if (!sizedUrl.startsWith('http')) return null; // lokal/MediaStore
+
+  final q = sizedUrl.indexOf('?');
+  final head = q == -1 ? sizedUrl : sizedUrl.substring(0, q);
+  final tail = q == -1 ? '' : sizedUrl.substring(q);
+
+  if (head.contains('googleusercontent.com')) {
+    final m = _gucSizeRe.firstMatch(head);
+    if (m == null) return null; // tanpa suffix ukuran: tak ada varian lain
+    final w = int.tryParse(m.group(1) ?? '');
+    if (w == null || w <= 544) return null; // sudah varian 544 / lebih kecil
+    final fallback = artworkUrlForSize(sizedUrl, 544);
+    return (fallback == null || fallback == sizedUrl) ? null : fallback;
+  }
+
+  final yt = _ytimgRe.firstMatch(head);
+  if (yt != null) {
+    final current = _ytimgRank[yt.group(2)];
+    if (current == null) return null;
+    if (current <= _ytimgRank['hqdefault']!) return null; // sudah ≤ hqdefault
+    return '${head.replaceRange(yt.start, yt.end, '${yt.group(1)}hqdefault${yt.group(3)}')}$tail';
+  }
+
+  return null;
+}

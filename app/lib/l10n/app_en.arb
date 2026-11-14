@@ -381,7 +381,7 @@
   "lyrTrackLine": "{title} — {artist}",
   "sleepTitle": "Sleep timer",
   "sleepSubOff": "Music stops on its own — then you can resume tomorrow from the same position.",
-  "sleepSubMinutes": "Timer active — {remaining} left. The volume fades out smoothly over the final stretch, then the music pauses.",
+  "sleepSubMinutes": "Timer active — {remaining}. The volume fades out smoothly over the final stretch, then the music pauses.",
   "sleepSubEndOfSong": "Timer active — music stops at the end of the current song (fading over its final stretch).",
   "sleepMinutes": "{m} minutes",
   "sleepEndOfSong": "End of this song",

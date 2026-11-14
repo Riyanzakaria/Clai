@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Info Equalizer perangkat (dari kanal 'clai/audiofx', sesi pemain Clai).
 class EqInfo {
@@ -163,8 +164,46 @@ class AudioFxService {
     }
   }
 
+  /// Izin mikrofon terpasang? Visualizer Android MEWAJIBKAN izin ini
+  /// walau tidak merekam apa pun (ia mengukur sesi audio) — tanpa izin,
+  /// pembuatan Visualizer gagal "error: -3" dan seluruh rantai ukur
+  /// (waveform, napas, gain normalisasi) mati senyap (Ronde 8064).
+  Future<bool> micGranted() async {
+    try {
+      return await Permission.microphone.isGranted;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Minta izin mikrofon lewat dialog sistem; true bila diberikan.
+  Future<bool> micRequest() async {
+    try {
+      return (await Permission.microphone.request()).isGranted;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Aliran peristiwa RMS Visualizer: {sessionId, rmsDb} ±1×/detik per sesi.
-  Stream<Map<String, Object?>> get rmsEvents => _events
+  ///
+  /// **SATU instans bersama untuk SEMUA konsumen (Ronde 8064).**
+  /// `EventChannel.receiveBroadcastStream()` memasang handler kanal
+  /// BARU pada setiap panggilan: handler instans yang terakhir
+  /// berlangganan MENANG dan handler instans sebelumnya terganti
+  /// diam-diam; pembatalan langganan instans mana pun pula mengirim
+  /// 'cancel' ke sisi natif yang menonaktifkan sink untuk semua.
+  /// Konsumen aliran ini ada dua instans stream terpisah (cangkang
+  /// aplikasi untuk napas + waveform; estimator kenyaringan untuk
+  /// normalisasi) — akibatnya estimator tidak pernah menerima satu
+  /// pun sampel sejak cangkang mulai mendengarkan (ia berlangganan
+  /// lebih dulu, handlernya terganti), dan gain normalisasi tidak
+  /// pernah terukur tanpa satu pun galat. Kini alirannya dibuat
+  /// SEKALI dan dibagikan: satu 'listen' ke natif, dan setiap
+  /// pendengar Dart menerima setiap peristiwa.
+  static Stream<Map<String, Object?>>? _rmsShared;
+  Stream<Map<String, Object?>> get rmsEvents => _rmsShared ??= _events
       .receiveBroadcastStream()
-      .map((e) => (e as Map).cast<String, Object?>());
+      .map((e) => (e as Map).cast<String, Object?>())
+      .asBroadcastStream();
 }

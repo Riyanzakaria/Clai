@@ -1,0 +1,2 @@
+Timer tidur: selama timer berjalan, lembar kini menampilkan sisa waktu sebagai hitung mundur besar yang bergerak langsung, jadi kelihatan sekilas kapan musik akan berhenti.
+Crossfade: bila aliran sebuah lagu ditolak saat peralihan silang, aplikasi kini memindahkan lagu itu ke jalur putar cadangan agar musik tetap berbunyi, tidak senyap. Hanya lagu yang ditolak yang kehilangan pudarnya; lagu lain tetap beralih silang seperti sebelumnya.

@@ -1,0 +1,1 @@
+Fixed lyrics not being found for songs that were uploaded as videos, where the artist name appears inside the video title instead of the artist field. The lyrics lookup now also tries the artist and title written in the title itself.

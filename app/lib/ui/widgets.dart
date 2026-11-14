@@ -146,6 +146,94 @@ class _PressableScaleState extends State<PressableScale>
   );
 }
 
+/// Gambar sampul jaringan DENGAN satu cadangan (Ronde 8057, FIX B).
+///
+/// Merender [primaryUrl]; bila muatnya GAGAL dan [fallbackUrl] ada,
+/// bertukar SEKALI ke varian cadangan itu (ValueKey baru per URL,
+/// [fallbackCacheWidth] untuk decode-nya) dan hanya bila cadangan itu
+/// juga gagal placeholder yang tampil. Tanpa [fallbackUrl] perilakunya
+/// persis `Image.network` lama: error → placeholder langsung.
+/// Keadaan bertukar direset bersih bila pemanggil menyerahkan
+/// [primaryUrl] (atau [fallbackUrl]) yang berbeda — ganti lagu tidak
+/// pernah mewarisi keadaan cadangan lagu sebelumnya. Pada jalur sukses
+/// perilaku identik widget lama: [placeholder] selama memuat
+/// (loadingBuilder), gambar sesudahnya.
+class FallbackArtworkImage extends StatefulWidget {
+  final String primaryUrl;
+  final String? fallbackUrl;
+  final double width;
+  final double height;
+  final int cacheWidth;
+  final int? fallbackCacheWidth;
+  final Widget placeholder;
+
+  const FallbackArtworkImage({
+    super.key,
+    required this.primaryUrl,
+    this.fallbackUrl,
+    required this.width,
+    required this.height,
+    required this.cacheWidth,
+    this.fallbackCacheWidth,
+    required this.placeholder,
+  });
+
+  @override
+  State<FallbackArtworkImage> createState() => _FallbackArtworkImageState();
+}
+
+class _FallbackArtworkImageState extends State<FallbackArtworkImage> {
+  bool _usingFallback = false;
+  bool _fallbackScheduled = false;
+
+  bool get _hasFallback =>
+      widget.fallbackUrl != null &&
+      widget.fallbackUrl!.isNotEmpty &&
+      widget.fallbackUrl != widget.primaryUrl;
+
+  @override
+  void didUpdateWidget(FallbackArtworkImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.primaryUrl != widget.primaryUrl ||
+        oldWidget.fallbackUrl != widget.fallbackUrl) {
+      _usingFallback = false;
+      _fallbackScheduled = false;
+    }
+  }
+
+  /// Jadwalkan pertukaran ke cadangan SESUDAH bingkai ini — errorBuilder
+  /// berjalan di fase bangun, setState langsung di sana tidak sah.
+  void _scheduleFallback() {
+    if (_usingFallback || _fallbackScheduled || !_hasFallback) return;
+    _fallbackScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _usingFallback) return;
+      setState(() => _usingFallback = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final useFallback = _usingFallback && _hasFallback;
+    final url = useFallback ? widget.fallbackUrl! : widget.primaryUrl;
+    return Image.network(
+      url,
+      key: ValueKey(url),
+      width: widget.width,
+      height: widget.height,
+      fit: BoxFit.cover,
+      cacheWidth:
+          useFallback ? (widget.fallbackCacheWidth ?? widget.cacheWidth) : widget.cacheWidth,
+      errorBuilder: (_, __, ___) {
+        if (!useFallback) _scheduleFallback();
+        return widget.placeholder;
+      },
+      loadingBuilder: (c, child, prog) =>
+          prog == null ? child : widget.placeholder,
+    );
+  }
+}
+
 /// Sampul: gambar jaringan bila ada; placeholder berpola (inisial di atas surface-2) bila tidak (DS Bab 4).
 /// v4.4: URL ditulis ulang sadar ukuran tampil (core/artwork.dart) — permukaan
 /// besar meminta varian besar, baris daftar tetap varian kecil.
@@ -202,20 +290,42 @@ class CoverArt extends StatelessWidget {
     final decodeWidth = sizedUrl.contains('ytimg.com')
         ? bucket
         : math.min(bucket, math.max((size * dpr).ceil(), 1));
+    // Ronde 8057 (FIX B): cadangan varian 544 HANYA untuk pemakaian
+    // besar (ember > 544 — permukaan Player). Permukaan kecil
+    // (ember ≤ 544) mempertahankan perilaku lama persis: Image.network
+    // langsung, placeholder pada error, tanpa pertukaran. Decode
+    // cadangan mengikuti disiplin yang sama pada ember 544.
+    final fallbackUrl = bucket > 544 ? artworkFallbackUrl(sizedUrl) : null;
+    final fallbackDecodeWidth = fallbackUrl == null
+        ? decodeWidth
+        : fallbackUrl.contains('ytimg.com')
+            ? 544
+            : math.min(544, math.max((size * dpr).ceil(), 1));
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       // Kunci per-URL final (v4.3): ganti lagu = ganti elemen gambar secara tegas,
       // tidak ada peluang elemen lama tertahan menampilkan sampul trek sebelumnya.
-      child: Image.network(
-        sizedUrl,
-        key: ValueKey(sizedUrl),
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        cacheWidth: decodeWidth,
-        errorBuilder: (_, __, ___) => placeholder,
-        loadingBuilder: (c, child, prog) => prog == null ? child : placeholder,
-      ),
+      child: fallbackUrl == null
+          ? Image.network(
+              sizedUrl,
+              key: ValueKey(sizedUrl),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              cacheWidth: decodeWidth,
+              errorBuilder: (_, __, ___) => placeholder,
+              loadingBuilder: (c, child, prog) =>
+                  prog == null ? child : placeholder,
+            )
+          : FallbackArtworkImage(
+              primaryUrl: sizedUrl,
+              fallbackUrl: fallbackUrl,
+              width: size,
+              height: size,
+              cacheWidth: decodeWidth,
+              fallbackCacheWidth: fallbackDecodeWidth,
+              placeholder: placeholder,
+            ),
     );
   }
 }
@@ -223,6 +333,9 @@ class CoverArt extends StatelessWidget {
 /// Sampul LEBAR PENUH persegi (PRD 5.5 "sampul besar", koreksi pemilik v4.3):
 /// memenuhi lebar konten (tepi sejajar margin layar), aspek 1:1, sudut membulat.
 /// Dipakai Player — sebelumnya sampul hanya kotak 176dp mepet kiri.
+/// Ronde 8057 (FIX B): mendelegasikan ke [CoverArt] selebar konten, jadi
+/// cadangan 544 ikut berlaku di sini lewat jalur CoverArt yang sama —
+/// lebar penuh hampir selalu berember 1080 (> 544).
 class CoverArtWide extends StatelessWidget {
   final String? url;
   final String label;

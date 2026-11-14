@@ -5,6 +5,7 @@ import 'package:clai/player/load_ladder.dart';
 import 'package:clai/providers/ytmusic/direct_types.dart';
 import 'package:clai/services/direct_stream_service.dart';
 import 'package:clai/services/direct_web_engine.dart';
+import 'package:clai/services/sys_channel.dart';
 import 'package:clai/services/update_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -65,6 +66,115 @@ void main() {
       expect(
           isNewerRelease(rel('v1.9.9+9999'),
               currentName: '2.0.0', currentBuild: 53),
+          isFalse);
+    });
+  });
+
+  group('isNewerRelease — sufiks tag satu domain (Ronde 8056)', () {
+    ReleaseInfo rel(String tag) => parseGithubReleaseJson(
+        <String, dynamic>{'tag_name': tag, 'assets': const []})!;
+
+    test('(e) kasus cacat: tag v2.0.1+8055 vs terpasang 2.0.1/bangun 55 '
+        '→ BUKAN baru', () {
+      // ReleaseInfo tetap menyimpan sufiks utuh; yang dinormalisasi
+      // adalah titik bandingnya.
+      expect(rel('v2.0.1+8055').build, 8055);
+      expect(
+          isNewerRelease(rel('v2.0.1+8055'),
+              currentName: '2.0.1', currentBuild: 55),
+          isFalse);
+    });
+
+    test('(f) tag v2.0.1+8055 vs terpasang 2.0.0/bangun 53 → BARU', () {
+      expect(
+          isNewerRelease(rel('v2.0.1+8055'),
+              currentName: '2.0.0', currentBuild: 53),
+          isTrue);
+    });
+
+    test('(g) tag polos v2.0.2 vs terpasang 2.0.1/bangun 55 → BARU '
+        '(nama menang)', () {
+      expect(rel('v2.0.2').build, 0);
+      expect(
+          isNewerRelease(rel('v2.0.2'),
+              currentName: '2.0.1', currentBuild: 55),
+          isTrue);
+    });
+
+    test('(h) tag polos v2.0.2 vs terpasang 2.0.2/bangun 56 → BUKAN baru',
+        () {
+      expect(
+          isNewerRelease(rel('v2.0.2'),
+              currentName: '2.0.2', currentBuild: 56),
+          isFalse);
+    });
+
+    test('(i) terpasang 2.0.2: tag v2.0.1+8055 (nama di bawah, sufiks '
+        'tinggi) → BUKAN baru', () {
+      expect(
+          isNewerRelease(rel('v2.0.1+8055'),
+              currentName: '2.0.2', currentBuild: 56),
+          isFalse);
+    });
+  });
+
+  group('rencana terbit gabungan — tag v2.0.2+8064 (Ronde 8062, dibarui 8063, dibarui 8064)', () {
+    ReleaseInfo rel(String tag) => parseGithubReleaseJson(
+        <String, dynamic>{'tag_name': tag, 'assets': const []})!;
+
+    /// Rekonstruksi aturan pemeriksa LAMA (pra-8054, bangun-saja):
+    /// "salah satu sisi positif → bandingkan bangun saja", sebagaimana
+    /// tercatat di komentar update_service.dart. Armada lama membaca
+    /// bangun dasar pemasangannya sendiri (versionCode % 1000).
+    bool bangunSajaLama(int tagBuild, int currentBuild) {
+      if (tagBuild <= 0 && currentBuild <= 0) return false;
+      return tagBuild > currentBuild;
+    }
+
+    test('(j) tag rencana terurai utuh: nama 2.0.2, sufiks 8064, dasar 64',
+        () {
+      final r = rel('v2.0.2+8064');
+      expect(r.versionName, '2.0.2');
+      expect(r.build, 8064);
+      // Biner arm64 membawa versionCode 10064 (8064 + offset ABI);
+      // bangun dasar yang dibaca pemeriksa adalah 63.
+      expect(SysChannel.baseBuildOf(10064), 64);
+      expect(r.build % 1000, 64);
+    });
+
+    test('(k) pemeriksa nama-utama (terpasang 2.0.1, dasar 55) → BARU',
+        () {
+      expect(
+          isNewerRelease(rel('v2.0.2+8064'),
+              currentName: '2.0.1', currentBuild: 55),
+          isTrue);
+    });
+
+    test('(l) pemeriksa lama bangun-saja: tag ini mengalahkan dasar 55 '
+        'dan 53', () {
+      final r = rel('v2.0.2+8064');
+      // Domain dasar — pasangan persis rencana terbit (64 > 55/53):
+      expect(bangunSajaLama(r.build % 1000, 55), isTrue);
+      expect(bangunSajaLama(r.build % 1000, 53), isTrue);
+      // Domain sufiks utuh pun searah (8064 > 55/53):
+      expect(bangunSajaLama(r.build, 55), isTrue);
+      expect(bangunSajaLama(r.build, 53), isTrue);
+    });
+
+    test('(m) terpasang rilis ini sendiri (2.0.2, dasar 64): tag yang '
+        'sama → BUKAN baru (cacat 8056 tidak kambuh)', () {
+      expect(
+          isNewerRelease(rel('v2.0.2+8064'),
+              currentName: '2.0.2',
+              currentBuild: SysChannel.baseBuildOf(10064)),
+          isFalse);
+    });
+
+    test('(n) terpasang 2.0.2/64 membaca umpan terakhir v2.0.1+8055 '
+        '→ BUKAN baru (sudah terbaru)', () {
+      expect(
+          isNewerRelease(rel('v2.0.1+8055'),
+              currentName: '2.0.2', currentBuild: 64),
           isFalse);
     });
   });

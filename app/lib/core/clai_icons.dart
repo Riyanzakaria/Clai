@@ -191,6 +191,38 @@ class ClaiIcons {
     ..cubicTo(3.1, 14.6, 3, 8.6, 6.2, 5.6)
     ..cubicTo(7.3, 4.5, 8.1, 4, 8.9, 3.7)
     ..cubicTo(12.6, 5.8, 17.4, 10.4, 20.3, 15.1)..close()));
+  // Ronde 8061: glif timer tidur = ikon PERSIS dari struktur halaman
+  // Stitch (frame Sleep Timer): baris durasi bernama Material "bedtime",
+  // ikon kecil header frame Active bernama "dark_mode". Jalur resmi
+  // Material Symbols/Icons (Google, Apache-2.0; repo
+  // google/material-design-icons), dikonversi apa adanya ke kisi 24.
+  // Path resmi "bedtime" TIDAK memuat bintang: sabit tunggal resmi
+  // Symbols. `moon` lama tidak lagi dipakai permukaan timer.
+  static final bedtime = ClaiIconData(fill: _s((p) => p
+    ..moveTo(13.1, 23)
+    ..quadraticBezierTo(11, 23, 9.162, 22.2)
+    ..quadraticBezierTo(7.325, 21.4, 5.963, 20.038)
+    ..quadraticBezierTo(4.6, 18.675, 3.8, 16.837)
+    ..quadraticBezierTo(3, 15, 3, 12.9)
+    ..quadraticBezierTo(3, 9.25, 5.325, 6.462)
+    ..quadraticBezierTo(7.65, 3.675, 11.25, 3)
+    ..quadraticBezierTo(10.8, 5.475, 11.525, 7.837)
+    ..quadraticBezierTo(12.25, 10.2, 14.025, 11.975)
+    ..quadraticBezierTo(15.8, 13.75, 18.163, 14.475)
+    ..quadraticBezierTo(20.525, 15.2, 23, 14.75)
+    ..quadraticBezierTo(22.35, 18.35, 19.55, 20.675)
+    ..quadraticBezierTo(16.75, 23, 13.1, 23)
+    ..close()));
+  // "dark_mode" resmi: sabit terisi — dipakai khusus blok pahlawan
+  // lembar timer aktif (padanan ikon header frame Active Stitch).
+  static final darkMode = ClaiIconData(fill: _s((p) => p
+    ..moveTo(12, 3)
+    ..arcToPoint(const Offset(21, 12), radius: const Radius.circular(9), largeArc: true, clockwise: false)
+    ..cubicTo(21, 11.54, 20.96, 11.08, 20.9, 10.64)
+    ..arcToPoint(const Offset(16.5, 12.9), radius: const Radius.circular(5.389), largeArc: false, clockwise: true)
+    ..arcToPoint(const Offset(13.36, 3.1), radius: const Radius.circular(5.403), largeArc: false, clockwise: true)
+    ..cubicTo(12.92, 3.04, 12.46, 3, 12, 3)
+    ..close()));
   static final download = ClaiIconData(stroke: _join([
     _seg(12, 3.8, 12, 13.4),
     _s((p) => p..moveTo(7.2, 10.2)..lineTo(12, 15)..lineTo(16.8, 10.2)),

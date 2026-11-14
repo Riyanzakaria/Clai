@@ -1,0 +1,1 @@
+Timer tidur: diperbaiki keterangan timer aktif yang mengulang kata. Keterangan kini tampil bersih, sisa waktu ditampilkan satu kali saja.

@@ -138,7 +138,7 @@ class _SleepResumeCardState extends ConsumerState<SleepResumeCard> {
               color: ClaiColors.surface2,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(child: ClaiIcon(ClaiIcons.moon, color: ClaiColors.accent, size: 20)),
+            child: Center(child: ClaiIcon(ClaiIcons.bedtime, color: ClaiColors.accent, size: 20)),
           ),
           const SizedBox(width: 12),
           Expanded(

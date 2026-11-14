@@ -11,6 +11,18 @@ import '../core/tokens.dart';
 import 'haptics.dart';
 import 'widgets.dart';
 
+/// Format sisa hitung mundur timer tidur "MM:SS" (Ronde 8059, frame
+/// Stitch "Sleep Timer — Active Countdown State": sisa waktu tampil
+/// BESAR sebagai angka pahlawan, bukan hanya di dalam kalimat subjudul).
+/// Murni & teruji unit: negatif dijepit ke nol, detik pecahan dibuang,
+/// menit tidak dibatasi dua digit (preset maksimum 60 → "60:00").
+String formatSleepCountdown(Duration d) {
+  final clamped = d.isNegative ? Duration.zero : d;
+  final m = clamped.inMinutes;
+  final s = clamped.inSeconds % 60;
+  return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+}
+
 Future<void> openSleepTimerSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: claiRootContext(context),
@@ -50,9 +62,7 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
 
   String _remainingLabel(Duration? d) {
     if (d == null) return '';
-    final m = d.inMinutes;
-    final s = d.inSeconds % 60;
-    return context.l10n.sleepRemaining('${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}');
+    return context.l10n.sleepRemaining(formatSleepCountdown(d));
   }
 
   @override
@@ -61,7 +71,12 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
     final active = sleep.active;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Ronde 8059: isi kini bisa digulir (pola rangka lembar DS) —
+      // blok hitung mundur keadaan aktif menambah tinggi, dan sheet
+      // 55% NYATA pada layar pendek tidak boleh meluap; gulir hanya
+      // terpakai bila isi memang melebihi tinggi lembar.
+      child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Center(child: SheetHandle()),
         const SizedBox(height: 18),
         Text(context.l10n.sleepTitle, style: displayStyle(20)),
@@ -74,12 +89,34 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
                     : context.l10n.sleepSubEndOfSong,
             style: const TextStyle(color: ClaiColors.inkSecondary, height: 1.45)),
         const SizedBox(height: 18),
+        if (active?.mode == 'minutes') ...[
+          // Frame Stitch "Sleep Timer — Active Countdown State"
+          // dipadatkan ke sheet 55% nyata (kanvas frame lebih tinggi
+          // dari layar): sisa waktu tampil BESAR (angka pahlawan
+          // tabular, berdetak tiap detik lewat ticker lembar) di
+          // bawah subjudul; ikon di titik ini = "dark_mode" resmi
+          // (padanan ikon header frame Active Stitch), sedangkan
+          // baris preset, dok Player & kartu Lanjut Besok memakai
+          // "bedtime" resmi (Ronde 8061).
+          Center(
+            child: Column(children: [
+              ClaiIcon(ClaiIcons.darkMode, color: ClaiColors.accent, size: 24),
+              const SizedBox(height: 6),
+              Text(
+                formatSleepCountdown(sleep.remaining ?? Duration.zero),
+                key: const Key('sleepCountdownHero'),
+                style: heroStyle(40),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 18),
+        ],
         // Baris pilihan (Ronde Sapuan 8045): tata bahasa baris
         // lembar DS — tinggi 52, label 17, ikon berkotak tonal;
         // centang tetap glif Clai sendiri (D-35).
         for (final m in [15, 30, 45, 60])
           _timerRow(
-            icon: ClaiIcons.moon,
+            icon: ClaiIcons.bedtime,
             label: context.l10n.sleepMinutes(m),
             checked: active?.mode == 'minutes' && active?.minutes == m,
             onTap: () {
@@ -109,7 +146,7 @@ class _SleepTimerSheetState extends ConsumerState<SleepTimerSheet> {
               Navigator.of(context).pop();
             },
           ),
-      ]),
+          ])),
     );
   }
 }

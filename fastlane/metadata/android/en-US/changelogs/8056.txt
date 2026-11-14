@@ -1,0 +1,1 @@
+Fixed a repeated update prompt: after updating, Clai no longer offers you the version you already have, and the Updates screen now correctly tells you when you're on the latest version.

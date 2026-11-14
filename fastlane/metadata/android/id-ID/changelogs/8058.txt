@@ -1,0 +1,1 @@
+Memperbaiki lirik yang tidak ditemukan untuk lagu yang diunggah sebagai video, di mana nama artis tertulis di dalam judul video, bukan di kolom artis. Pencarian lirik kini juga mencoba nama artis dan judul yang tertulis di judul itu sendiri.

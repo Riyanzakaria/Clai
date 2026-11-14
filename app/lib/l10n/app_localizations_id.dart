@@ -1294,7 +1294,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String sleepSubMinutes(Object remaining) {
-    return 'Timer aktif — $remaining lagi. Volume memudar halus di bentang akhir, lalu musik jeda.';
+    return 'Timer aktif — $remaining. Volume memudar halus di bentang akhir, lalu musik jeda.';
   }
 
   @override

@@ -1,0 +1,2 @@
+Sleep timer: while a timer is running, the sheet now shows the time left as a large live countdown, so you can see at a glance when the music will stop.
+Crossfade: if a song's stream is refused during a crossfade, the app now switches that song to a backup playback path so the music keeps playing instead of going silent. Only the refused song loses its fade; the rest still crossfade as before.

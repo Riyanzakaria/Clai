@@ -76,6 +76,55 @@ String cleanedSongTitle(String title) {
 
 String _normMatch(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9 ]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 
+/// Pisah pola "Artis - Judul" dari judul unggahan video: "COLORCODE -
+/// Sway (Official Lyrics Video)" → (COLORCODE, Sway (Official Lyrics
+/// Video)). Pisah di " - " PERTAMA saja ("A - B - C" → artis "A", judul
+/// "B - C"); tanpa pola atau sisi mana pun kosong → null. Murni & teruji
+/// (Ronde 8058: pada unggahan video, nama artis asli tertanam di judul
+/// sementara kolom artis berisi nama kanal, jadi pasangan judul+artis
+/// apa adanya tidak pernah dikenal LRCLIB).
+(String, String)? splitArtistTitle(String title) {
+  final i = title.indexOf(' - ');
+  if (i < 0) return null;
+  final artist = title.substring(0, i).trim();
+  final song = title.substring(i + 3).trim();
+  if (artist.isEmpty || song.isEmpty) return null;
+  return (artist, song);
+}
+
+/// Pilih kandidat hasil pencarian LRCLIB: judul ternormalisasi kandidat
+/// harus cocok dengan SALAH SATU varian judul yang dicoba (mentah,
+/// bersih, atau hasil pisah "Artis - Judul"); pemenang = durasi
+/// terdekat dari trek, lirik tersinkron diutamakan pada skor setara.
+/// Murni & teruji.
+(List<LyricsLine>?, String?, String?, bool)? pickSearchCandidate(
+  List<Map<String, dynamic>> candidates,
+  Set<String> titleVariants,
+  Duration? trackDuration,
+) {
+  final wanted = {
+    for (final v in titleVariants)
+      if (v.isNotEmpty) _normMatch(v),
+  };
+  (List<LyricsLine>?, String?, String?, bool)? best;
+  var bestScore = double.infinity;
+  for (final c in candidates) {
+    final syncedText = c['syncedLyrics'] as String?;
+    final plain = c['plainLyrics'] as String?;
+    if (syncedText == null && plain == null) continue;
+    if (!wanted.contains(_normMatch(c['trackName'] as String? ?? ''))) continue;
+    final durSec = (c['duration'] as num?)?.toDouble();
+    var score = 100000.0;
+    if (durSec != null && trackDuration != null) score = (durSec * 1000 - trackDuration.inMilliseconds).abs().toDouble();
+    if (syncedText != null) score -= 500; // utamakan yang tersinkron pada skor setara
+    if (score < bestScore) {
+      bestScore = score;
+      best = (syncedText == null ? null : parseLrc(syncedText), syncedText, plain, c['instrumental'] == true);
+    }
+  }
+  return best;
+}
+
 /// Lirik tersinkron dari LRCLIB (F2, PETA-JALAN butir 2) — API publik tanpa
 /// kunci. Hasil (positif maupun negatif) tercache lokal; negatif kedaluwarsa
 /// 7 hari agar katalog yang bertumbuh tetap bisa ditemukan lagi.
@@ -128,32 +177,55 @@ class LyricsService {
   /// (baris tersinkron, teks LRC mentah, teks polos, instrumental)
   Future<(List<LyricsLine>?, String?, String?, bool)?> _fetchLrclib(Track t) async {
     final artist = primaryArtistName(t.artistNames);
-    final attempts = <String>[t.title, cleanedSongTitle(t.title)];
-    for (final title in attempts) {
+    final rawTitle = t.title;
+    final cleanedTitle = cleanedSongTitle(t.title);
+    // Percobaan lama — urutan & pasangan persis seperti sebelumnya;
+    // trek tanpa pola "Artis - Judul" perilakunya tidak berubah.
+    for (final title in <String>[rawTitle, cleanedTitle]) {
       if (title.isEmpty) continue;
       final got = await _getExact(title, artist, t);
       if (got != null) return got;
     }
-    // Cadangan: pencarian — pilih kandidat berdurasi terdekat yang judulnya cocok.
-    final firstTitle = attempts.firstWhere((s) => s.isNotEmpty, orElse: () => t.title);
-    final candidates = await _search(firstTitle, artist);
-    (List<LyricsLine>?, String?, String?, bool)? best;
-    var bestScore = double.infinity;
-    for (final c in candidates) {
-      final syncedText = c['syncedLyrics'] as String?;
-      final plain = c['plainLyrics'] as String?;
-      if (syncedText == null && plain == null) continue;
-      if (_normMatch(c['trackName'] as String? ?? '') != _normMatch(firstTitle)) continue;
-      final durSec = (c['duration'] as num?)?.toDouble();
-      var score = 100000.0;
-      if (durSec != null && t.duration != null) score = (durSec * 1000 - t.duration!.inMilliseconds).abs().toDouble();
-      if (syncedText != null) score -= 500; // utamakan yang tersinkron pada skor setara
-      if (score < bestScore) {
-        bestScore = score;
-        best = (syncedText == null ? null : parseLrc(syncedText), syncedText, plain, c['instrumental'] == true);
+    // Percobaan pisah "Artis - Judul" (Ronde 8058): judul mentah &
+    // bersih dipisah di " - " pertama — kiri calon artis, kanan calon
+    // judul. Tiap calon judul dicoba dengan artis tertanamnya, lalu
+    // dengan artis asli trek. Kasus terbukti: "COLORCODE - Sway" pada
+    // kanal "Eclipse Time Records" hanya dikenal LRCLIB sebagai
+    // (Sway, COLORCODE).
+    final splits = <(String, String)>[]; // (artis tertanam, judul)
+    final titleVariants = <String>{rawTitle, cleanedTitle};
+    for (final base in <String>[rawTitle, cleanedTitle]) {
+      final s = splitArtistTitle(base);
+      if (s != null) {
+        splits.add(s);
+        titleVariants.add(s.$2);
       }
     }
-    return best;
+    for (final (embeddedArtist, splitTitle) in splits) {
+      final byEmbedded = await _getExact(splitTitle, embeddedArtist, t);
+      if (byEmbedded != null) return byEmbedded;
+      if (embeddedArtist != artist) {
+        final byOwnArtist = await _getExact(splitTitle, artist, t);
+        if (byOwnArtist != null) return byOwnArtist;
+      }
+    }
+    // Cadangan: pencarian atas beberapa varian pasangan — (mentah,
+    // artis) seperti semula, ditambah (bersih, artis) dan tiap
+    // (judul pisah, artis tertanam). Kandidat diterima bila judulnya
+    // cocok dengan SALAH SATU varian judul yang dicoba.
+    final searchPairs = <(String, String)>[
+      (rawTitle, artist),
+      if (cleanedTitle.isNotEmpty && cleanedTitle != rawTitle) (cleanedTitle, artist),
+      for (final s in splits) (s.$2, s.$1),
+    ];
+    final seenPairs = <String>{};
+    final candidates = <Map<String, dynamic>>[];
+    for (final (title, who) in searchPairs) {
+      if (title.isEmpty) continue;
+      if (!seenPairs.add('$title|$who')) continue;
+      candidates.addAll(await _search(title, who));
+    }
+    return pickSearchCandidate(candidates, titleVariants, t.duration);
   }
 
   Future<(List<LyricsLine>?, String?, String?, bool)?> _getExact(String title, String artist, Track t) async {

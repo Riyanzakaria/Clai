@@ -1,0 +1,1 @@
+Perbaikan tawaran update yang berulang: sesudah memperbarui, Clai tidak lagi menawarkan versi yang sudah kamu pakai, dan layar Pembaruan kini benar menunjukkan bila kamu sudah di versi terbaru.

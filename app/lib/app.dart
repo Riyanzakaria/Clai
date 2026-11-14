@@ -851,6 +851,9 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
     });
     handler.onNaturalTrackEnd = () => sleep.fireEndOfSong();
     handler.onManualPlayAction = () => sleep.cancelOnManualAction();
+    // Ronde 8063: Berikutnya/Sebelumnya manual TIDAK membatalkan
+    // timer tidur aktif — kait navigasi tersendiri di layanan.
+    handler.onManualTrackSkip = () => sleep.handleManualTrackSkip();
     // F2 Batch 2: Berkendara — pengumuman lagu berikutnya, pola tekan,
     // volume-kecepatan. load() memulihkan pref; listener menjaga flag handler.
     final driving = ref.read(drivingServiceProvider);
@@ -944,13 +947,48 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
     // setiap pemasangan yang normalisasinya mati (bawaan) — vonis
     // perangkat 2026-11-09 10:44. Keadaan awal disinkronkan seketika;
     // perubahan pref tema (yang memuat asinkron) tertangkap listener.
+    // Ronde 8064 — prasyarat izin rantai ukur: Visualizer Android
+    // mewajibkan izin mikrofon walau tidak merekam apa pun; tanpa
+    // izin, visStart gagal ("error: -3") dan waveform + napas +
+    // gain normalisasi mati senyap sementara penjaga menegaskan
+    // ulang ke dinding yang sama (terbukti di emulator: RMS 0,
+    // jaga 17+ kali, log penuh 'vis-gagal-mulai'). Sebelumnya izin
+    // hanya diminta sakelar normalisasi & lembar suara — permukaan
+    // waveform/napas tidak punya jalan minta sendiri, jadi rantai
+    // hanya pulih bila izin kebetulan diberikan di tempat lain.
+    // Kini: SEKALI per proses, saat ada konsumen yang membutuhkan
+    // Visualizer dan aplikasi di depan, cangkang meminta izinnya;
+    // pemberian izin menegaskan ulang Visualizer seketika.
+    var micAskedForVis = false;
+    var micKnownGranted = false;
+    Future<void> ensureMicForVisualizer(bool consumerWants) async {
+      if (micKnownGranted) return;
+      final granted = await AudioFxService().micGranted();
+      if (granted) {
+        micKnownGranted = true;
+        return;
+      }
+      if (!shouldRequestMicForVisualizer(
+        consumerWants: consumerWants,
+        alreadyAsked: micAskedForVis,
+        granted: granted,
+        appResumed:
+            WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed,
+      )) {
+        return;
+      }
+      micAskedForVis = true;
+      if (await AudioFxService().micRequest()) {
+        micKnownGranted = true;
+        unawaited(handler.reassertVisualizer());
+      }
+    }
+
     void syncBreathVis() {
       final s = ref.read(ambientControllerProvider);
-      unawaited(
-        handler.setBreathVisWanted(
-          s.enabled && s.breathing && !s.reduceEffects,
-        ),
-      );
+      final want = s.enabled && s.breathing && !s.reduceEffects;
+      unawaited(handler.setBreathVisWanted(want));
+      unawaited(ensureMicForVisualizer(want));
     }
 
     ref.listenManual(ambientControllerProvider, (_, __) => syncBreathVis());
@@ -970,11 +1008,10 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
         unawaited(handler.setWaveformVisWanted(false));
         return;
       }
-      unawaited(
-        handler.setWaveformVisWanted(
-          waveformWantsVisualizer(waveformRecorder.dataFor(cur.key)),
-        ),
-      );
+      final wants =
+          waveformWantsVisualizer(waveformRecorder.dataFor(cur.key));
+      unawaited(handler.setWaveformVisWanted(wants));
+      unawaited(ensureMicForVisualizer(wants));
     }
 
     handler.mediaItem.listen((_) => syncWaveformVis());

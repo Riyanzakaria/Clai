@@ -451,7 +451,7 @@ class _LegacyPlayerSheet extends ConsumerWidget {
               _TextAction(icon: ClaiIcons.lyrics, label: context.l10n.playerLyrics, onTap: () => openLyricsScreen(context)),
               _TextAction(icon: ClaiIcons.queue, label: context.l10n.queueTitle, onTap: () =>
                   Navigator.of(claiRootContext(context)).push(MaterialPageRoute(builder: (_) => const QueueScreen()))),
-              _TextAction(icon: ClaiIcons.moon, label: context.l10n.playerTimer, onTap: () => openSleepTimerSheet(context)),
+              _TextAction(icon: ClaiIcons.bedtime, label: context.l10n.playerTimer, onTap: () => openSleepTimerSheet(context)),
               _TextAction(icon: ClaiIcons.mic, label: context.l10n.playerVoice, onTap: () => openVoiceSheet(context)),
             ]),
             if (engine.autoplayActive)
@@ -1174,7 +1174,7 @@ class PlayerBoardBody extends ConsumerWidget {
           _DockItem(
               icon: ClaiIcons.queue, label: l10n.queueTitle, onTap: onQueue),
           _DockItem(
-              icon: ClaiIcons.moon, label: l10n.playerTimer, onTap: onTimer),
+              icon: ClaiIcons.bedtime, label: l10n.playerTimer, onTap: onTimer),
           _DockItem(
               icon: ClaiIcons.mic, label: l10n.playerVoice, onTap: onVoice),
         ],
@@ -1310,16 +1310,37 @@ class _StageArt extends StatelessWidget {
         final cacheWidth = sizedUrl.contains('ytimg.com')
             ? bucket
             : math.min(bucket, math.max((c.maxWidth * dpr).ceil(), 1));
-        return Image.network(
-          sizedUrl,
-          key: ValueKey(sizedUrl),
+        // Ronde 8057 (FIX B): panggung Player adalah SATU-satunya
+        // permukaan berember 1080 — varian itu yang rapuh (guc dingin
+        // gagal / ytimg maxresdefault 404 deterministik). Bila ember
+        // > 544 dan ada cadangan bermakna, muat lewat widget cadangan
+        // (sekali tukar ke varian 544/hqdefault, placeholder hanya
+        // bila cadangan juga gagal). Selain itu perilaku lama persis.
+        final fallbackUrl = bucket > 544 ? artworkFallbackUrl(sizedUrl) : null;
+        if (fallbackUrl == null) {
+          return Image.network(
+            sizedUrl,
+            key: ValueKey(sizedUrl),
+            width: c.maxWidth,
+            height: c.maxHeight,
+            fit: BoxFit.cover,
+            cacheWidth: cacheWidth,
+            errorBuilder: (_, __, ___) => placeholder(),
+            loadingBuilder: (_, child, progress) =>
+                progress == null ? child : placeholder(),
+          );
+        }
+        final fallbackCacheWidth = fallbackUrl.contains('ytimg.com')
+            ? 544
+            : math.min(544, math.max((c.maxWidth * dpr).ceil(), 1));
+        return FallbackArtworkImage(
+          primaryUrl: sizedUrl,
+          fallbackUrl: fallbackUrl,
           width: c.maxWidth,
           height: c.maxHeight,
-          fit: BoxFit.cover,
           cacheWidth: cacheWidth,
-          errorBuilder: (_, __, ___) => placeholder(),
-          loadingBuilder: (_, child, progress) =>
-              progress == null ? child : placeholder(),
+          fallbackCacheWidth: fallbackCacheWidth,
+          placeholder: placeholder(),
         );
       },
     );

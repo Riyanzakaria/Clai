@@ -74,10 +74,21 @@ int compareVersionNames(String a, String b) {
 /// ("salah satu sisi positif → bandingkan bangun saja") dengan itu selalu
 /// memutuskan 0 > 18 = false: pembaruan dalam aplikasi tidak pernah menyala
 /// untuk rilis terbit mana pun.
+///
+/// Pemecah seri pada nama yang sama juga harus SATU DOMAIN (Ronde 8056):
+/// [ReleaseInfo.build] menyimpan sufiks tag apa adanya (tag `v2.0.1+8055`
+/// → 8055), sedangkan `currentBuild` pemanggil sudah berupa bangun dasar
+/// (versionCode % 1000 → 55). Membandingkan keduanya mentah berarti
+/// 8055 > 55 selalu benar pada nama yang sama: rilis yang sedang terpasang
+/// ditawarkan ulang selamanya dan status "sudah terbaru" tidak pernah
+/// tercapai (terbukti E2E 12 Nov 2026, tahap 7). Maka sufiks tag
+/// dinormalisasi ke domain yang sama di titik banding ini; ReleaseInfo
+/// sendiri tetap jujur menyimpan nilai tag utuh.
 bool isNewerRelease(ReleaseInfo r, {required String currentName, required int currentBuild}) {
   final byName = compareVersionNames(r.versionName, currentName);
   if (byName != 0) return byName > 0;
-  return r.build > 0 && r.build > currentBuild;
+  final tagBuild = r.build % 1000;
+  return tagBuild > 0 && tagBuild > currentBuild;
 }
 
 /// Pilih aset APK yang cocok dengan ABI perangkat (nama berkas split Flutter

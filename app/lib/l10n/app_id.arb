@@ -676,7 +676,7 @@
   },
   "sleepTitle": "Timer tidur",
   "sleepSubOff": "Musik berhenti sendiri — lalu bisa dilanjutkan besok dari posisi yang sama.",
-  "sleepSubMinutes": "Timer aktif — {remaining} lagi. Volume memudar halus di bentang akhir, lalu musik jeda.",
+  "sleepSubMinutes": "Timer aktif — {remaining}. Volume memudar halus di bentang akhir, lalu musik jeda.",
   "@sleepSubMinutes": {
     "placeholders": {
       "remaining": {}

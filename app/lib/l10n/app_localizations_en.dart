@@ -1293,7 +1293,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sleepSubMinutes(Object remaining) {
-    return 'Timer active — $remaining left. The volume fades out smoothly over the final stretch, then the music pauses.';
+    return 'Timer active — $remaining. The volume fades out smoothly over the final stretch, then the music pauses.';
   }
 
   @override

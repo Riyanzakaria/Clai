@@ -161,7 +161,7 @@ void main() {
       ));
       expect(find.text('29:41'), findsOneWidget);
       final icons = tester.widgetList<ClaiIcon>(find.byType(ClaiIcon)).toList();
-      expect(icons.single.data, ClaiIcons.moon);
+      expect(icons.single.data, ClaiIcons.bedtime);
       await tester.tap(find.byType(SleepTimerChip));
       expect(tapped, isTrue);
     });

@@ -108,7 +108,7 @@ class SleepTimerChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClaiIcon(ClaiIcons.moon, size: 13, color: ClaiColors.inkSecondary),
+              ClaiIcon(ClaiIcons.bedtime, size: 13, color: ClaiColors.inkSecondary),
               const SizedBox(width: 3),
               Text(
                 formatSleepRemaining(remaining),

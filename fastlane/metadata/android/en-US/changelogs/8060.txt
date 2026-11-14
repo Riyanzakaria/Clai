@@ -1,0 +1,1 @@
+Sleep timer: fixed the active timer caption, which repeated a word. The caption now reads cleanly, showing the time left just once.

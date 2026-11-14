@@ -12,8 +12,15 @@ import 'package:flutter/foundation.dart';
 /// nol dan jeda tidak memotong kasar. Snapshot antrean PENUH tersimpan
 /// ke pref 'sleep.last' untuk kartu "Lanjutkan dari semalam" di Beranda
 /// (Sapuan D-15).
-/// Interaksi putar manual membatalkan timer yang masih berjalan — KECUALI
-/// aksi resume Lanjut Besok itu sendiri (flag satu-kali [resuming]).
+/// Memilih putaran/trek BARU secara manual (putar dari daftar, lompat
+/// langsung ke trek lain) membatalkan timer yang masih berjalan —
+/// KECUALI aksi resume Lanjut Besok itu sendiri (flag satu-kali
+/// [resuming]). Navigasi Berikutnya/Sebelumnya DI DALAM sesi berjalan
+/// berbeda: timer aktif TIDAK dibatalkan (lihat
+/// [handleManualTrackSkip]; koreksi vonis perangkat Ronde 8063 —
+/// aturan lama yang membatalkan pada SEMUA interaksi manual membuat
+/// timer hilang tiap pengguna menekan Next/Previous sendiri,
+/// sementara pergantian alami karena lagu habis tidak).
 /// Interaksi manual ≤10 menit SESUDAH timer berbunyi membatalkan simpanan
 /// Lanjut Besok (pengguna sudah bangun & memilih sendiri — USER-FLOW F-10).
 class SleepTimerState {
@@ -135,7 +142,10 @@ class SleepService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Kait aksi putar manual dari handler.
+  /// Kait aksi MEMILIH putaran/trek baru dari handler (putar dari
+  /// daftar, lompat langsung ke trek lain): membatalkan timer aktif.
+  /// Navigasi Berikutnya/Sebelumnya memakai kait terpisah
+  /// ([handleManualTrackSkip]) dan tidak masuk sini.
   void cancelOnManualAction() {
     if (resuming) {
       resuming = false;
@@ -144,6 +154,39 @@ class SleepService extends ChangeNotifier {
     if (active != null) cancel();
     // D-15: interaksi ≤10 menit sesudah timer berbunyi membatalkan simpanan
     // Lanjut Besok — pengguna sudah bangun dan memilih putarannya sendiri.
+    final fired = lastFiredAt;
+    if (fired != null &&
+        DateTime.now().difference(fired) <= postFireCancelWindow) {
+      lastFiredAt = null;
+      onPostFireInteraction?.call();
+    }
+  }
+
+  /// Kait navigasi trek manual dari handler: Berikutnya/Sebelumnya
+  /// di dalam sesi yang sedang berjalan (Ronde 8063).
+  ///
+  /// Timer aktif TIDAK dibatalkan:
+  /// - Mode menit berjalan di atas jam dinding — tenggat [endsAt],
+  ///   sisa waktu, dan rampa peredupan berbasis waktunya tidak
+  ///   disentuh sama sekali.
+  /// - Mode akhir-lagu tetap terpasang dan berlaku untuk lagu hasil
+  ///   navigasi; bila peredupan per-lagu trek lama sedang berjalan,
+  ///   pulihkan lewat [onFadeCancel] agar lagu baru tidak senyap dan
+  ///   bisa memudar di akhir lagunya sendiri.
+  /// Bila timer SUDAH berbunyi (tidak ada yang aktif), navigasi tetap
+  /// membatalkan simpanan Lanjut Besok ≤10 menit — sama seperti aksi
+  /// memilih putaran baru (pengguna sudah bangun & bernavigasi
+  /// sendiri).
+  void handleManualTrackSkip() {
+    if (resuming) {
+      resuming = false;
+      return;
+    }
+    final a = active;
+    if (a != null) {
+      if (a.mode == 'endOfSong') onFadeCancel?.call();
+      return;
+    }
     final fired = lastFiredAt;
     if (fired != null &&
         DateTime.now().difference(fired) <= postFireCancelWindow) {

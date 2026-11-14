@@ -12,6 +12,7 @@ void main() {
     'shuffle': ClaiIcons.shuffle, 'repeat': ClaiIcons.repeat, 'repeatOne': ClaiIcons.repeatOne,
     'heart': ClaiIcons.heart, 'heartFill': ClaiIcons.heartFill,
     'queue': ClaiIcons.queue, 'lyrics': ClaiIcons.lyrics, 'moon': ClaiIcons.moon,
+    'bedtime': ClaiIcons.bedtime, 'darkMode': ClaiIcons.darkMode,
     'download': ClaiIcons.download, 'add': ClaiIcons.add, 'moreVert': ClaiIcons.moreVert,
     'share': ClaiIcons.share, 'radio': ClaiIcons.radio, 'check': ClaiIcons.check,
     'checkCircle': ClaiIcons.checkCircle, 'warning': ClaiIcons.warning, 'info': ClaiIcons.info,

@@ -1,0 +1,3 @@
+Memperbaiki tombol Putar yang kadang tidak merespons setelah lagu terakhir dalam antrean selesai, misalnya sesudah timer tidur. Menekan Putar kini memutar ulang lagu itu dari awal.
+Memperbaiki sampul album yang kadang tidak tampil di pemutar penuh. Bila sampul besar gagal dimuat, pemutar kini memakai sampul biasa sebagai cadangan, bukan ruang kosong.
+Memperbaiki putaran dari sesi yang dipulihkan yang kadang tidak merespons, atau melompat kembali ke lagu sebelumnya padahal kamu sudah memilih lagu lain.

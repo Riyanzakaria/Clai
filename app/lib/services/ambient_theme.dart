@@ -381,6 +381,27 @@ bool visWatchdogDue({
   return true;
 }
 
+/// Keputusan MEMINTA izin mikrofon demi Visualizer (Ronde 8064,
+/// murni): Visualizer Android mewajibkan izin mikrofon walau tidak
+/// merekam apa pun; tanpa izin, pembuatannya gagal ("error: -3")
+/// dan rantai ukur mati total — waveform datar, napas diam, gain
+/// normalisasi tak terukur — sementara penjaga hanya menegaskan
+/// ulang ke dinding yang sama. Sebelum ronde ini TIDAK ADA jalur
+/// minta izin di permukaan waveform/napas: izin hanya diminta
+/// sakelar normalisasi dan lembar suara, jadi rantai hanya pulih
+/// bila pengguna kebetulan memberikannya di tempat lain ("harus
+/// di-refresh"). Kini cangkang meminta SEKALI per proses pada saat
+/// ada konsumen yang membutuhkan Visualizer, aplikasi di depan,
+/// dan izin belum terpasang — tidak berulang, tidak saat aplikasi
+/// di latar (dialog tak bisa tampil), tidak bila tak ada konsumen.
+bool shouldRequestMicForVisualizer({
+  required bool consumerWants,
+  required bool alreadyAsked,
+  required bool granted,
+  required bool appResumed,
+}) =>
+    consumerWants && !alreadyAsked && !granted && appResumed;
+
 /// Alfa permukaan termodulasi napas: [base] diskalakan [factor]
 /// (0,7–1,3), dijepit ke rentang alfa sah. Murni.
 double breathModulatedAlpha(double base, double factor) =>

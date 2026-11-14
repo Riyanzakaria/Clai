@@ -63,6 +63,70 @@ void main() {
     });
   });
 
+  group('artworkFallbackUrl — Ronde 8057 FIX B (cadangan 544)', () {
+    test('googleusercontent 1080 → 544, flag lain utuh', () {
+      expect(
+          artworkFallbackUrl(
+              'https://lh3.googleusercontent.com/abc123=w1080-h1080-l90-rj'),
+          'https://lh3.googleusercontent.com/abc123=w544-h544-l90-rj');
+    });
+    test('googleusercontent 544 → null (sudah varian andal)', () {
+      expect(
+          artworkFallbackUrl(
+              'https://lh3.googleusercontent.com/abc123=w544-h544-l90-rj'),
+          isNull);
+    });
+    test('googleusercontent 200 → null (di bawah 544)', () {
+      expect(
+          artworkFallbackUrl(
+              'https://lh3.googleusercontent.com/abc123=w200-h200-l90-rj'),
+          isNull);
+    });
+    test('googleusercontent tanpa suffix ukuran → null', () {
+      expect(artworkFallbackUrl('https://lh3.googleusercontent.com/plainimage'),
+          isNull);
+    });
+    test('ytimg maxresdefault → hqdefault (penurunan eksplisit)', () {
+      expect(artworkFallbackUrl('https://i.ytimg.com/vi/VID123/maxresdefault.jpg'),
+          'https://i.ytimg.com/vi/VID123/hqdefault.jpg');
+    });
+    test('ytimg sddefault → hqdefault', () {
+      expect(artworkFallbackUrl('https://i.ytimg.com/vi/VID123/sddefault.jpg'),
+          'https://i.ytimg.com/vi/VID123/hqdefault.jpg');
+    });
+    test('ytimg img.youtube.com maxresdefault → hqdefault', () {
+      expect(
+          artworkFallbackUrl(
+              'https://img.youtube.com/vi/VID123/maxresdefault.jpg'),
+          'https://img.youtube.com/vi/VID123/hqdefault.jpg');
+    });
+    test('ytimg hqdefault → null (sudah varian cadangan)', () {
+      expect(artworkFallbackUrl('https://i.ytimg.com/vi/VID123/hqdefault.jpg'),
+          isNull);
+    });
+    test('ytimg mqdefault/default → null', () {
+      expect(artworkFallbackUrl('https://i.ytimg.com/vi/VID123/mqdefault.jpg'),
+          isNull);
+      expect(artworkFallbackUrl('https://i.ytimg.com/vi/VID123/default.jpg'),
+          isNull);
+    });
+    test('host tak dikenal → null', () {
+      expect(artworkFallbackUrl('https://example.invalid/cover.jpg'), isNull);
+    });
+    test('null & kosong → null', () {
+      expect(artworkFallbackUrl(null), isNull);
+      expect(artworkFallbackUrl(''), isNull);
+    });
+    test('jalur lokal/MediaStore → null', () {
+      expect(
+          artworkFallbackUrl('content://media/external/audio/albumart/42'),
+          isNull);
+      expect(
+          artworkFallbackUrl('file:///storage/emulated/0/Music/cover.jpg'),
+          isNull);
+    });
+  });
+
   group('artworkBucketFor', () {
     test('baris daftar 48dp tetap di tangga kecil', () {
       expect(artworkBucketFor(48, 2.625), 200);
