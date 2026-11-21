@@ -13,8 +13,10 @@ import 'similarity.dart';
 ///  - trek yang disukai / sering diputar mendapat dorongan ke depan,
 ///  - urutan akhir deterministik untuk [seed] yang sama (dapat diuji & diulang).
 ///
-/// Dipakai untuk seksi Lanjutan saja: antrean manual adalah milik pengguna
-/// (L-03) dan tidak pernah diacak ulang oleh mode ini.
+/// Dipakai untuk seksi Lanjutan & Putar Otomatis (Ronde 8066: cakupan
+/// diperluas dari Lanjutan saja — antrean berbentuk Putar Otomatis kini
+/// ikut terurut cerdas). Antrean manual adalah milik pengguna (L-03)
+/// dan tidak pernah diacak ulang oleh mode ini.
 List<Track> smartShuffleOrder(
   List<Track> input, {
   Set<TrackKey> likedKeys = const {},

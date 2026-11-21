@@ -104,6 +104,67 @@ bool isNewerRelease(ReleaseInfo r, {required String currentName, required int cu
   return apks.first;
 }
 
+/// Nama berkas unduhan lokal untuk satu rilis — DIKAITKAN ke identitas
+/// rilis (Ronde 8065). Akar cacat yang terbukti di HP riyan 14 Nov 2026:
+/// nama lama selalu nama aset ('clai.apk') untuk SEMUA rilis, dan
+/// pakai-ulang hanya mencocokkan UKURAN berkas; aset 2.0.1 dan 2.0.2
+/// kebetulan sama-sama 30.884.225 byte, sehingga APK 2.0.1 sisa unduhan
+/// lama dinyatakan "sudah terunduh" untuk 2.0.2 lalu ditolak Android
+/// sebagai penurunan versi (INSTALL_FAILED_VERSION_DOWNGRADE).
+/// Kini: nomor bangun dari tag bila ada ('clai-8065.apk'), selain itu tag
+/// yang disanitasi.
+String updateFileNameForRelease(ReleaseInfo r) {
+  if (r.build > 0) return 'clai-${r.build}.apk';
+  final safe = r.tag.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '-');
+  return 'clai-$safe.apk';
+}
+
+/// Pola nama berkas unduhan Clai di folder sementara: nama terikat rilis
+/// (`clai-<build>.apk` / `clai-<tag>.apk`) DAN nama warisan pra-8065
+/// ('clai.apk' polos). Berkas lain di folder itu bukan urusan fungsi ini.
+bool isUpdateFileName(String name) =>
+    name == 'clai.apk' ||
+    (name.startsWith('clai-') && name.toLowerCase().endsWith('.apk'));
+
+/// Keputusan pakai-ulang berkas unduhan (murni): hanya bila berkasnya ada
+/// dan UKURANNYA persis sama dengan aset yang ditawarkan. Nama berkasnya
+/// sudah terikat rilis oleh pemanggil, jadi kecocokan ukuran di sini
+/// hanya mungkin untuk berkas rilis yang sama.
+bool shouldReuseUpdateFile(
+        {required bool exists,
+        required int fileLength,
+        required int assetSize}) =>
+    exists && assetSize > 0 && fileLength == assetSize;
+
+/// Hapus berkas unduhan MILIK RILIS LAIN di [dir] (semua nama berpola
+/// [isUpdateFileName] selain [keepName]) — tidak boleh ada sisa lintas
+/// versi di folder sementara. Mengembalikan nama berkas yang terhapus.
+/// Folder yang belum ada / tak terbaca → daftar kosong, tanpa galat.
+Future<List<String>> pruneStaleUpdateFiles(
+    Directory dir, String keepName) async {
+  final deleted = <String>[];
+  try {
+    if (!await dir.exists()) return deleted;
+    await for (final e in dir.list()) {
+      if (e is! File) continue;
+      final segments = e.uri.pathSegments;
+      final name = segments.isEmpty ? '' : segments.last;
+      if (name != keepName && isUpdateFileName(name)) {
+        try {
+          await e.delete();
+          deleted.add(name);
+        } catch (_) {
+          // Berkas terkunci dsb.: lewati — unduhan rilis ini tidak
+          // bergantung padanya (namanya berbeda).
+        }
+      }
+    }
+  } catch (_) {
+    // Folder tak bisa didaftar: perlakukan sebagai tak ada yang dibersihkan.
+  }
+  return deleted;
+}
+
 enum UpdateStatus { unknown, checking, noReleases, upToDate, available, downloading, readyToInstall, installing, error }
 
 /// Pembaruan Dalam Aplikasi (PETA-JALAN butir 6): cek GitHub Releases (tarik,
@@ -190,16 +251,23 @@ class UpdateController extends ChangeNotifier {
         } else if (v == null) {
           status = UpdateStatus.error;
           message = l10n.updVersionUnreadable;
-        } else if (isNewerRelease(parsed, currentName: v.name, currentBuild: SysChannel.baseBuildOf(v.code))) {
-          status = UpdateStatus.available;
-          release = parsed;
-          message = l10n.updAvailableMsg(parsed.versionName);
-          notifyListeners();
-          if (autoDownload) await download(auto: true);
         } else {
-          status = UpdateStatus.upToDate;
-          release = null;
-          message = l10n.updUpToDate;
+          // Ronde 8065: begitu identitas rilis terbaru diketahui, sisa
+          // unduhan rilis LAIN di folder sementara dibersihkan — juga
+          // pada hasil "sudah terbaru", agar berkas basi tidak menunggu
+          // sebagai jebakan untuk pemeriksaan berikutnya.
+          await _pruneFor(parsed);
+          if (isNewerRelease(parsed, currentName: v.name, currentBuild: SysChannel.baseBuildOf(v.code))) {
+            status = UpdateStatus.available;
+            release = parsed;
+            message = l10n.updAvailableMsg(parsed.versionName);
+            notifyListeners();
+            if (autoDownload) await download(auto: true);
+          } else {
+            status = UpdateStatus.upToDate;
+            release = null;
+            message = l10n.updUpToDate;
+          }
         }
       } else {
         status = UpdateStatus.error;
@@ -213,6 +281,17 @@ class UpdateController extends ChangeNotifier {
       _busy = false;
       notifyListeners();
     }
+  }
+
+  /// Bersihkan sisa unduhan rilis lain untuk rilis [r] (Ronde 8065).
+  /// Gagal-aman penuh: folder sementara yang tak terjangkau tidak boleh
+  /// menggagalkan pemeriksaan/unduhan itu sendiri.
+  Future<void> _pruneFor(ReleaseInfo r) async {
+    try {
+      final dir =
+          Directory('${(await getTemporaryDirectory()).path}/clai-updates');
+      await pruneStaleUpdateFiles(dir, updateFileNameForRelease(r));
+    } catch (_) {}
   }
 
   Future<void> download({bool auto = false}) async {
@@ -241,8 +320,17 @@ class UpdateController extends ChangeNotifier {
     try {
       final dir = Directory('${(await getTemporaryDirectory()).path}/clai-updates');
       await dir.create(recursive: true);
-      final file = File('${dir.path}/${asset.name}');
-      if (await file.exists() && asset.size > 0 && await file.length() == asset.size) {
+      // Ronde 8065: nama berkas terikat rilis ini, dan sisa rilis lain
+      // dibersihkan SEBELUM keputusan pakai-ulang — berkas build lain
+      // tidak akan pernah terbaca sebagai unduhan rilis ini lagi.
+      final fileName = updateFileNameForRelease(r);
+      await pruneStaleUpdateFiles(dir, fileName);
+      final file = File('${dir.path}/$fileName');
+      final exists = await file.exists();
+      if (shouldReuseUpdateFile(
+          exists: exists,
+          fileLength: exists ? await file.length() : -1,
+          assetSize: asset.size)) {
         downloadedPath = file.path;
         status = UpdateStatus.readyToInstall;
         message = l10n.updAlreadyDownloaded;

@@ -61,12 +61,15 @@ void main() {
       expect(e.manual.single.id, 'm', reason: 'L-03: manual milik pengguna, tak ikut diacak');
     });
 
-    test('applySmartShuffle hanya mengurut ulang lanjutan; snapshot smart pulih', () {
+    test('applySmartShuffle mengurut ulang lanjutan & autoplay (isi tetap); snapshot smart pulih', () {
       final e = QueueEngine();
       e.current = t('0', 'X');
       e.continuation = [t('1', 'A'), t('2', 'B'), t('3', 'A')];
+      e.autoplay = [t('7', 'C'), t('8', 'C'), t('9', 'D')];
       e.applySmartShuffle();
       expect(e.continuation.map((x) => x.id).toSet(), {'1', '2', '3'});
+      expect(e.autoplay.map((x) => x.id).toSet(), {'7', '8', '9'},
+          reason: 'Ronde 8066: Putar Otomatis ikut terurut cerdas, isinya tetap');
       e.shuffle = ShuffleMode.smart;
       final snap = e.snapshot(positionMs: 0);
       final e2 = QueueEngine();

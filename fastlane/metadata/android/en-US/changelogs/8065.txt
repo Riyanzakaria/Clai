@@ -1,0 +1,4 @@
+Fixed in-app updates failing with a downgrade error: a leftover APK from an earlier update could be mistaken for the new download when both files happened to have the same size. Update downloads are now stored per version, and leftovers from other versions are cleaned up automatically.
+Voice Queue understands more ways to ask: "putarin [song]", "ganti ke [song]", and "pindah ke [song]" now work, and filler words like "lagu" no longer get in the way of finding the song.
+Voice Queue matches songs more cleverly: a slightly misheard title still matches, and an artist spoken as separate words ("color code") now matches the written name (COLORCODE).
+Voice Queue no longer gives up just because the speech recognizer was unsure of itself: clear commands are carried out, a brief recognizer disconnect no longer throws away what you just said, and songs you like or play often are now picked more readily.

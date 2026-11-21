@@ -332,10 +332,13 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     final albums = _savedFiltered(lib, 'album');
     final artists = _savedFiltered(lib, 'artist');
     final dl = ref.watch(downloadServiceProvider);
-    final doneDownloads =
-        dl.items.where((i) => i.status == DownloadStatus.done).toList();
-    final dlBytes = doneDownloads.fold<int>(
-        0, (a, i) => a + (i.bytesTotal ?? i.bytesDone));
+    // Ronde 8066 (minor 8064-b): ringkasan memisahkan selesai vs sedang
+    // berjalan — dulu hanya yang selesai dihitung, jadi selama unduhan
+    // pertama berjalan pintu ini terbaca "0 lagu".
+    final dlSummary = downloadsSummaryOf(dl.items);
+    final dlSize = formatStorageSize(dlSummary.doneBytes,
+        commaDecimal:
+            Localizations.localeOf(context).languageCode == 'id');
     final scan = ref.watch(localScanCacheProvider);
     // Playlist panggung: yang terakhir diputar menurut agregat; tanpa
     // riwayat putar, playlist pertama dalam urutan simpan.
@@ -406,13 +409,10 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                 child: _doorBlock(
                   icon: ClaiIcons.download,
                   title: l.collectionDownloads,
-                  meta: l.collectionDownloadsMeta(
-                    doneDownloads.length,
-                    formatStorageSize(dlBytes,
-                        commaDecimal: Localizations.localeOf(context)
-                                .languageCode ==
-                            'id'),
-                  ),
+                  meta: dlSummary.active > 0
+                      ? l.collectionDownloadsMetaActive(
+                          dlSummary.done, dlSize, dlSummary.active)
+                      : l.collectionDownloadsMeta(dlSummary.done, dlSize),
                   onTap: () => setState(() => _tab = 'downloads'),
                 ),
               ),

@@ -58,8 +58,10 @@ void main() {
       // Judul cocok penuh (0.7) + artis tak cocok (0.0) = 0.7.
       final s1 = voiceScore('menungso oratoto', t);
       expect(s1, closeTo(0.7, 1e-9));
+      // Ronde 8065: penguat konteks diperberat — disukai +0.10, riwayat
+      // 3 putar → +0.10 (0.05/putar, dibatasi 0.10): 0.7 + 0.1 + 0.1 = 0.9.
       final s2 = voiceScore('menungso oratoto', t, liked: true, plays: 3);
-      expect(s2, closeTo(0.8, 1e-9));
+      expect(s2, closeTo(0.9, 1e-9));
       final other = _t('2', 'Lagu Lain', 'Artis Lain');
       expect(voiceScore('menungso oratoto', other),
           lessThan(kVoiceAcceptThreshold));

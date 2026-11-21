@@ -276,7 +276,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get setSmartShuffleSub =>
-      'Mengurut ulang Lanjutan saja; tidak menambah lagu baru.';
+      'Mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didahulukan). Tidak menambah lagu baru.';
 
   @override
   String get setAutoResume => 'Lanjut otomatis setelah interupsi';
@@ -744,7 +744,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get queueSmartShuffleNote =>
-      'Acak Cerdas — mengurut ulang Lanjutan (artis disebar, favorit didorong). Tidak menambah lagu baru.';
+      'Acak Cerdas — mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didorong). Tidak menambah lagu baru.';
 
   @override
   String get queueEmpty => 'Antrean kosong. Putar sebuah lagu untuk memulai.';
@@ -2135,6 +2135,11 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String collectionDownloadsMeta(int count, String size) {
     return '$count lagu · $size di perangkat';
+  }
+
+  @override
+  String collectionDownloadsMetaActive(int count, String size, int active) {
+    return '$count lagu · $size di perangkat · $active sedang diunduh';
   }
 
   @override

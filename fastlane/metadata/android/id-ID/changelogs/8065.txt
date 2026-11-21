@@ -1,0 +1,4 @@
+Memperbaiki pembaruan dalam aplikasi yang gagal dengan penolakan penurunan versi: sisa APK dari pembaruan sebelumnya bisa dikira unduhan baru bila ukuran kedua berkas kebetulan sama. Unduhan pembaruan kini disimpan per versi, dan sisa dari versi lain dibersihkan otomatis.
+Antrean Suara memahami lebih banyak cara meminta: "putarin [lagu]", "ganti ke [lagu]", dan "pindah ke [lagu]" kini bekerja, dan kata pengisi seperti "lagu" tidak lagi menghalangi pencarian lagu.
+Antrean Suara mencocokkan lagu lebih cerdas: judul yang sedikit salah dengar tetap cocok, dan nama artis yang diucapkan terpisah ("color code") kini cocok dengan nama tertulisnya (COLORCODE).
+Antrean Suara tidak lagi menyerah hanya karena pengenal suara ragu pada dirinya sendiri: perintah yang jelas tetap dijalankan, terputusnya pengenal sesaat tidak lagi membuang perkataanmu, dan lagu yang kamu sukai atau sering kamu putar kini lebih diutamakan.

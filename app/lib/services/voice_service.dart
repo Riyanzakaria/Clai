@@ -35,13 +35,29 @@ class VoiceService extends ChangeNotifier {
   StreamSubscription? _eventSub;
   int _lowConfidenceCount = 0;
 
+  /// Ronde 8065: penanda sesi dengar. [_finalHandled] — satu transkrip
+  /// final sudah diproses pada sesi ini; error pengenal SUSULAN tidak
+  /// boleh menimpa hasilnya. [_disconnectRetried] — dengar-ulang otomatis
+  /// untuk layanan terputus (kode 11) hanya boleh terjadi SATU kali.
+  bool _finalHandled = false;
+  bool _disconnectRetried = false;
+  String _listenLang = 'id';
+
   VoiceService(this.db, this.provider);
 
   /// Pengenal suara Android (id-ID bawaan; 'en' bila diminta). Gagal-aman:
   /// perangkat tanpa pengenal → pesan jujur, kolom ketik tetap bisa dipakai.
   Future<void> startListening({String lang = 'id'}) async {
+    _listenLang = lang;
+    _finalHandled = false;
+    _disconnectRetried = false;
+    await _beginListening();
+  }
+
+  Future<void> _beginListening() async {
     try {
-      final ok = await _ch.invokeMethod<bool>('startListening', {'lang': lang});
+      final ok =
+          await _ch.invokeMethod<bool>('startListening', {'lang': _listenLang});
       if (ok != true) {
         lastMessage =
             'Pengenal suara tidak tersedia di perangkat ini — ketik perintah di bawah.';
@@ -82,6 +98,19 @@ class VoiceService extends ChangeNotifier {
     if (event is! Map) return;
     final error = event['error'] as String?;
     if (error != null) {
+      // Ronde 8065 (bukti HP riyan 14 Nov 18:40): pengenal sempat
+      // menyerahkan transkrip final yang bagus, LALU layanannya terputus
+      // (kode 11) — error susulan itu tidak boleh membuang perintah yang
+      // sudah diterima. Final yang sudah diproses menang atas error.
+      if (_finalHandled) return;
+      // Kode 11 = layanan pengenal terputus (ERROR_SERVER_DISCONNECTED)
+      // TANPA transkrip final: coba dengar ulang otomatis SATU kali
+      // sebelum gagal jujur seperti sedia kala.
+      if (voiceErrorCode(error) == 11 && !_disconnectRetried) {
+        _disconnectRetried = true;
+        _beginListening().then((_) {}, onError: (_) {});
+        return;
+      }
       lastMessage = l10n.vcFailed(error);
       state = VoiceState.idle;
       notifyListeners();
@@ -93,6 +122,7 @@ class VoiceService extends ChangeNotifier {
     lastTranscript = text;
     notifyListeners();
     if (isFinal) {
+      _finalHandled = true;
       final conf = (event['confidence'] as num?)?.toDouble();
       handleText(text, confidence: conf).then((_) {}, onError: (_) {});
     }
@@ -107,6 +137,14 @@ class VoiceService extends ChangeNotifier {
   }
 
   /// Jalur utama: satu teks perintah (dari pengenal ATAU ketikan simulasi).
+  ///
+  /// Ronde 8065 — veto keyakinan DICABUT (bukti HP riyan 14 Nov 18:39:
+  /// transkrip "putar lagu sway" terbaca benar tetapi dibuang mentah-
+  /// mentah karena angka keyakinan pengenal < 0.5). Kini teks selalu
+  /// diurai dulu: jawaban pilihan & aksi tanpa argumen jalan tanpa
+  /// memandang keyakinan; putar/tambah diputuskan skor pencocokan —
+  /// keyakinan rendah hanya mengubah BUNYI kegagalan menjadi ajakan
+  /// mengulangi (lihat voiceFailureWording).
   Future<void> handleText(String text, {double? confidence}) async {
     lastTranscript = text;
     // Jawaban atas pertanyaan pilihan lebih dulu.
@@ -135,51 +173,61 @@ class VoiceService extends ChangeNotifier {
       }
       return;
     }
-    // Keyakinan rendah: minta ulangi maks 2× lalu menyerah sopan.
-    // D-36 (Sapuan): off-by-one — syarat lama `< 2` sesudah increment hanya
-    // memberi SATU tanya-ulang nyata (hitungan 1), lalu menyerah pada
-    // hitungan 2. Kini tanya-ulang terjadi pada hitungan 1 dan 2 (dua kali,
-    // sesuai PRD 5.14B), menyerah pada hitungan 3.
-    if (confidence != null && confidence < 0.5) {
-      _lowConfidenceCount++;
-      if (_lowConfidenceCount <= 2) {
-        await speak(l10n.vcUnclear);
-      } else {
-        _lowConfidenceCount = 0;
-        await speak(l10n.vcStopped);
-        state = VoiceState.idle;
-        notifyListeners();
-      }
-      return;
-    }
-    _lowConfidenceCount = 0;
+    final lowConfidence = confidence != null && confidence < 0.5;
     final parsed = parseVoiceCommand(text);
     switch (parsed.action) {
       case VoiceAction.unknown:
         await speak(l10n.vcUnknown);
         break;
       case VoiceAction.skip:
+        _lowConfidenceCount = 0;
         await handler.skipToNext();
         await speak(l10n.vcSkipped);
         await handler.playEarcon();
         break;
       case VoiceAction.pause:
+        _lowConfidenceCount = 0;
         await handler.pauseNow();
         await speak(l10n.vcPaused);
         break;
       case VoiceAction.resume:
+        _lowConfidenceCount = 0;
         await handler.playNow();
         await speak(l10n.vcResumed);
         break;
       case VoiceAction.play:
       case VoiceAction.addNext:
       case VoiceAction.addQueue:
-        await _resolveAndApply(parsed.query, parsed.action);
+        await _resolveAndApply(parsed.query, parsed.action,
+            lowConfidence: lowConfidence);
         break;
     }
   }
 
-  Future<void> _resolveAndApply(String query, VoiceAction action) async {
+  /// Kegagalan resolusi kueri: bunyinya dipilih kebijakan murni
+  /// [voiceFailureWording] — spesifik (tidak ditemukan/tak cocok/gagal
+  /// cari), ajakan mengulangi (keyakinan rendah + cocok pun gagal), atau
+  /// menyerah sopan sesudah ajakan berturut habis (PRD 5.14B).
+  Future<void> _failResolution(String specificMessage,
+      {required bool lowConfidence}) async {
+    state = VoiceState.idle;
+    switch (voiceFailureWording(
+        lowConfidence: lowConfidence, failedAttempts: _lowConfidenceCount)) {
+      case VoiceFailureWording.askRepeat:
+        _lowConfidenceCount++;
+        await speak(l10n.vcUnclear);
+      case VoiceFailureWording.giveUp:
+        _lowConfidenceCount = 0;
+        await speak(l10n.vcStopped);
+      case VoiceFailureWording.specific:
+        _lowConfidenceCount = 0;
+        await speak(specificMessage);
+    }
+    notifyListeners();
+  }
+
+  Future<void> _resolveAndApply(String query, VoiceAction action,
+      {required bool lowConfidence}) async {
     if (query.isEmpty) {
       await speak(l10n.vcSayTitle);
       return;
@@ -190,9 +238,8 @@ class VoiceService extends ChangeNotifier {
       final results = await provider.search(query);
       final songs = results.songs;
       if (songs.isEmpty) {
-        state = VoiceState.idle;
-        await speak(l10n.vcNotFound(query));
-        notifyListeners();
+        await _failResolution(l10n.vcNotFound(query),
+            lowConfidence: lowConfidence);
         return;
       }
       final likedKeys = await db.likedKeys();
@@ -206,30 +253,30 @@ class VoiceService extends ChangeNotifier {
               ))
           .toList()
         ..sort((a, b) => b.score.compareTo(a.score));
-      final top = scored.first;
-      if (top.score < kVoiceAcceptThreshold) {
-        state = VoiceState.idle;
-        await speak(l10n.vcNoMatch(query));
-        notifyListeners();
-        return;
+      switch (decideVoiceResolution([for (final s in scored) s.score])) {
+        case VoiceResolveDecision.fail:
+          await _failResolution(l10n.vcNoMatch(query),
+              lowConfidence: lowConfidence);
+          return;
+        case VoiceResolveDecision.askChoice:
+          // Dua teratas berskor dekat → tanya, jangan tebak.
+          candidates = [scored[0].track, scored[1].track];
+          pendingAction = action;
+          state = VoiceState.awaitingChoice;
+          _lowConfidenceCount = 0;
+          notifyListeners();
+          await speak(l10n.vcWhich(scored[0].track.artistNames, scored[1].track.artistNames, scored[0].track.title, scored[1].track.title));
+          return;
+        case VoiceResolveDecision.apply:
+          _lowConfidenceCount = 0;
+          state = VoiceState.idle;
+          notifyListeners();
+          await _apply(scored.first.track, action);
+          return;
       }
-      // Dua teratas berskor dekat → tanya, jangan tebak.
-      if (scored.length > 1 &&
-          (top.score - scored[1].score).abs() < kVoiceAmbiguityGap) {
-        candidates = [scored[0].track, scored[1].track];
-        pendingAction = action;
-        state = VoiceState.awaitingChoice;
-        notifyListeners();
-        await speak(l10n.vcWhich(scored[0].track.artistNames, scored[1].track.artistNames, scored[0].track.title, scored[1].track.title));
-        return;
-      }
-      state = VoiceState.idle;
-      notifyListeners();
-      await _apply(top.track, action);
     } catch (_) {
-      state = VoiceState.idle;
-      await speak(l10n.vcSearchFailed);
-      notifyListeners();
+      await _failResolution(l10n.vcSearchFailed,
+          lowConfidence: lowConfidence);
     }
   }
 

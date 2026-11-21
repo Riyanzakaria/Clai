@@ -119,7 +119,7 @@
   "setAutoplay": "Putar Otomatis",
   "setAutoplaySub": "Menyambung lagu terkait saat antrean habis.",
   "setSmartShuffle": "Acak Cerdas (Smart Shuffle)",
-  "setSmartShuffleSub": "Mengurut ulang Lanjutan saja; tidak menambah lagu baru.",
+  "setSmartShuffleSub": "Mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didahulukan). Tidak menambah lagu baru.",
   "setAutoResume": "Lanjut otomatis setelah interupsi",
   "setAutoResumeSub": "Mis. sesudah panggilan telepon selesai.",
   "setTransition": "Mode transisi",
@@ -350,7 +350,7 @@
   "playerVoice": "Suara",
   "playerAutoplayCard": "Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.",
   "playerAutoplayStrip": "Putar Otomatis aktif — menyambung lagu terkait",
-  "queueSmartShuffleNote": "Acak Cerdas — mengurut ulang Lanjutan (artis disebar, favorit didorong). Tidak menambah lagu baru.",
+  "queueSmartShuffleNote": "Acak Cerdas — mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didorong). Tidak menambah lagu baru.",
   "queueEmpty": "Antrean kosong. Putar sebuah lagu untuk memulai.",
   "queueNowPlaying": "Sedang Diputar",
   "queueUpNext": "Berikutnya",
@@ -1198,6 +1198,20 @@
       },
       "size": {
         "type": "String"
+      }
+    }
+  },
+  "collectionDownloadsMetaActive": "{count} lagu · {size} di perangkat · {active} sedang diunduh",
+  "@collectionDownloadsMetaActive": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      },
+      "active": {
+        "type": "int"
       }
     }
   },

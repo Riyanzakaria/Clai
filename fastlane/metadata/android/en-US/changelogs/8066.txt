@@ -1,0 +1,2 @@
+Smart Shuffle actually reorders again: turning it on spreads out tracks by the same artist and pushes favorites forward — now across Autoplay as well as your listening context — and turning it off restores the original order. Your manual queue is never touched, and it never adds new songs.
+The Downloads summary in your Library no longer says "0 songs" while a download is still running; downloads in progress are now shown separately.

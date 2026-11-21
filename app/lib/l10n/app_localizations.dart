@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @setSmartShuffleSub.
   ///
   /// In id, this message translates to:
-  /// **'Mengurut ulang Lanjutan saja; tidak menambah lagu baru.'**
+  /// **'Mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didahulukan). Tidak menambah lagu baru.'**
   String get setSmartShuffleSub;
 
   /// No description provided for @setAutoResume.
@@ -1391,7 +1391,7 @@ abstract class AppLocalizations {
   /// No description provided for @queueSmartShuffleNote.
   ///
   /// In id, this message translates to:
-  /// **'Acak Cerdas — mengurut ulang Lanjutan (artis disebar, favorit didorong). Tidak menambah lagu baru.'**
+  /// **'Acak Cerdas — mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didorong). Tidak menambah lagu baru.'**
   String get queueSmartShuffleNote;
 
   /// No description provided for @queueEmpty.
@@ -2315,7 +2315,7 @@ abstract class AppLocalizations {
   /// No description provided for @sleepSubMinutes.
   ///
   /// In id, this message translates to:
-  /// **'Timer aktif — {remaining} lagi. Volume memudar halus di bentang akhir, lalu musik jeda.'**
+  /// **'Timer aktif — {remaining}. Volume memudar halus di bentang akhir, lalu musik jeda.'**
   String sleepSubMinutes(Object remaining);
 
   /// No description provided for @sleepSubEndOfSong.
@@ -3715,6 +3715,12 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'{count} lagu · {size} di perangkat'**
   String collectionDownloadsMeta(int count, String size);
+
+  /// No description provided for @collectionDownloadsMetaActive.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu · {size} di perangkat · {active} sedang diunduh'**
+  String collectionDownloadsMetaActive(int count, String size, int active);
 
   /// No description provided for @collectionLocalMeta.
   ///

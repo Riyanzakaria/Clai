@@ -277,7 +277,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setSmartShuffleSub =>
-      'Reorders Up Next only; never adds new songs.';
+      'Reorders the continuation and Autoplay (artists spread out, favorites first). Never adds new songs.';
 
   @override
   String get setAutoResume => 'Resume automatically after interruptions';
@@ -744,7 +744,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get queueSmartShuffleNote =>
-      'Smart Shuffle — reorders Up Next (artists spread out, favorites pushed up). Never adds new songs.';
+      'Smart Shuffle — reorders the continuation and Autoplay (artists spread out, favorites pushed up). Never adds new songs.';
 
   @override
   String get queueEmpty => 'The queue is empty. Play a song to start.';
@@ -2132,6 +2132,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String collectionDownloadsMeta(int count, String size) {
     return '$count songs · $size on this device';
+  }
+
+  @override
+  String collectionDownloadsMetaActive(int count, String size, int active) {
+    return '$count songs · $size on this device · $active downloading';
   }
 
   @override

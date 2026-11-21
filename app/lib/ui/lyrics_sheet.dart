@@ -123,25 +123,31 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
     _track = handler.engine.current;
     _state = lyricsGateState(hasTrack: _track != null);
     if (_track != null) _load(_track!);
-    _sub = handler.mediaItem.listen((item) {
-      final cur = handler.engine.current;
-      if (item == null || cur == null) {
-        // Trek berhenti/hilang saat lirik terbuka → keadaan jujur
-        // "tidak ada lagu", bukan sisa keadaan sebelumnya.
-        if (_track != null && mounted) {
-          _track = null;
-          _data = null;
-          _active = -1;
-          setState(() => _state = LyricsViewState.noTrack);
-        }
-        return;
-      }
-      if (cur.key != _track?.key) {
-        _track = cur;
+    _sub = handler.mediaItem.listen((_) => _followCurrent());
+  }
+
+  /// Selaraskan lembar ke trek berjalan handler (dipakai listener
+  /// mediaItem DAN rekonsiliasi saat bangun — lihat build). Trek
+  /// berhenti/hilang saat lirik terbuka → keadaan jujur "tidak ada
+  /// lagu", bukan sisa keadaan sebelumnya.
+  void _followCurrent() {
+    if (!mounted) return;
+    final handler = ref.read(audioHandlerProvider);
+    final cur = handler.engine.current;
+    if (cur == null) {
+      if (_track != null) {
+        _track = null;
+        _data = null;
         _active = -1;
-        _load(cur);
+        setState(() => _state = LyricsViewState.noTrack);
       }
-    });
+      return;
+    }
+    if (cur.key != _track?.key) {
+      _track = cur;
+      _active = -1;
+      _load(cur);
+    }
   }
 
   @override
@@ -174,7 +180,17 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
     }
     if (idx != _active) {
       _active = idx;
-      if (mounted) setState(() {});
+      // Ronde 8068 (BUG LIRIK BASI): _onPosition dipanggil dari DALAM
+      // builder StreamBuilder posisi — setState sinkron di sana adalah
+      // "setState saat bangun": menggugurkan bingkai subpohon
+      // tersinkron tepat pada bingkai render pertama lirik (termasuk
+      // bingkai pertama lirik trek BARU sesudah pergantian). Medan
+      // _active sudah diperbarui di atas sehingga baris pada bingkai
+      // berjalan ini terlukis dengan jangkar yang benar; pembangunan
+      // ulang susulan dijadwalkan pasca-bingkai.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
       if (idx >= 0 && DateTime.now().isAfter(_userScrollUntil)) {
         _scrollToActive(idx);
       }
@@ -222,6 +238,18 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
   @override
   Widget build(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
+    // Ronde 8068 (BUG LIRIK BASI): rekonsiliasi ikut-trek. Jalur utama
+    // tetap listener mediaItem, tetapi lembar tidak boleh basi
+    // PERMANEN bila satu emisi terlewat di batas trek (vonis perangkat:
+    // lirik tertinggal di lagu sebelumnya sampai lembar ditutup-buka).
+    // Setiap bangun membandingkan trek lembar dengan trek berjalan
+    // handler; selisih dijadwalkan untuk diselaraskan pasca-bingkai —
+    // sembuh sendiri pada bangun berikutnya (irisan ambien berubah
+    // tiap trek, jadi bangun susulan dijamin datang), bukan menunggu
+    // pemilik menutup lembar.
+    if (handler.engine.current?.key != _track?.key) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _followCurrent());
+    }
     final amb = ref.watch(ambientControllerProvider.select(ambientUiSlice)); // 8053 B(i): irisan tanpa napas
     final t = _track;
     final reduceFx = amb.reduceEffects ||
@@ -573,7 +601,11 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
               // Baris aktif: ukuran menyusut sampai muat UTUH (fitActive-
               // LyricLine) dan jumlah barisnya mengikuti pengukuran —
               // tanpa ellipsis (vonis pemilik 2026-11-11: baris aktif
-              // terpotong "…alrig…"). Baris lain tetap pratinjau 2 baris.
+              // terpotong "…alrig…"). Baris LAIN: dulu pratinjau 2 baris
+              // + elipsis — vonis pemilik 2026-11-20 (Ronde 8068)
+              // membatalkannya: satu baris panjang kepotong ekornya
+              // walau belum aktif. Kini SEMUA baris membungkus utuh
+              // (tanpa batas maxLines, tanpa elipsis).
               var activeLines = 2;
               if (isActive) {
                 final fit = fitActiveLyricLine(
@@ -609,10 +641,11 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                   child: Text(
                     text,
                     key: i < _rowKeys.length ? _rowKeys[i] : null,
-                    maxLines: isActive ? activeLines : 2,
-                    overflow: isActive
-                        ? TextOverflow.clip
-                        : TextOverflow.ellipsis,
+                    // Aktif: jumlah baris hasil fit (tumbuh di lantai).
+                    // Tak-aktif: TANPA batas — membungkus sampai utuh
+                    // (Ronde 8068; elipsis memotong ekor baris panjang).
+                    maxLines: isActive ? activeLines : null,
+                    overflow: TextOverflow.clip,
                     textAlign: TextAlign.center,
                     style: style,
                   ),

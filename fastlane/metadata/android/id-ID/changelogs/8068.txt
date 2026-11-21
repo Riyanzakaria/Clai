@@ -1,0 +1,2 @@
+Lirik kini mengikuti lagunya: biarkan layar lirik terbuka dan ia berpindah sendiri ke lirik lagu berikutnya — tak perlu ditutup lalu dibuka lagi.
+Baris lirik yang panjang tidak lagi kepotong: setiap baris kini tampil utuh membungkus.

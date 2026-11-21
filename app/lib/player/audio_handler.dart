@@ -855,7 +855,13 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
     final batch = pool.take(15).toList();
     if (batch.isNotEmpty) {
+      // Ronde 8066: mode cerdas menyala → batch yang baru mendarat diurut
+      // cerdas di ekornya saja (antrean yang sudah ada tidak digeser).
+      final tailFrom = engine.autoplay.length;
       engine.appendAutoplay(batch);
+      if (engine.shuffle == ShuffleMode.smart) {
+        engine.smartOrderAutoplayTail(tailFrom);
+      }
       await _extendSourceToQueue();
       if (!_xfMode &&
           _activePlayer.processingState == ProcessingState.completed &&
@@ -917,6 +923,13 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final byKey = {for (final t in tracks) t.key: t};
     final prev = engine.current;
     if (prev != null) _closeTrackEvent(prev, completed: false);
+    // Ronde 8067: sinyal selera dimuat sebelum restore — alasan yang
+    // sama seperti _restoreSession (restore warisan mode cerdas
+    // menerapkan urutan di dalam engine.restore).
+    engine.setSmartSignals(
+      likedKeys: await db.likedKeys(),
+      playCounts: await db.playCounts(),
+    );
     engine.restore(snap, byKey);
     // D-07 berlaku juga di sini: pref global menimpa snapshot.
     final autoplayPref = await db.pref<bool>('playback.autoplay');
@@ -982,21 +995,57 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   /// Smart Shuffle (F2): sakelar mode — menyalakan langsung mengurut ulang
-  /// Lanjutan berjalan; mematikan mengembalikan mode acak ke mati (bukan ke pure).
+  /// antrean efektif berjalan; mematikan mengembalikan urutan alami
+  /// pra-cerdas dan mode acak ke mati (bukan ke pure).
+  ///
+  /// Ronde 8066 — AKAR CACAT sakelar no-op: versi lama berhenti di
+  /// _emitQueue (tampilan) dan TIDAK PERNAH menyinkronkan sumber gabungan,
+  /// padahal setiap mutasi antrean lain lewat _syncTailAfterMutation.
+  /// Akibatnya urutan putar sebenarnya tetap urutan lama, dan rekonsiliasi
+  /// indeks berbasis kunci (_onIndexChanged → _syncEngineTo) diam-diam
+  /// mengonsumsi trek mesin yang mendahului trek yang sungguh berbunyi
+  /// dalam urutan baru. Kini kedua arah sakelar menyinkronkan ekor sumber.
+  ///
+  /// Ronde 8067 — vonis HP atas 8066 ("masih belum berfungsi, respons
+  /// tombol lambat"): tiga pengetatan di sini. (1) Sinyal selera hanya
+  /// diambil saat MENYALAKAN — arah mati tidak lagi membayar dua kueri
+  /// DB (playCounts = GROUP BY atas seluruh playback_events) sebelum
+  /// sakelar terasa. (2) Arah mati memulihkan urutan kapan pun potret
+  /// ada, TANPA pagar `engine.shuffle == smart` — keadaan terbawa
+  /// (potret tertanam tetapi flag sudah dimatikan jalur lain) membuat
+  /// pagar lama melewatkan pemulihan seluruhnya. (3) Keadaan mesin
+  /// baru DIPANCARKAN (syncShuffleState + _emitQueue) sebelum bedah
+  /// ekor sumber yang lambat diawait — saklar lembar Antrean menggambar
+  /// ulang dari queueStream, jadi ketukan terasa seketika; bedah ekor
+  /// menyusul dan menyatu ke urutan mesin yang sama.
   Future<void> setSmartShuffle(bool on) async {
-    engine.setSmartSignals(
-      likedKeys: await db.likedKeys(),
-      playCounts: await db.playCounts(),
-    );
     if (on) {
+      engine.setSmartSignals(
+        likedKeys: await db.likedKeys(),
+        playCounts: await db.playCounts(),
+      );
       engine.shuffle = ShuffleMode.smart;
       engine.applySmartShuffle();
-    } else if (engine.shuffle == ShuffleMode.smart) {
+    } else {
       engine.shuffle = ShuffleMode.off;
+      engine.restoreSmartShuffleOrder();
     }
     await db.setPref('playback.smartShuffle', on);
     syncShuffleState();
     _emitQueue();
+    try {
+      await _syncTailAfterMutation(
+        on ? 'acak cerdas menyala' : 'acak cerdas mati',
+      );
+    } catch (e) {
+      // Keadaan + UI sudah terbit di atas — kegagalan bedah sumber
+      // TIDAK boleh lagi menyamar sebagai sakelar mati (vonis HP
+      // 20 Nov: lembar Antrean membeku total karena semua penerbitan
+      // menunggu bedah ini). Catat sebagai insiden agar terbaca di
+      // Diagnostik perangkat; sumber menyusul sembuh lewat mutasi
+      // antrean berikutnya / bangun ulang ekor.
+      Observability.instance.log('acak-sinkron-gagal', '$e');
+    }
   }
 
   ConcatenatingAudioSource? _source;
@@ -1644,6 +1693,14 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       // File lokal tidak ada di katalog tracks (provider 'local' menyimpan metadatanya sendiri di snapshot mendatang);
       // restorasi melewati kunci yang tak ditemukan dengan aman.
       final byKey = {for (final t in tracks) t.key: t};
+      // Ronde 8067: restore warisan mode cerdas menerapkan urutan di
+      // dalam engine.restore — muat sinyal selera SEBELUM itu. Jalur
+      // boot tidak bisa mengandalkan langkah startupPrefs bootstrap
+      // (berjalan SESUDAH handler dibuat dan _restoreSession ini).
+      engine.setSmartSignals(
+        likedKeys: await db.likedKeys(),
+        playCounts: await db.playCounts(),
+      );
       engine.restore(snap, byKey);
       // D-07 (audit kepatuhan): pref global Putar Otomatis adalah sumber
       // kebenaran — snapshot bisa basi (sakelar dimatikan lalu proses mati
@@ -2216,7 +2273,14 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           'sesi $sid → ${engine.sessionId}: batch ${batch.length} trek dibuang',
         );
       } else if (batch.isNotEmpty) {
+        // Ronde 8066: mode cerdas menyala → batch yang baru mendarat
+        // diurut cerdas di ekornya saja (antrean yang sudah ada tidak
+        // digeser), sama seperti jalur isi ulang luring.
+        final tailFrom = engine.autoplay.length;
         engine.appendAutoplay(batch);
+        if (engine.shuffle == ShuffleMode.smart) {
+          engine.smartOrderAutoplayTail(tailFrom);
+        }
         // Tambahkan anak sumber untuk item baru yang masuk jendela.
         await _extendSourceToQueue();
         // Cacat v4.4.2-2 (jalur terakhir): bila trek berjalan SUDAH selesai
@@ -4030,6 +4094,24 @@ class ClaiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // Kontrol sistem hanya mengenal acak/mati: mode smart dipertahankan bila
     // sistem meminta 'acak' (sakelar Smart Shuffle di UI yang mengelolanya).
     if (mode == AudioServiceShuffleMode.none) {
+      if (engine.shuffle == ShuffleMode.smart) {
+        // Ronde 8067: mematikan dari tombol Player/sistem saat mode
+        // cerdas aktif WAJIB setara sakelar Acak Cerdas mati —
+        // kembalikan urutan alami, tulis pref, sinkronkan sumber.
+        // Versi lama hanya membalik flag: urutan cerdas tertinggal,
+        // pref tetap menyala, saklar Pengaturan (berbasis pref) dan
+        // lembar Antrean (berbasis engine) berselisih, dan OFF
+        // berikutnya terhalang pagar mode di setSmartShuffle.
+        engine.shuffle = ShuffleMode.off;
+        engine.restoreSmartShuffleOrder();
+        await db.setPref('playback.smartShuffle', false);
+        playbackState.add(
+          playbackState.value.copyWith(shuffleMode: mode),
+        );
+        _emitQueue();
+        await _syncTailAfterMutation('acak cerdas mati dari tombol putar');
+        return;
+      }
       engine.shuffle = ShuffleMode.off;
     } else if (engine.shuffle != ShuffleMode.smart) {
       engine.shuffle = ShuffleMode.pure;

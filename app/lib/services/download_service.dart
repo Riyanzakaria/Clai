@@ -74,6 +74,37 @@ class DownloadItemState {
       );
 }
 
+/// Ringkasan unduhan untuk meta pintu Unduhan di Library (Ronde 8066).
+///
+/// Akar minor 8064-b: meta lama hanya menghitung item berstatus selesai,
+/// sehingga selama unduhan PERTAMA berjalan ringkasan terbaca "0 lagu"
+/// padahal unduhan sedang berlangsung. Kini: [done] = selesai (yang
+/// ukurannya dilaporkan [doneBytes], byte di perangkat), [active] =
+/// sedang antre/mengunduh/terjeda — dilaporkan terpisah oleh UI agar
+/// tidak menyesatkan ke dua arah (tidak menyembunyikan unduhan berjalan,
+/// tidak melebihkan isi perangkat). Gagal/rusak tidak dihitung keduanya.
+({int done, int active, int doneBytes}) downloadsSummaryOf(
+    List<DownloadItemState> items) {
+  var done = 0;
+  var active = 0;
+  var bytes = 0;
+  for (final i in items) {
+    switch (i.status) {
+      case DownloadStatus.done:
+        done++;
+        bytes += i.bytesTotal ?? i.bytesDone;
+      case DownloadStatus.queued:
+      case DownloadStatus.downloading:
+      case DownloadStatus.paused:
+        active++;
+      case DownloadStatus.failed:
+      case DownloadStatus.corrupt:
+        break;
+    }
+  }
+  return (done: done, active: active, doneBytes: bytes);
+}
+
 /// Ekstensi berkas dari MIME aliran (dipakai pemutar untuk mengenali wadah).
 String extensionForMime(String mime) {
   final m = mime.toLowerCase();

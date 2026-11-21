@@ -88,6 +88,10 @@ class QueueEngine {
   /// berjangkar ke trek pertama daftar itu — lagu sesi sebelumnya — walau
   /// konteksnya sendiri sudah berganti dengan benar.
   void playContext(PlayContext ctx, int startIndex) {
+    // Konteks baru = urutan alami baru: potret pra-cerdas sesi lama gugur
+    // (cabang smart di bawah menanam potret milik konteks ini).
+    _naturalContinuation = null;
+    _naturalAutoplay = null;
     final preservedManual = List<Track>.of(manual);
     final ordered = List<Track>.of(ctx.tracks);
     final start = ordered.isEmpty ? 0 : startIndex.clamp(0, ordered.length - 1);
@@ -106,9 +110,13 @@ class QueueEngine {
     } else if (shuffle == ShuffleMode.smart && ordered.length > 1) {
       // Smart Shuffle (F2): Lanjutan diurut cerdas (sebar artis, dorong favorit);
       // trek berjalan tetap yang diketuk, manual tak disentuh, isi tak berubah.
+      // Urutan alami (pra-cerdas) dicatat agar mematikan mode mengembalikan
+      // urutan konteks persis (Ronde 8066).
       final first = ordered[start];
       final rest = List<Track>.of(ordered)..removeAt(start);
       current = first;
+      _naturalContinuation = rest.map((t) => t.key).toList();
+      _naturalAutoplay = const [];
       continuation = smartShuffleOrder(
         rest,
         likedKeys: _smartLiked,
@@ -139,6 +147,8 @@ class QueueEngine {
   /// pergantian konteks, termasuk radio) — sebelumnya playRadio membuangnya
   /// senyap dengan `manual = []`.
   void playRadio(Track seed) {
+    _naturalContinuation = null;
+    _naturalAutoplay = null;
     final preservedManual = List<Track>.of(manual);
     context = PlayContext(
       kind: 'radio',
@@ -170,6 +180,8 @@ class QueueEngine {
     required List<Track> page,
     required int startIndex,
   }) {
+    _naturalContinuation = null;
+    _naturalAutoplay = null;
     final preservedManual = List<Track>.of(manual);
     final all = [seed, ...page.where((t) => t.key != seed.key)];
     final startTrack = page.isEmpty
@@ -312,16 +324,97 @@ class QueueEngine {
     if (playCounts != null) _smartCounts = playCounts;
   }
 
-  /// Mengurut ulang Lanjutan yang sedang berjalan secara cerdas (sakelar Smart
-  /// Shuffle dinyalakan di tengah sesi). Manual tidak disentuh; isi tidak berubah.
+  /// Potret urutan ALAMI (pra-cerdas) Lanjutan & Putar Otomatis sesi ini,
+  /// diambil saat urutan cerdas pertama kali diterapkan (Ronde 8066).
+  /// Mematikan Smart Shuffle mengembalikan urutan ini untuk trek yang
+  /// masih ada; trek yang tiba sesudah potret diambil (isi ulang) tidak
+  /// dikenal potret dan mempertahankan urutan relatifnya di ekor seksi.
+  /// Null = tidak ada urutan cerdas yang sedang berlaku.
+  List<TrackKey>? _naturalContinuation;
+  List<TrackKey>? _naturalAutoplay;
+
+  void _snapshotNaturalOrderIfNeeded() {
+    _naturalContinuation ??= continuation.map((t) => t.key).toList();
+    _naturalAutoplay ??= autoplay.map((t) => t.key).toList();
+  }
+
+  /// Mengurut ulang antrean efektif yang akan datang secara cerdas
+  /// (sakelar Smart Shuffle dinyalakan di tengah sesi): Lanjutan DAN
+  /// Putar Otomatis, masing-masing di dalam seksinya. Manual tidak
+  /// disentuh (L-03, milik pengguna); isi tiap seksi tidak berubah —
+  /// hanya urutan. (Ronde 8066: cakupan lama hanya-Lanjutan membuat
+  /// sakelar no-op total pada antrean berbentuk Putar Otomatis — konteks
+  /// satu trek + isi ulang — karena Lanjutan-nya kosong.)
   void applySmartShuffle() {
-    if (continuation.length <= 1) return;
-    continuation = smartShuffleOrder(
-      continuation,
-      likedKeys: _smartLiked,
-      playCounts: _smartCounts,
-    );
+    _snapshotNaturalOrderIfNeeded();
+    var changed = false;
+    if (continuation.length > 1) {
+      continuation = smartShuffleOrder(
+        continuation,
+        likedKeys: _smartLiked,
+        playCounts: _smartCounts,
+      );
+      changed = true;
+    }
+    if (autoplay.length > 1) {
+      autoplay = smartShuffleOrder(
+        autoplay,
+        likedKeys: _smartLiked,
+        playCounts: _smartCounts,
+      );
+      changed = true;
+    }
+    if (changed) version++;
+  }
+
+  /// Urutkan cerdas HANYA ekor Putar Otomatis mulai indeks [fromIndex]
+  /// (batch isi ulang yang baru mendarat saat mode cerdas menyala, Ronde
+  /// 8066): trek yang sudah antre tidak digeser sama sekali, batch baru
+  /// tiba sudah tersebar. Dipanggil handler sesudah appendAutoplay.
+  void smartOrderAutoplayTail(int fromIndex) {
+    final from = fromIndex.clamp(0, autoplay.length);
+    if (autoplay.length - from <= 1) return;
+    autoplay = [
+      ...autoplay.sublist(0, from),
+      ...smartShuffleOrder(
+        autoplay.sublist(from),
+        likedKeys: _smartLiked,
+        playCounts: _smartCounts,
+      ),
+    ];
     version++;
+  }
+
+  /// Kembalikan Lanjutan & Putar Otomatis ke urutan alami pra-cerdas
+  /// (sakelar Smart Shuffle dimatikan, Ronde 8066). Trek yang sudah
+  /// terkonsumsi/tercabut hilang dari potret begitu saja; trek yang tiba
+  /// sesudah potret (isi ulang) mempertahankan urutan relatifnya di ekor
+  /// seksinya. Manual tidak pernah ikut — ia tidak pernah diacak cerdas.
+  /// No-op bila tidak ada potret (mode cerdas tidak sedang berlaku).
+  void restoreSmartShuffleOrder() {
+    final natC = _naturalContinuation;
+    final natA = _naturalAutoplay;
+    if (natC == null && natA == null) return;
+    List<Track> restore(List<Track> section, List<TrackKey>? natural) {
+      if (natural == null || section.length <= 1) return section;
+      final rank = <TrackKey, int>{
+        for (var i = 0; i < natural.length; i++) natural[i]: i,
+      };
+      final known = section.where((t) => rank.containsKey(t.key)).toList()
+        ..sort((a, b) => rank[a.key]!.compareTo(rank[b.key]!));
+      final unknown = section.where((t) => !rank.containsKey(t.key)).toList();
+      return [...known, ...unknown];
+    }
+
+    final c = restore(continuation, natC);
+    final a = restore(autoplay, natA);
+    if (!identical(c, continuation) || !identical(a, autoplay)) {
+      continuation = c;
+      autoplay = a;
+      version++;
+    }
+    _naturalContinuation = null;
+    _naturalAutoplay = null;
   }
 
   void clearManual() {
@@ -401,6 +494,8 @@ class QueueEngine {
   /// terbang tertolak oleh penjaga handler. Menghapus SATU trek (removeAt)
   /// TIDAK memanggil ini — sesi berjalan terus.
   void resetSessionToCurrent() {
+    _naturalContinuation = null;
+    _naturalAutoplay = null;
     final cur = current;
     manual = [];
     continuation = [];
@@ -661,6 +756,17 @@ class QueueEngine {
         .toList(),
     'autoplay': autoplay.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
     'played': played.map((t) => {'p': t.providerId, 'i': t.id}).toList(),
+    // Ronde 8067: potret urutan alami IKUT diserialkan — tanpanya
+    // restore() terpaksa mengosongkan potret, dan OFF sesudah start
+    // dingin menjadi no-op permanen (vonis HP 20 Nov atas 8066).
+    if (_naturalContinuation != null)
+      'naturalContinuation': _naturalContinuation!
+          .map((k) => {'p': k.providerId, 'i': k.id})
+          .toList(),
+    if (_naturalAutoplay != null)
+      'naturalAutoplay': _naturalAutoplay!
+          .map((k) => {'p': k.providerId, 'i': k.id})
+          .toList(),
     'currentRef': current == null
         ? null
         : '${current!.providerId}|${current!.id}',
@@ -726,6 +832,30 @@ class QueueEngine {
       'smart' => ShuffleMode.smart,
       _ => ShuffleMode.off,
     };
+    // Ronde 8067: potret urutan alami pra-cerdas. Snapshot 8067+
+    // membawanya terserialkan → pulihkan apa adanya (urutan tersimpan
+    // SUDAH urutan cerdas yang berlaku; jangan diterapkan ulang).
+    // Snapshot warisan (8064/8066) tidak membawanya: bila mode pulih
+    // adalah cerdas, tanam urutan pulih sebagai alas alami sesi ini
+    // lalu terapkan urutan cerdas di atasnya — sakelar harus BEKERJA
+    // dari keadaan terbawa ini: ON mengurut dari alas yang diketahui,
+    // OFF kembali ke alas itu. (8066 mengosongkan potret di sini:
+    // OFF sesudah pulih no-op senyap, dan ketukan ON berikutnya
+    // menanam urutan cerdas sebagai "alami" — sakelar mati selama
+    // sisa sesi; vonis HP 20 Nov 2026.)
+    final natCRaw = snap['naturalContinuation'];
+    final natARaw = snap['naturalAutoplay'];
+    if (natCRaw is List && natARaw is List) {
+      _naturalContinuation = _keysOf(natCRaw);
+      _naturalAutoplay = _keysOf(natARaw);
+    } else if (shuffle == ShuffleMode.smart) {
+      _naturalContinuation = continuation.map((t) => t.key).toList();
+      _naturalAutoplay = autoplay.map((t) => t.key).toList();
+      applySmartShuffle();
+    } else {
+      _naturalContinuation = null;
+      _naturalAutoplay = null;
+    }
     repeat = RepeatMode.values.asNameMap()[snap['repeat']] ?? RepeatMode.off;
     autoplayEnabled = snap['autoplayEnabled'] != false;
     sessionId++;

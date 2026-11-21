@@ -1,0 +1,2 @@
+Smart Shuffle now sticks: its order survives app restarts and updates, and turning it off — from the queue, Settings, or the player's shuffle button — restores your original order everywhere, so every switch always agrees.
+The Smart Shuffle switch also answers instantly now, even with a long queue.

@@ -40,6 +40,99 @@ double artistSimilarity(String a, String b) {
   return union == 0 ? 0 : ta.intersection(tb).length / union;
 }
 
+/// Jarak edit Levenshtein klasik (DP dua baris) — untuk toleransi
+/// salah-dengar pengenal suara (Ronde 8065).
+int levenshteinDistance(String a, String b) {
+  if (a == b) return 0;
+  if (a.isEmpty) return b.length;
+  if (b.isEmpty) return a.length;
+  var prev = List<int>.generate(b.length + 1, (i) => i);
+  var curr = List<int>.filled(b.length + 1, 0);
+  for (var i = 1; i <= a.length; i++) {
+    curr[0] = i;
+    for (var j = 1; j <= b.length; j++) {
+      final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+      var m = prev[j] + 1;
+      if (curr[j - 1] + 1 < m) m = curr[j - 1] + 1;
+      if (prev[j - 1] + cost < m) m = prev[j - 1] + cost;
+      curr[j] = m;
+    }
+    final tmp = prev;
+    prev = curr;
+    curr = tmp;
+  }
+  return prev[b.length];
+}
+
+/// Dua token dianggap bertemu bila sama persis ATAU berjarak edit ≤ 1
+/// (keduanya panjang ≥ 4 — token pendek terlalu mudah "mirip" secara tak
+/// sengaja, mis. "swa" vs "sway" tidak dihitung).
+bool _tokenNear(String a, String b) =>
+    a == b ||
+    (a.length >= 4 && b.length >= 4 && levenshteinDistance(a, b) <= 1);
+
+/// Jaccard token toleran: pasangan token dicocokkan serakah satu-satu
+/// dengan [_tokenNear], jadi satu token kandidat tak bisa dipakai dua kali.
+double _fuzzyTokenJaccard(Set<String> ta, Set<String> tb) {
+  if (ta.isEmpty || tb.isEmpty) return 0;
+  final remaining = tb.toList();
+  var matched = 0;
+  for (final x in ta) {
+    final i = remaining.indexWhere((y) => _tokenNear(x, y));
+    if (i >= 0) {
+      matched++;
+      remaining.removeAt(i);
+    }
+  }
+  final union = ta.length + tb.length - matched;
+  return union == 0 ? 0 : matched / union;
+}
+
+String _squash(String normalized) => normalized.replaceAll(' ', '');
+
+/// Kemiripan judul DIPERKUAT untuk perintah suara (Ronde 8065): di atas
+/// Jaccard toleran-edit, bentuk RAPAT (tanpa spasi) juga dibandingkan —
+/// pengenal menulis "color code", katalog menulisnya "COLORCODE"; keduanya
+/// harus terbaca sama. Fungsi ini sengaja TERPISAH dari [titleSimilarity]
+/// agar ambang pencocokan Spotify (kMatchThreshold) tidak ikut bergeser.
+double fuzzyTitleSimilarity(String a, String b) {
+  final na = normalizeMatchText(a), nb = normalizeMatchText(b);
+  if (na.isEmpty || nb.isEmpty) return 0;
+  if (na == nb) return 1;
+  var score = _fuzzyTokenJaccard(_tokens(a), _tokens(b));
+  final ja = _squash(na), jb = _squash(nb);
+  if (ja == jb) return 1;
+  if (na.contains(nb) ||
+      nb.contains(na) ||
+      ja.contains(jb) ||
+      jb.contains(ja)) {
+    score = (score + 0.25).clamp(0.0, 1.0).toDouble();
+  }
+  return score;
+}
+
+/// Kemiripan artis DIPERKUAT untuk perintah suara (Ronde 8065): aturan
+/// [artistSimilarity] ditambah bentuk rapat — nama artis yang diucapkan
+/// sebagai beberapa kata ("color code") cocok dengan byline rapatnya
+/// ("COLORCODE"), dan sebaliknya.
+double fuzzyArtistSimilarity(String a, String b) {
+  var best = artistSimilarity(a, b);
+  final na = normalizeMatchText(primaryArtistName(a));
+  final nb = normalizeMatchText(b);
+  if (na.isEmpty || nb.isEmpty) return best;
+  final ja = _squash(na), jb = _squash(nb);
+  if (ja == jb) return 1;
+  // Sisi yang terkandung wajib cukup panjang agar potongan pendek
+  // (mis. "a") tidak memicu cocok palsu di mana-mana.
+  if ((jb.length >= 4 && ja.contains(jb)) ||
+      (ja.length >= 4 && jb.contains(ja))) {
+    return 1;
+  }
+  final fj = _fuzzyTokenJaccard(_tokens(a), _tokens(b));
+  if (fj > best) best = fj;
+  return best.clamp(0.0, 1.0).toDouble();
+}
+
 /// Skor total kandidat (0..1): judul dominan, artis kuat, durasi penopang.
 double matchScore({required String srcTitle, required String srcArtist, required Duration? srcDuration,
     required Track candidate}) {

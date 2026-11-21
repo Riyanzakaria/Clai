@@ -1,0 +1,2 @@
+Lyrics now follow the song: leave the lyrics screen open and it moves on to the next track's lyrics by itself — no need to close and reopen it.
+Long lyric lines are no longer cut off: every line now wraps in full.

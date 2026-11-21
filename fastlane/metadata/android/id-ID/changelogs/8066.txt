@@ -1,0 +1,2 @@
+Smart Shuffle kini sungguh mengurut ulang: menyalakannya menyebar lagu dari artis yang sama dan mendorong favorit ke depan — kini termasuk Putar Otomatis, bukan hanya Lanjutan — dan mematikannya mengembalikan urutan semula. Antrean manualmu tidak pernah disentuh, dan fitur ini tidak pernah menambah lagu baru.
+Ringkasan Unduhan di Library tidak lagi terbaca "0 lagu" selama unduhan masih berjalan; unduhan yang sedang berlangsung kini ditampilkan terpisah.

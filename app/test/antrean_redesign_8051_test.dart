@@ -138,7 +138,11 @@ void main() {
     test('handler: jalur sistem tidak menukar cerdas→murni (penjaga lama utuh)', () {
       final src = File('lib/player/audio_handler.dart').readAsStringSync();
       final body = src.substring(src.indexOf('Future<void> setShuffleMode'));
-      expect(body.substring(0, 900),
+      // Jendela diperlebar 900 → 1700 di ronde 8067: cabang `none`
+      // kini menangani mode cerdas lebih dulu (memulihkan urutan +
+      // menulis pref) sebelum penjaga murni ini. Kontraknya utuh:
+      // jalur sistem tetap TIDAK menukar cerdas → murni.
+      expect(body.substring(0, 1700),
           contains('engine.shuffle != ShuffleMode.smart'));
     });
   });

@@ -118,7 +118,7 @@ void main() {
     });
   });
 
-  group('rencana terbit gabungan — tag v2.0.2+8064 (Ronde 8062, dibarui 8063, dibarui 8064)', () {
+  group('rencana terbit gabungan — tag v2.0.3+8068 (Ronde 8062, dibarui 8063, 8064, 8065, 8066, 8067, 8068)', () {
     ReleaseInfo rel(String tag) => parseGithubReleaseJson(
         <String, dynamic>{'tag_name': tag, 'assets': const []})!;
 
@@ -131,50 +131,50 @@ void main() {
       return tagBuild > currentBuild;
     }
 
-    test('(j) tag rencana terurai utuh: nama 2.0.2, sufiks 8064, dasar 64',
+    test('(j) tag rencana terurai utuh: nama 2.0.3, sufiks 8068, dasar 68',
         () {
-      final r = rel('v2.0.2+8064');
-      expect(r.versionName, '2.0.2');
-      expect(r.build, 8064);
-      // Biner arm64 membawa versionCode 10064 (8064 + offset ABI);
-      // bangun dasar yang dibaca pemeriksa adalah 63.
-      expect(SysChannel.baseBuildOf(10064), 64);
-      expect(r.build % 1000, 64);
+      final r = rel('v2.0.3+8068');
+      expect(r.versionName, '2.0.3');
+      expect(r.build, 8068);
+      // Biner arm64 membawa versionCode 10068 (8068 + offset ABI);
+      // bangun dasar yang dibaca pemeriksa adalah 68.
+      expect(SysChannel.baseBuildOf(10068), 68);
+      expect(r.build % 1000, 68);
     });
 
     test('(k) pemeriksa nama-utama (terpasang 2.0.1, dasar 55) → BARU',
         () {
       expect(
-          isNewerRelease(rel('v2.0.2+8064'),
+          isNewerRelease(rel('v2.0.3+8068'),
               currentName: '2.0.1', currentBuild: 55),
           isTrue);
     });
 
     test('(l) pemeriksa lama bangun-saja: tag ini mengalahkan dasar 55 '
         'dan 53', () {
-      final r = rel('v2.0.2+8064');
-      // Domain dasar — pasangan persis rencana terbit (64 > 55/53):
+      final r = rel('v2.0.3+8068');
+      // Domain dasar — pasangan persis rencana terbit (68 > 55/53):
       expect(bangunSajaLama(r.build % 1000, 55), isTrue);
       expect(bangunSajaLama(r.build % 1000, 53), isTrue);
-      // Domain sufiks utuh pun searah (8064 > 55/53):
+      // Domain sufiks utuh pun searah (8067 > 55/53):
       expect(bangunSajaLama(r.build, 55), isTrue);
       expect(bangunSajaLama(r.build, 53), isTrue);
     });
 
-    test('(m) terpasang rilis ini sendiri (2.0.2, dasar 64): tag yang '
+    test('(m) terpasang rilis ini sendiri (2.0.3, dasar 68): tag yang '
         'sama → BUKAN baru (cacat 8056 tidak kambuh)', () {
       expect(
-          isNewerRelease(rel('v2.0.2+8064'),
-              currentName: '2.0.2',
-              currentBuild: SysChannel.baseBuildOf(10064)),
+          isNewerRelease(rel('v2.0.3+8068'),
+              currentName: '2.0.3',
+              currentBuild: SysChannel.baseBuildOf(10068)),
           isFalse);
     });
 
-    test('(n) terpasang 2.0.2/64 membaca umpan terakhir v2.0.1+8055 '
+    test('(n) terpasang 2.0.3/68 membaca umpan terakhir v2.0.1+8055 '
         '→ BUKAN baru (sudah terbaru)', () {
       expect(
           isNewerRelease(rel('v2.0.1+8055'),
-              currentName: '2.0.2', currentBuild: 64),
+              currentName: '2.0.3', currentBuild: 68),
           isFalse);
     });
   });
