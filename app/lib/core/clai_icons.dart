@@ -230,6 +230,19 @@ class ClaiIcons {
     _seg(4.6, 19.6, 4.6, 16.9),
     _seg(19.4, 19.6, 19.4, 16.9),
   ]));
+  // Ronde 8070 (D2): unggah/ekspor — cermin download (panah naik dari nampan).
+  static final upload = ClaiIconData(stroke: _join([
+    _seg(12, 13.4, 12, 3.8),
+    _s((p) => p..moveTo(7.2, 8.8)..lineTo(12, 4)..lineTo(16.8, 8.8)),
+    _seg(4.6, 19.6, 19.4, 19.6),
+    _seg(4.6, 19.6, 4.6, 16.9),
+    _seg(19.4, 19.6, 19.4, 16.9),
+  ]));
+  // Ronde 8070 (D2): senter pemindai — petir terisi.
+  static final flash = ClaiIconData(fill: _s((p) => p
+    ..moveTo(13.2, 2.6)..lineTo(5, 13.6)..lineTo(10.6, 13.6)
+    ..lineTo(9.4, 21.4)..lineTo(19, 9.8)..lineTo(13.2, 9.8)
+    ..close()));
   static final add = ClaiIconData(stroke: _join([_seg(12, 5, 12, 19), _seg(5, 12, 19, 12)]));
   static final moreVert = ClaiIconData(fill: _join([
     _circ(12, 5.2, 1.7), _circ(12, 12, 1.7), _circ(12, 18.8, 1.7),
@@ -318,6 +331,11 @@ class ClaiIcons {
   ]));
   static final chevronDown = ClaiIconData(stroke: _s((p) => p..moveTo(5.5, 9.3)..lineTo(12, 15.8)..lineTo(18.5, 9.3)));
   static final chevronRight = ClaiIconData(stroke: _s((p) => p..moveTo(9.3, 5.5)..lineTo(15.8, 12)..lineTo(9.3, 18.5)));
+  // Chevron kiri MURNI (Ronde 8090, vonis HP pemilik atas 8089):
+  // kepala "<" saja TANPA batang — glif kembali baku Clai (pola kepala
+  // §13.4 mengikuti maket Figma). Cermin persis chevronRight.
+  // [arrowBack] tetap ada sebagai glif PANAH penuh untuk peran non-kembali.
+  static final chevronLeft = ClaiIconData(stroke: _s((p) => p..moveTo(14.7, 5.5)..lineTo(8.2, 12)..lineTo(14.7, 18.5)));
   static final close = ClaiIconData(stroke: _join([_seg(6, 6, 18, 18), _seg(18, 6, 6, 18)]));
   static final infinity = ClaiIconData(stroke: _s((p) => p
     ..moveTo(12, 12)
@@ -383,6 +401,18 @@ class ClaiIcons {
     _seg(4, 17.5, 11, 17.5),
     _seg(16.6, 15.4, 20.4, 19.6),
     _seg(20.4, 15.4, 16.6, 19.6),
+  ]));
+  // Mata tercoret — Mode Samaran (Ronde 8074): siluet mata + pupil +
+  // garis coret diagonal (pola ikon "off" katalog ini, cf. folderOff).
+  static final eyeOff = ClaiIconData(stroke: _join([
+    _s((p) => p
+      ..moveTo(2.8, 12)
+      ..cubicTo(5.2, 6.9, 8.9, 5, 12, 5)
+      ..cubicTo(15.1, 5, 18.8, 6.9, 21.2, 12)
+      ..cubicTo(18.8, 17.1, 15.1, 19, 12, 19)
+      ..cubicTo(8.9, 19, 5.2, 17.1, 2.8, 12)),
+    _circ(12, 12, 3),
+    _seg(4.5, 4.5, 19.5, 19.5),
   ]));
 
   // --- perangkat & sistem ---
@@ -485,5 +515,15 @@ class ClaiIcons {
         math.pi, math.pi)),
     _seg(12, 14.5, 15.8, 9.8),
     _seg(4, 19.5, 20, 19.5),
+  ]));
+
+  /// Gambar: bingkai + matahari + gunung (Ronde 8071 — "Pilih gambar
+  /// QR" di layar Pindai; digambar dalam bahasa set yang sama).
+  static final image = ClaiIconData(stroke: _join([
+    _s((p) => p
+      ..addRRect(RRect.fromRectAndRadius(
+          const Rect.fromLTWH(3.5, 3.5, 17, 17), const Radius.circular(2)))),
+    _circ(9, 9, 1.9),
+    _s((p) => p..moveTo(20.5, 15.5)..lineTo(16.4, 11.4)..lineTo(6, 20.5)),
   ]));
 }

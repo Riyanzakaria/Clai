@@ -173,7 +173,7 @@ class _RadioScreenState extends ConsumerState<RadioScreen> {
                           artworkUrl: seed.artworkUrl,
                           builder: (context, tonal) {
                             final tone = tonal == null
-                                ? ClaiColors.accent
+                                ? ClaiColors.signal
                                 : deepToneFromColor(tonal);
                             return StreamBuilder(
                               stream: handler.queueStream,
@@ -445,7 +445,8 @@ bool isRadioSessionOfPage(String? kind, String? contextId, String seedId) {
 /// Tombol Putar/Jeda halaman Radio — widget presentasi murni:
 /// ikon mengikuti [playing], ketukan memanggil [onTap]. Keputusan aksi
 /// (pause/resume/start) tinggal di [resolveRadioHeaderAction]. Bawaan
-/// tampil Volt 48 (perilaku terbangun); panggung Kepala Hidup memakai
+/// tampil putih tinta 48 (DS v5.0; perilaku terbangun); panggung
+/// Kepala Hidup memakai
 /// 56 bernada sampul benih lewat parameter yang sama.
 class RadioHeaderPlayButton extends StatelessWidget {
   final bool playing;
@@ -458,8 +459,8 @@ class RadioHeaderPlayButton extends StatelessWidget {
     required this.playing,
     required this.onTap,
     this.size = 48,
-    this.fill = ClaiColors.accent,
-    this.iconColor = ClaiColors.onAccent,
+    this.fill = ClaiColors.signal,
+    this.iconColor = ClaiColors.onSignal,
   });
   @override
   Widget build(BuildContext context) {

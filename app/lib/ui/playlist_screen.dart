@@ -6,6 +6,7 @@ import '../core/clai_icons.dart';
 import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../l10n/l10n.dart';
+import 'share_playlist_sheet.dart';
 import 'widgets.dart';
 
 /// Playlist milik pengguna (PRD 5.7): susun ulang seret, hapus geser + urungkan, ganti nama, hapus.
@@ -57,7 +58,7 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
     final handler = ref.watch(audioHandlerProvider);
     final lib = ref.read(libraryProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(widget.name), actions: [
+      appBar: claiPushedAppBar(context, widget.name, actions: [
         PopupMenuButton<String>(
           color: ClaiColors.surface2,
           onSelected: (v) async {
@@ -86,8 +87,22 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                 if (context.mounted) Navigator.of(context).pop();
               }
             }
+            // Cabang bagikan (8070) sengaja di AKHIR: mendahului cabang
+            // lama membuat lint use_build_context_synchronously menandai
+            // pemakaian konteks cabang ganti-nama sebagai menyeberangi
+            // jeda async (info baru di berkas lama) — urutan cabang tidak
+            // mengubah perilaku, urutan menu diatur itemBuilder.
+            if (v == 'share') {
+              final data = await ref
+                  .read(libraryTransferProvider)
+                  .playlistData(widget.playlistId);
+              if (data != null && context.mounted) {
+                openSharePlaylistSheet(context, data);
+              }
+            }
           },
           itemBuilder: (_) => [
+            PopupMenuItem(value: 'share', child: Text(context.l10n.ctxShare)),
             PopupMenuItem(value: 'rename', child: Text(context.l10n.plRename)),
             PopupMenuItem(value: 'delete', child: Text(context.l10n.plDelete)),
           ],
@@ -124,8 +139,8 @@ class _PlaylistScreenState extends ConsumerState<PlaylistScreen> {
                       PressableScale(
                         child: GestureDetector(
                           onTap: () => handler.playTracks(_tracks, 0, kind: 'userPlaylist', id: widget.playlistId, label: widget.name),
-                          child: Container(width: 48, height: 48, decoration: const BoxDecoration(color: ClaiColors.accent, shape: BoxShape.circle),
-                              child: ClaiIcon(ClaiIcons.play, color: ClaiColors.onAccent, size: 26)),
+                          child: Container(width: 48, height: 48, decoration: const BoxDecoration(color: ClaiColors.signal, shape: BoxShape.circle),
+                              child: ClaiIcon(ClaiIcons.play, color: ClaiColors.onSignal, size: 26)),
                         ),
                       ),
                     ]),

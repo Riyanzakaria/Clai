@@ -39,20 +39,32 @@ class OcrModelSettingsSection extends ConsumerWidget {
           _ => s.ocrModelNotDownloaded,
         };
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // Ronde 8084: baris terkunci 60 / label 15/600 / state 13
+          // satu baris (status unduh/pasang tetap fungsional penuh).
           ListTile(
-            leading: tonalIconBox(
+            minTileHeight: 60,
+            titleTextStyle: const TextStyle(
+                fontFamily: kDisplayFontFamily,
+                fontSize: kRowTitleSize,
+                fontWeight: FontWeight.w700,
+                color: ClaiColors.ink),
+            subtitleTextStyle: const TextStyle(
+                fontSize: 13, color: ClaiColors.inkSecondary),
+            leading: rowLeadIcon(
                 ocr.status == OcrModelStatus.ready
                     ? ClaiIcons.checkCircle
                     : ClaiIcons.lyrics,
                 size: 40,
-                iconSize: 20,
+                iconSize: 24,
                 color: ocr.status == OcrModelStatus.ready
-                    ? ClaiColors.accent
+                    ? ClaiColors.signal
                     : ClaiColors.inkFaint),
-            title: Text(s.ocrModelTitle,
-                style: const TextStyle(color: ClaiColors.ink)),
+            title: Text(s.ocrModelTitle, style: rowTitleStyle()),
             subtitle: Text(subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
+                    fontSize: 13,
                     color: ocr.status == OcrModelStatus.error
                         ? ClaiColors.error
                         : ClaiColors.inkSecondary)),
@@ -61,14 +73,14 @@ class OcrModelSettingsSection extends ConsumerWidget {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: ClaiColors.accent))
+                        strokeWidth: 2, color: ClaiColors.signal))
                 : ocr.status == OcrModelStatus.ready
                     ? TextButton(
                         onPressed: () async {
                           final ok = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
-                              title: Text(s.ocrModelDeleteTitle),
+                              title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, s.ocrModelDeleteTitle),
                               content: Text(s.ocrModelDeleteBody),
                               actions: [
                                 TextButton(
@@ -97,17 +109,19 @@ class OcrModelSettingsSection extends ConsumerWidget {
                                     // aksinya memeriksa ulang ketersediaan.
                                     ? s.ocrCheckAgain
                                     : s.commonDownload,
-                            style: const TextStyle(color: ClaiColors.accent)),
+                            style: const TextStyle(color: ClaiColors.signal)),
                       ),
           ),
           if (busy)
+            // Ronde 8084: baris lanjutan progres sejajar inset teks
+            // panel (72 = padding tile 16 + ikon 40 + celah 16).
             Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.only(left: 72, right: 16),
                 child: LinearProgressIndicator(
                     value: ocr.status == OcrModelStatus.downloading
                         ? ocr.progress
                         : null,
-                    color: ClaiColors.accent,
+                    color: ClaiColors.signal,
                     backgroundColor: ClaiColors.surface3)),
         ]);
       },

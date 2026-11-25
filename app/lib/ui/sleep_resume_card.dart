@@ -126,7 +126,8 @@ class _SleepResumeCardState extends ConsumerState<SleepResumeCard> {
         padding: const EdgeInsets.all(14),
         // 8045: garis tepi aksen dibuang (hukum DS: kedalaman dari
         // tonal, bukan garis) — ikon bulan kini berkotak tonal dan
-        // tombol Lanjut = pil isi Volt seperti aksi utama lain.
+        // tombol Lanjut = pil isi putih tinta (DS v5.0) seperti aksi
+        // utama lain.
         decoration: BoxDecoration(
             color: ClaiColors.surface1,
             borderRadius: BorderRadius.circular(16)),
@@ -138,7 +139,7 @@ class _SleepResumeCardState extends ConsumerState<SleepResumeCard> {
               color: ClaiColors.surface2,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(child: ClaiIcon(ClaiIcons.bedtime, color: ClaiColors.accent, size: 20)),
+            child: Center(child: ClaiIcon(ClaiIcons.bedtime, color: ClaiColors.signal, size: 20)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -158,8 +159,8 @@ class _SleepResumeCardState extends ConsumerState<SleepResumeCard> {
               ])),
           FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: ClaiColors.accent,
-                foregroundColor: ClaiColors.onAccent,
+                backgroundColor: ClaiColors.signal,
+                foregroundColor: ClaiColors.onSignal,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 minimumSize: const Size(0, 36),
               ),

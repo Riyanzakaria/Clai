@@ -30,20 +30,26 @@ class EqScreen extends ConsumerWidget {
               ),
             ),
             const EqSection(stage: true),
+            // Ronde 8084: wadah kartu surface1 r20 DIBUANG — seksi
+            // Normalisasi kini datar pola settingsSection (label
+            // sentence-case 13/600 inkSecondary, atas 18, jarak ke
+            // baris 4, baris langsung di latar halaman padding 20).
+            // Pola ditiru lokal persis seperti driving_section._section:
+            // settings_screen mengimpor berkas ini, bukan sebaliknya.
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
-              child: DimKicker(context.l10n.setNormalization),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: ClaiColors.surface1,
-                  borderRadius: BorderRadius.circular(20),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Text(
+                context.l10n.setNormalization,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: ClaiColors.inkSecondary,
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: const NormalizationTile(),
               ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 0),
+              child: NormalizationTile(),
             ),
             SizedBox(height: bottomChromeClearance(context)),
           ],

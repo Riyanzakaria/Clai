@@ -285,20 +285,26 @@ void main() {
       expect(find.text(l10n.queueTitle), findsOneWidget);
       expect(find.text(l10n.playerTimer), findsOneWidget);
       expect(find.text(l10n.playerVoice), findsOneWidget);
-      // Autoplay mati → strip tidak ada (perilaku tampil kartu lama).
-      expect(find.text(l10n.playerAutoplayStrip), findsNothing);
+      // Sapuan tegas 8081: garis penjelasan Putar Otomatis dibuang dari
+      // Player — tidak ada dalam keadaan apa pun (dulu: strip saat aktif).
+      expect(
+          find.text('Putar Otomatis aktif — menyambung lagu terkait'),
+          findsNothing);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('strip Putar Otomatis tampil saat sesi autoplay aktif (G-3)',
-        (tester) async {
-      final l10n = AppLocalizationsId();
+    testWidgets('sesi autoplay aktif pun tanpa garis/kartu penjelasan '
+        'Putar Otomatis (sapuan tegas 8081)', (tester) async {
       await pumpBody(tester, engine: engine(autoplay: true), liked: false);
       expect(tester.takeException(), isNull);
-      expect(find.text(l10n.playerAutoplayStrip), findsOneWidget);
-      // Teks penjelasan 3 baris kartu lama TIDAK lagi di Player modern.
-      expect(find.text(l10n.playerAutoplayCard), findsNothing);
+      // Strip live (G-3) dan kartu papan warisan sama-sama dibuang 8081:
+      // keadaan Putar Otomatis terbaca dari tombol dok & Antrean saja.
+      expect(
+          find.text('Putar Otomatis aktif — menyambung lagu terkait'),
+          findsNothing);
+      expect(find.textContaining('setelah konteks ini habis'),
+          findsNothing);
       expect(icon(ClaiIcons.heart), findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpWidget(const SizedBox.shrink());

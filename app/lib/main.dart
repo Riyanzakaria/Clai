@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'bootstrap.dart';
+import 'core/tokens.dart';
 import 'services/observability.dart';
 
 /// Titik masuk. TIDAK ada await sebelum runApp: frame pertama (splash) harus
@@ -10,6 +12,9 @@ import 'services/observability.dart';
 void main() {
   appStartStamp; // B-01: paksa cap waktu mulai sedini mungkin (lihat bootstrap.dart)
   WidgetsFlutterBinding.ensureInitialized();
+  // Ronde 8080: penampilan bilah sistem sebagai bawaan proses —
+  // permukaan tanpa AppBar pun deterministik (dasar + ikon terang).
+  SystemChrome.setSystemUIOverlayStyle(claiSystemUiOverlayStyle);
   configureImageCache();
   FlutterError.onError = (details) {
     Observability.instance.log('flutter-error', details.exceptionAsString());

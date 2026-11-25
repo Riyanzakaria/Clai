@@ -14,8 +14,8 @@ import '../services/library_controller.dart';
 import 'cover_accent_glow.dart';
 import 'downloads_screen.dart';
 import 'local_screen.dart';
+import 'menu_drawer.dart';
 import 'playlist_screen.dart';
-import 'settings_screen.dart';
 import 'widgets.dart';
 
 /// U-2 (Audit UX, diterapkan build 2018): urutan untuk tab Album & Artis
@@ -55,6 +55,82 @@ String formatStorageSize(int bytes, {required bool commaDecimal}) {
   return '${commaDecimal ? gb.replaceAll('.', ',') : gb} GB';
 }
 
+/// Total durasi playlist dari durasi trek NYATA: hanya terdefinisi bila
+/// playlist tidak kosong DAN semua treknya punya durasi diketahui —
+/// satu trek tanpa durasi membuat totalnya TIDAK tampil (aturan
+/// kejujuran Ronde 8083; total tidak ditebak dari sebagian trek).
+/// Murni & diuji.
+Duration? playlistTotalDuration(List<Track> tracks) {
+  if (tracks.isEmpty) return null;
+  var total = Duration.zero;
+  for (final t in tracks) {
+    final d = t.duration;
+    if (d == null) return null;
+    total += d;
+  }
+  return total;
+}
+
+/// Bentuk panjang total durasi untuk meta playlist Koleksi: "3 jam
+/// 12 mnt" untuk ≥ 1 jam, "45 mnt" di bawahnya (en: "3 hr 12 min" /
+/// "45 min"). Pembentuk total yang sudah ada di aplikasi (ringkasan
+/// Antrean di queue_screen.dart) memakai formatDuration m:ss untuk
+/// durasi per trek — tidak ada bentuk panjang total di aplikasi, jadi
+/// bentuk ini mengikuti gaya spesimen "Koleksi — Perbaikan" (8083).
+/// Murni & diuji.
+String formatTotalDuration(Duration d, {required bool indonesian}) {
+  final h = d.inHours;
+  final m = d.inMinutes - h * 60;
+  final hourWord = indonesian ? 'jam' : 'hr';
+  final minWord = indonesian ? 'mnt' : 'min';
+  if (h > 0 && m > 0) return '$h $hourWord $m $minWord';
+  if (h > 0) return '$h $hourWord';
+  return '$m $minWord';
+}
+
+/// Baris ringkasan header Koleksi: "`<N>` lagu • `<N>` playlist • `<N>` album",
+/// dirakit dari kunci yang sudah ada — songCount untuk lagu, label
+/// collectionPlaylists/collectionAlbums diturunkan ke sentence-case.
+/// Tidak ada kunci kalimat persis untuk kombinasi ini di arb.
+/// Murni & diuji.
+String collectionSummaryLine(
+  AppLocalizations l, {
+  required int songs,
+  required int playlists,
+  required int albums,
+}) {
+  String label(String s) => s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
+  return '${l.songCount(songs)} • $playlists ${label(l.collectionPlaylists)}'
+      ' • $albums ${label(l.collectionAlbums)}';
+}
+
+/// Motif batang gelombang redup DETERMINISTIK untuk keadaan kosong
+/// Koleksi (pola A7, Ronde 8083): tinggi batang dari pola tetap —
+/// bukan data, bukan acak; digambar sekali sebagai dekorasi redup
+/// di atas teks keadaan kosong lokal berkas ini.
+const List<double> kEmptyWaveHeights = [
+  6,
+  12,
+  20,
+  10,
+  26,
+  16,
+  32,
+  14,
+  22,
+  8,
+  18,
+  28,
+  12,
+  24,
+  10,
+  30,
+  16,
+  20,
+  8,
+  14,
+];
+
 /// Agregat nyata Koleksi dari basis data lokal (papan 05): gabungan trek
 /// berbeda (suka ∪ semua playlist pengguna), putar terakhir per playlist,
 /// dan hitungan lagu tersimpan per artis tersimpan. Semua angka dari DB —
@@ -63,16 +139,23 @@ typedef CollectionMeta = ({
   int songs,
   Map<String, int> lastPlayed,
   Map<String, int> artistCounts,
+  Map<String, Duration?> playlistDurations,
 });
 
 Future<CollectionMeta> loadCollectionMeta(
-    AppDb db, List<PlaylistInfo> playlists, List<SavedItemInfo> artists) async {
+  AppDb db,
+  List<PlaylistInfo> playlists,
+  List<SavedItemInfo> artists,
+) async {
   final union = <TrackKey, Track>{};
   for (final t in await db.likedTracks()) {
     union[t.key] = t;
   }
+  final playlistDurations = <String, Duration?>{};
   for (final pl in playlists) {
-    for (final t in await db.playlistTracks(pl.id)) {
+    final tracks = await db.playlistTracks(pl.id);
+    playlistDurations[pl.id] = playlistTotalDuration(tracks);
+    for (final t in tracks) {
       union[t.key] = t;
     }
   }
@@ -93,19 +176,21 @@ Future<CollectionMeta> loadCollectionMeta(
     songs: tracks.length,
     lastPlayed: await db.playlistLastPlayed(),
     artistCounts: artistCounts,
+    playlistDurations: playlistDurations,
   );
 }
 
-/// Koleksi (PRD 5.6) — Gelombang 2 (8048), komposisi papan Stitch:
-/// kepala (gir + judul display 34 + garis statistik tiga angka), bidang
-/// saring, lalu SATU halaman gulir berjangkar chip (Semua / Playlist /
-/// Album / Artis / Tersukai): panggung terakhir-diputar berwarna sampul
-/// playlist itu, blok MILIKMU (Disukai lebar penuh + Unduhan & Berkas
-/// Lokal setengah lebar sebagai pintu ke badannya masing-masing), kisi
-/// mosaik playlist, rel album, rel avatar Artis Kamu. Semua angka dari
+/// Koleksi (PRD 5.6) — Gelombang 2 (8048), komposisi papan Stitch;
+/// Ronde 8083 ("Koleksi — Perbaikan"): kepala (judul display 34 +
+/// tombol markah laci + numeral editorial lagu nyata + baris ringkasan
+/// lagu/playlist/album), bidang saring, lalu SATU halaman gulir
+/// berjangkar chip (Semua / Playlist / Album / Artis / Tersukai):
+/// panggung terakhir-diputar berwarna sampul playlist itu, baris pintu
+/// MILIKMU (ikon telanjang + label + angka besar), baris playlist
+/// [CollectionRow], rel album, rel avatar Artis Kamu. Semua angka dari
 /// agregat DB yang sama seperti sebelumnya; FAB hanya di konteks
 /// playlist. Unduhan/Lokal tampil sebagai badan penuh menggantikan
-/// guliran (pintu blok), kembali lewat chip.
+/// guliran (pintu baris), kembali lewat chip.
 class CollectionScreen extends ConsumerStatefulWidget {
   /// Audit UX 2017: jalan keluar dari keadaan kosong tab Koleksi menuju
   /// tab Cari (disambungkan pemilik cangkang di app.dart; null = tanpa aksi).
@@ -136,135 +221,198 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     if (sig != _metaSig) {
       _metaSig = sig;
       _metaFuture = loadCollectionMeta(
-          ref.read(appDbProvider), lib.playlists, lib.savedArtists);
+        ref.read(appDbProvider),
+        lib.playlists,
+        lib.savedArtists,
+      );
     }
     final showFab = _tab == 'semua' || _tab == 'playlists';
-    return Column(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 8, 0),
-        child: Row(children: [
-          Text(l.collectionTitle, style: displayStyle(34)),
-          const Spacer(),
-          PopupMenuButton<String>(
-            icon: ClaiIcon(ClaiIcons.sort, color: ClaiColors.inkSecondary),
-            tooltip: l.a11ySort,
-            color: ClaiColors.surface2,
-            onSelected: (v) => setState(() => _sort = v),
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                  value: 'terbaru', child: Text(l.collectionSortRecent)),
-              const PopupMenuItem(value: 'az', child: Text('A–Z')),
-            ],
-          ),
-          IconButton(
-              icon: ClaiIcon(ClaiIcons.settings, color: ClaiColors.inkSecondary),
-              tooltip: l.a11ySettings,
-              onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()))),
-        ]),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
-        child: FutureBuilder<CollectionMeta>(
-          future: _metaFuture,
-          builder: (context, snap) => Text(
-            snap.hasData
-                ? l.collectionStatsFull(snap.data!.songs, lib.playlists.length,
-                    lib.savedArtists.length)
-                : '',
-            maxLines: 2,
-            style: const TextStyle(
-                color: ClaiColors.inkSecondary, fontSize: 13, height: 1.4),
-          ),
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: TextField(
-          onChanged: (v) => setState(() => _filter = v.trim().toLowerCase()),
-          style: const TextStyle(color: ClaiColors.ink),
-          decoration: InputDecoration(
-              hintText: l.collectionFilterHint,
-              prefixIcon: ClaiIcon(ClaiIcons.search),
-              filled: true,
-              fillColor: ClaiColors.surface1,
-              border: const OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.all(Radius.circular(12)))),
-        ),
-      ),
-      const SizedBox(height: 10),
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(children: [
-          for (final t in ['semua', 'playlists', 'albums', 'artists', 'liked'])
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _anchorChip(
-                label: switch (t) {
-                  'semua' => l.collectionAll,
-                  'albums' => l.collectionAlbums,
-                  'artists' => l.collectionArtists,
-                  'liked' => l.collectionLikedSongs,
-                  _ => l.collectionPlaylists,
-                },
-                selected: _tab == t,
-                onTap: () => setState(() => _tab = t),
+              padding: const EdgeInsets.fromLTRB(20, 14, 8, 0),
+              child: Row(
+                children: [
+                  Text(l.collectionTitle, style: displayStyle(34)),
+                  const Spacer(),
+                  PopupMenuButton<String>(
+                    icon: ClaiIcon(
+                      ClaiIcons.sort,
+                      color: ClaiColors.inkSecondary,
+                    ),
+                    tooltip: l.a11ySort,
+                    color: ClaiColors.surface2,
+                    onSelected: (v) => setState(() => _sort = v),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'terbaru',
+                        child: Text(l.collectionSortRecent),
+                      ),
+                      const PopupMenuItem(value: 'az', child: Text('A–Z')),
+                    ],
+                  ),
+                  // Ronde 8079: gir Pengaturan → tombol markah laci Menu.
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: ClaiMarkButton(
+                      onPressed: () => showClaiMenuDrawer(context),
+                    ),
+                  ),
+                ],
               ),
             ),
-        ]),
-      ),
-      const SizedBox(height: 6),
-      Expanded(
-        child: FutureBuilder<CollectionMeta>(
-          future: _metaFuture,
-          builder: (context, snap) => switch (_tab) {
-            'albums' => _albumsView(lib),
-            'artists' => _artistsView(lib, snap.data),
-            'liked' => _likedBody(),
-            'local' => const LocalFilesBody(),
-            'downloads' => DownloadsBody(onGoSearch: widget.onGoSearch),
-            'playlists' => _playlistsView(lib, snap.data),
-            _ => _semuaView(lib, snap.data),
-          },
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
+              child: FutureBuilder<CollectionMeta>(
+                future: _metaFuture,
+                builder: (context, snap) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Numeral editorial (Ronde 8083, "Koleksi — Perbaikan"):
+                    // angka BESAR font tampilan = jumlah lagu NYATA koleksi (gabungan
+                    // suka ∪ playlist dari agregat DB yang sama). Selagi
+                    // agregat dimuat tampil kosong — perilaku garis statistik
+                    // sebelumnya; angka 0 hanya tampil bila koleksi memang
+                    // kosong, bukan sebagai penampung muat.
+                    Text(
+                      snap.hasData ? '${snap.data!.songs}' : '',
+                      style: heroStyle(40),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      snap.hasData
+                          ? collectionSummaryLine(
+                              l,
+                              songs: snap.data!.songs,
+                              playlists: lib.playlists.length,
+                              albums: lib.savedAlbums.length,
+                            )
+                          : '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: ClaiColors.inkSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                onChanged: (v) =>
+                    setState(() => _filter = v.trim().toLowerCase()),
+                style: const TextStyle(color: ClaiColors.ink),
+                decoration: InputDecoration(
+                  hintText: l.collectionFilterHint,
+                  prefixIcon: ClaiIcon(ClaiIcons.search),
+                  filled: true,
+                  fillColor: ClaiColors.surface1,
+                  border: const OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.all(Radius.circular(12)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  for (final t in [
+                    'semua',
+                    'playlists',
+                    'albums',
+                    'artists',
+                    'liked',
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _anchorChip(
+                        label: switch (t) {
+                          'semua' => l.collectionAll,
+                          'albums' => l.collectionAlbums,
+                          'artists' => l.collectionArtists,
+                          'liked' => l.collectionLikedSongs,
+                          _ => l.collectionPlaylists,
+                        },
+                        selected: _tab == t,
+                        onTap: () => setState(() => _tab = t),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: FutureBuilder<CollectionMeta>(
+                future: _metaFuture,
+                builder: (context, snap) => switch (_tab) {
+                  'albums' => _albumsView(lib),
+                  'artists' => _artistsView(lib, snap.data),
+                  'liked' => _likedBody(),
+                  'local' => const LocalFilesBody(),
+                  'downloads' => DownloadsBody(onGoSearch: widget.onGoSearch),
+                  'playlists' => _playlistsView(lib, snap.data),
+                  _ => _semuaView(lib, snap.data),
+                },
+              ),
+            ),
+          ],
         ),
-      ),
-      if (showFab)
-        // FAB matte gelap (papan Stitch): bebas dari chrome melayang —
-        // jarak bawah mengikuti ada/tidaknya mini player.
-        StreamBuilder<MediaItem?>(
-          stream: handler.mediaItem.stream,
-          initialData: handler.mediaItem.valueOrNull,
-          builder: (context, snap) => Padding(
-            padding: EdgeInsets.fromLTRB(20, 8, 20,
-                snap.data != null
-                    ? bottomChromeClearance(context) + 16
-                    : kNavBarHeight +
-                        MediaQuery.paddingOf(context).bottom +
-                        16),
-            child: Align(
-              alignment: Alignment.bottomRight,
+        if (showFab)
+          // FAB matte gelap (papan Stitch) MELAYANG di atas daftar
+          // (Ronde 8084): bukan lagi anak aliran Column — dulu Padding
+          // selebar layar sesudah Expanded menyisakan pita hitam tetap
+          // ±200dp di bawah daftar. Jarak bawah dinamis dipertahankan:
+          // mengikuti ada/tidaknya mini player (rumus yang sama seperti
+          // padding lama, kini sebagai posisi dari dasar Stack).
+          StreamBuilder<MediaItem?>(
+            stream: handler.mediaItem.stream,
+            initialData: handler.mediaItem.valueOrNull,
+            builder: (context, snap) => Positioned(
+              right: 20,
+              bottom: snap.data != null
+                  ? bottomChromeClearance(context) + 16
+                  : kNavBarHeight + MediaQuery.paddingOf(context).bottom + 16,
               child: FloatingActionButton(
                 backgroundColor: ClaiColors.surface3,
-                foregroundColor: ClaiColors.accent,
+                foregroundColor: ClaiColors.signal,
                 onPressed: () async {
-                  final name =
-                      await promptText(context, l.collectionNewPlaylistName);
+                  final name = await promptText(
+                    context,
+                    l.collectionNewPlaylistName,
+                  );
                   if (name != null && name.trim().isNotEmpty) {
                     await lib.createPlaylist(name.trim());
                   }
                 },
-                child: ClaiIcon(ClaiIcons.add, color: ClaiColors.accent),
+                child: ClaiIcon(ClaiIcons.add, color: ClaiColors.signal),
               ),
             ),
           ),
-        ),
-    ]);
+      ],
+    );
   }
 
+  /// Bantalan bawah DI DALAM konten gulir tiap tampilan tab (Ronde
+  /// 8084): chrome melayang + napas 16 + tinggi FAB 56 + napas 16,
+  /// supaya baris terakhir bisa digulir UTUH ke atas FAB melayang
+  /// (pola SizedBox clearance di akhir daftar halaman lain).
+  double _scrollEndClearance(BuildContext context) =>
+      bottomChromeClearance(context) + 16 + 56 + 16;
+
   /// Chip jangkar papan Stitch: pil gelap; aktif = permukaan lebih
-  /// terang + titik Volt 6 dp (sinyal mikro, bukan isian).
+  /// terang + titik putih tinta 6 dp (penanda terpilih, bukan isian;
+  /// DS v5.0).
   Widget _anchorChip({
     required String label,
     required bool selected,
@@ -278,27 +426,30 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (selected) ...[
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: ClaiColors.accent,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ClaiColors.signal,
+                  ),
+                ),
+                const SizedBox(width: 7),
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: ClaiColors.ink,
                 ),
               ),
-              const SizedBox(width: 7),
             ],
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: ClaiColors.ink,
-              ),
-            ),
-          ]),
+          ),
         ),
       ),
     );
@@ -314,12 +465,15 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
 
   List<SavedItemInfo> _savedFiltered(LibraryController lib, String kind) {
     return sortSavedItems(
-        (kind == 'album' ? lib.savedAlbums : lib.savedArtists)
-            .where((e) =>
+      (kind == 'album' ? lib.savedAlbums : lib.savedArtists)
+          .where(
+            (e) =>
                 e.title.toLowerCase().contains(_filter) ||
-                (e.subtitle ?? '').toLowerCase().contains(_filter))
-            .toList(),
-        _sort);
+                (e.subtitle ?? '').toLowerCase().contains(_filter),
+          )
+          .toList(),
+      _sort,
+    );
   }
 
   // ------------------------------------------------------------------
@@ -336,9 +490,10 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     // berjalan — dulu hanya yang selesai dihitung, jadi selama unduhan
     // pertama berjalan pintu ini terbaca "0 lagu".
     final dlSummary = downloadsSummaryOf(dl.items);
-    final dlSize = formatStorageSize(dlSummary.doneBytes,
-        commaDecimal:
-            Localizations.localeOf(context).languageCode == 'id');
+    final dlSize = formatStorageSize(
+      dlSummary.doneBytes,
+      commaDecimal: Localizations.localeOf(context).languageCode == 'id',
+    );
     final scan = ref.watch(localScanCacheProvider);
     // Playlist panggung: yang terakhir diputar menurut agregat; tanpa
     // riwayat putar, playlist pertama dalam urutan simpan.
@@ -364,83 +519,71 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
           ),
         if (!_filtering) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 4),
             child: DimKicker(l.collectionYours),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Material(
-              color: ClaiColors.surface1,
-              borderRadius: BorderRadius.circular(16),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => setState(() => _tab = 'liked'),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    tonalIconBox(ClaiIcons.heartFill, size: 44, iconSize: 22, color: ClaiColors.liked),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        l.collectionLikedSongs,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: ClaiColors.ink,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '${lib.likedKeys.length}',
-                      style: displayStyle(24),
-                    ),
-                  ]),
-                ),
-              ),
-            ),
+          // Pintu Milikmu (Ronde 8083, densitas R2): TANPA kotak ikon
+          // dan tanpa wadah kartu — ikon telanjang 24 + label 15/600 +
+          // angka hitungan BESAR font tampilan 20 + meta keadaan nyata.
+          // Substansi baris datang dari tipografi, bukan ubin.
+          _doorRow(
+            icon: ClaiIcons.heartFill,
+            iconColor: ClaiColors.liked,
+            label: l.collectionLikedSongs,
+            count: lib.likedKeys.length,
+            onTap: () => setState(() => _tab = 'liked'),
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              Expanded(
-                child: _doorBlock(
-                  icon: ClaiIcons.download,
-                  title: l.collectionDownloads,
-                  meta: dlSummary.active > 0
-                      ? l.collectionDownloadsMetaActive(
-                          dlSummary.done, dlSize, dlSummary.active)
-                      : l.collectionDownloadsMeta(dlSummary.done, dlSize),
-                  onTap: () => setState(() => _tab = 'downloads'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _doorBlock(
-                  icon: ClaiIcons.folder,
-                  title: l.collectionLocalFiles,
-                  meta: scan != null
-                      ? l.collectionLocalMeta(scan.length)
-                      : l.localSub,
-                  onTap: () => setState(() => _tab = 'local'),
-                ),
-              ),
-            ]),
+          _doorRow(
+            icon: ClaiIcons.queue,
+            label: l.collectionPlaylists,
+            count: lib.playlists.length,
+            onTap: () => setState(() => _tab = 'playlists'),
+          ),
+          _doorRow(
+            icon: ClaiIcons.album,
+            label: l.collectionAlbums,
+            count: lib.savedAlbums.length,
+            onTap: () => setState(() => _tab = 'albums'),
+          ),
+          _doorRow(
+            icon: ClaiIcons.person,
+            label: l.collectionArtists,
+            count: lib.savedArtists.length,
+            onTap: () => setState(() => _tab = 'artists'),
+          ),
+          _doorRow(
+            icon: ClaiIcons.download,
+            label: l.collectionDownloads,
+            count: dlSummary.done,
+            meta: dlSummary.active > 0
+                ? l.collectionDownloadsMetaActive(
+                    dlSummary.done,
+                    dlSize,
+                    dlSummary.active,
+                  )
+                : l.collectionDownloadsMeta(dlSummary.done, dlSize),
+            onTap: () => setState(() => _tab = 'downloads'),
+          ),
+          _doorRow(
+            icon: ClaiIcons.folder,
+            label: l.collectionLocalFiles,
+            count: scan?.length,
+            // Sapuan tegas 8081: meta hanya keadaan nyata
+            // (jumlah hasil pindai); belum dipindai = tanpa meta.
+            meta: scan != null ? l.collectionLocalMeta(scan.length) : null,
+            onTap: () => setState(() => _tab = 'local'),
           ),
         ],
         if (playlists.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 4),
             child: DimKicker(l.collectionPlaylists),
           ),
-          _playlistGrid(playlists, meta),
+          _playlistRows(playlists, meta),
         ] else if (!_filtering)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: EmptyState(
-                icon: ClaiIcons.queue, message: l.collectionEmptyPlaylists),
+            child: _emptyPlaylistsState(),
           ),
         if (albums.isNotEmpty) ...[
           Padding(
@@ -458,17 +601,19 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                 final a = albums[i];
                 return InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () => openContent(context, ref, 'album', a.id, a.title),
+                  onTap: () =>
+                      openContent(context, ref, 'album', a.id, a.title),
                   child: SizedBox(
                     width: 128,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CoverArt(
-                            url: a.artworkUrl,
-                            size: 128,
-                            radius: 16,
-                            label: a.title),
+                          url: a.artworkUrl,
+                          size: 128,
+                          radius: 16,
+                          label: a.title,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           a.title,
@@ -521,10 +666,11 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                     child: Column(
                       children: [
                         CoverArt(
-                            url: a.artworkUrl,
-                            size: 64,
-                            label: a.title,
-                            radius: 32),
+                          url: a.artworkUrl,
+                          size: 64,
+                          label: a.title,
+                          radius: 32,
+                        ),
                         const SizedBox(height: 7),
                         Text(
                           a.title,
@@ -537,8 +683,7 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                           ),
                         ),
                         Text(
-                          l.collectionSavedCount(
-                              meta?.artistCounts[a.id] ?? 0),
+                          l.collectionSavedCount(meta?.artistCounts[a.id] ?? 0),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
@@ -555,57 +700,104 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
             ),
           ),
         ],
-        SizedBox(height: bottomChromeClearance(context)),
+        SizedBox(height: _scrollEndClearance(context)),
       ],
     );
   }
 
-  /// Blok pintu setengah lebar (Unduhan / Berkas Lokal): ubin ikon
-  /// tonal + judul 15 + meta nyata — matte, tanpa lime.
-  Widget _doorBlock({
+  /// Baris pintu Milikmu (Ronde 8083, densitas R2): ikon TELANJANG 24
+  /// (tanpa wadah tonal/kartu, tanpa border), label 15/600, angka
+  /// hitungan BESAR font tampilan 20 di kanan, dan meta keadaan nyata opsional
+  /// di bawah label (mis. Unduhan "41 lagu (512 MB)" dari data unduhan
+  /// asli). [count] null = hitungan belum diketahui (Berkas Lokal
+  /// sebelum pindai pertama) — angka tidak dikarang.
+  Widget _doorRow({
     required ClaiIconData icon,
-    required String title,
-    required String meta,
+    Color? iconColor,
+    required String label,
+    required int? count,
+    String? meta,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: ClaiColors.surface1,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              tonalIconBox(icon, size: 40, iconSize: 20),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: ClaiColors.ink,
-                ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          children: [
+            rowLeadIcon(icon, size: 24, iconSize: 24, color: iconColor),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: ClaiColors.ink,
+                    ),
+                  ),
+                  if (meta != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: ClaiColors.inkSecondary,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                meta,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: ClaiColors.inkSecondary,
-                  height: 1.35,
-                ),
-              ),
+            ),
+            if (count != null) ...[
+              const SizedBox(width: 12),
+              Text('$count', style: displayStyle(20)),
             ],
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  /// Keadaan kosong playlist lokal berkas ini (pola A7, Ronde 8083):
+  /// motif batang gelombang redup deterministik di atas teks kosong —
+  /// dekorasi tetap, bukan data.
+  Widget _emptyPlaylistsState() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final h in kEmptyWaveHeights)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Container(
+                  width: 3,
+                  height: h,
+                  decoration: BoxDecoration(
+                    color: ClaiColors.inkFaint.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        EmptyState(
+          icon: ClaiIcons.queue,
+          message: context.l10n.collectionEmptyPlaylists,
+        ),
+      ],
     );
   }
 
@@ -620,15 +812,19 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     return CoverAccentBuilder(
       artworkUrl: cover,
       builder: (context, tonal) {
-        final tone =
-            tonal == null ? ClaiColors.accent : deepToneFromColor(tonal);
+        final tone = tonal == null
+            ? ClaiColors.signal
+            : deepToneFromColor(tonal);
         return Material(
           borderRadius: BorderRadius.circular(20),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
                 builder: (_) =>
-                    PlaylistScreen(playlistId: pl.id, name: pl.name))),
+                    PlaylistScreen(playlistId: pl.id, name: pl.name),
+              ),
+            ),
             child: Ink(
               decoration: BoxDecoration(
                 gradient: tonal == null
@@ -678,8 +874,11 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                               l.collectionPlaylists,
                               l.songCount(pl.count),
                               if (meta?.lastPlayed[pl.id] != null)
-                                lastPlayedLabel(l, meta!.lastPlayed[pl.id]!,
-                                    DateTime.now()),
+                                lastPlayedLabel(
+                                  l,
+                                  meta!.lastPlayed[pl.id]!,
+                                  DateTime.now(),
+                                ),
                             ].join(' · '),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -700,14 +899,21 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                               .read(appDbProvider)
                               .playlistTracks(pl.id);
                           if (tracks.isEmpty || !context.mounted) return;
-                          handler.playTracks(tracks, 0,
-                              kind: 'userPlaylist', id: pl.id, label: pl.name);
+                          handler.playTracks(
+                            tracks,
+                            0,
+                            kind: 'userPlaylist',
+                            id: pl.id,
+                            label: pl.name,
+                          );
                         },
                         child: Container(
                           width: 52,
                           height: 52,
-                          decoration:
-                              BoxDecoration(color: tone, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: tone,
+                            shape: BoxShape.circle,
+                          ),
                           child: ClaiIcon(
                             ClaiIcons.play,
                             color: onProgressTone(tone),
@@ -726,65 +932,37 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     );
   }
 
-  Widget _playlistGrid(List<PlaylistInfo> items, CollectionMeta? meta) {
+  /// Daftar playlist milik sendiri sebagai baris [CollectionRow]
+  /// (Ronde 8083): data teks di bawah nama = "`<N>` lagu • `<total durasi>`"
+  /// — total durasi hanya tampil bila SEMUA trek playlist punya durasi
+  /// diketahui (lihat [playlistTotalDuration]); selain itu jumlah lagu
+  /// saja. Tanpa mini waveform, tanpa border.
+  Widget _playlistRows(List<PlaylistInfo> items, CollectionMeta? meta) {
     final l = context.l10n;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 16,
-        mainAxisExtent: 238,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, i) {
-        final pl = items[i];
-        return InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) =>
-                  PlaylistScreen(playlistId: pl.id, name: pl.name))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              LayoutBuilder(
-                builder: (context, box) =>
-                    _mosaic(pl.artworkUrls, pl.name, size: box.maxWidth, radius: 16),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                pl.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: ClaiColors.ink,
-                  height: 1.25,
+    final indonesian = Localizations.localeOf(context).languageCode == 'id';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final pl in items)
+          CollectionRow(
+            mosaic: _mosaic(pl.artworkUrls, pl.name, size: 56, radius: 12),
+            name: pl.name,
+            meta: [
+              l.songCount(pl.count),
+              if (meta?.playlistDurations[pl.id] != null)
+                formatTotalDuration(
+                  meta!.playlistDurations[pl.id]!,
+                  indonesian: indonesian,
                 ),
+            ].join(' • '),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    PlaylistScreen(playlistId: pl.id, name: pl.name),
               ),
-              const SizedBox(height: 2),
-              Text(
-                [
-                  l.collectionPlaylists,
-                  l.songCount(pl.count),
-                  if (meta?.lastPlayed[pl.id] != null)
-                    lastPlayedLabel(
-                        l, meta!.lastPlayed[pl.id]!, DateTime.now()),
-                ].join(' · '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: ClaiColors.inkSecondary,
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+      ],
     );
   }
 
@@ -795,16 +973,13 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
     if (!lib.loaded) return const LoadingSkeleton();
     final items = _playlistsFiltered(lib);
     if (items.isEmpty) {
-      return EmptyState(
-        icon: ClaiIcons.queue,
-        message: context.l10n.collectionEmptyPlaylists,
-      );
+      return _emptyPlaylistsState();
     }
     return FiniteScrollPage(
       padding: const EdgeInsets.only(top: 12),
       children: [
-        _playlistGrid(items, meta),
-        SizedBox(height: bottomChromeClearance(context)),
+        _playlistRows(items, meta),
+        SizedBox(height: _scrollEndClearance(context)),
       ],
     );
   }
@@ -845,10 +1020,11 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
                 children: [
                   LayoutBuilder(
                     builder: (context, box) => CoverArt(
-                        url: a.artworkUrl,
-                        size: box.maxWidth,
-                        radius: 16,
-                        label: a.title),
+                      url: a.artworkUrl,
+                      size: box.maxWidth,
+                      radius: 16,
+                      label: a.title,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -915,7 +1091,12 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
               onTap: () => openContent(context, ref, 'artist', a.id, a.title),
               child: Column(
                 children: [
-                  CoverArt(url: a.artworkUrl, size: 96, label: a.title, radius: 48),
+                  CoverArt(
+                    url: a.artworkUrl,
+                    size: 96,
+                    label: a.title,
+                    radius: 48,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     a.title,
@@ -965,77 +1146,164 @@ class _CollectionScreenState extends ConsumerState<CollectionScreen> {
             message: l.collectionEmptySaved,
           );
         }
-        return FiniteScrollPage(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-            child: Row(children: [
-              Expanded(
-                child: Text(
-                  l.collectionSavedCount(tracks.length),
-                  style: const TextStyle(
-                      color: ClaiColors.inkSecondary, fontSize: 13),
-                ),
-              ),
-              Semantics(
-                button: true,
-                label: l.a11yPlay,
-                child: PressableScale(
-                  child: GestureDetector(
-                    onTap: () => handler.playTracks(tracks, 0,
-                        kind: 'liked', label: l.homeSavedSongs),
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                          color: ClaiColors.accent, shape: BoxShape.circle),
-                      child: ClaiIcon(ClaiIcons.play,
-                          color: ClaiColors.onAccent, size: 26),
+        return FiniteScrollPage(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.collectionSavedCount(tracks.length),
+                      style: const TextStyle(
+                        color: ClaiColors.inkSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
+                  Semantics(
+                    button: true,
+                    label: l.a11yPlay,
+                    child: PressableScale(
+                      child: GestureDetector(
+                        onTap: () => handler.playTracks(
+                          tracks,
+                          0,
+                          kind: 'liked',
+                          label: l.homeSavedSongs,
+                        ),
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: const BoxDecoration(
+                            color: ClaiColors.signal,
+                            shape: BoxShape.circle,
+                          ),
+                          child: ClaiIcon(
+                            ClaiIcons.play,
+                            color: ClaiColors.onSignal,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            for (final t in tracks)
+              SongRow(
+                track: t,
+                onTap: () => handler.playTracks(
+                  tracks,
+                  tracks.indexOf(t),
+                  kind: 'liked',
+                  label: l.homeSavedSongs,
                 ),
               ),
-            ]),
-          ),
-          for (final t in tracks)
-            SongRow(
-              track: t,
-              onTap: () => handler.playTracks(tracks, tracks.indexOf(t),
-                  kind: 'liked', label: l.homeSavedSongs),
-            ),
-          SizedBox(height: bottomChromeClearance(context)),
-        ]);
+            SizedBox(height: bottomChromeClearance(context)),
+          ],
+        );
       },
     );
   }
 
-  Widget _mosaic(List<String> urls, String name,
-      {double size = 72, double radius = 14}) {
+  Widget _mosaic(
+    List<String> urls,
+    String name, {
+    double size = 72,
+    double radius = 14,
+  }) {
     final filled = urls.where((u) => u.isNotEmpty).toList();
     if (filled.isEmpty) {
       return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-              color: ClaiColors.surface2,
-              borderRadius: BorderRadius.circular(radius)),
-          child: ClaiIcon(ClaiIcons.queue, color: ClaiColors.inkFaint));
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: ClaiColors.surface2,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: ClaiIcon(ClaiIcons.queue, color: ClaiColors.inkFaint),
+      );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
-          width: size,
-          height: size,
-          child: GridView.count(
-              crossAxisCount: 2,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                for (var i = 0; i < 4; i++)
-                  Image.network(artworkUrlForSize(filled[i % filled.length], 200)!,
-                      fit: BoxFit.cover,
-                      cacheWidth: 128,
-                      errorBuilder: (_, _, _) =>
-                          Container(color: ClaiColors.surface3)),
-              ])),
+        width: size,
+        height: size,
+        child: GridView.count(
+          crossAxisCount: 2,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (var i = 0; i < 4; i++)
+              Image.network(
+                artworkUrlForSize(filled[i % filled.length], 200)!,
+                fit: BoxFit.cover,
+                cacheWidth: 128,
+                errorBuilder: (_, _, _) =>
+                    Container(color: ClaiColors.surface3),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Baris koleksi baku (Ronde 8083, densitas R2): mosaik 56 radius 12,
+/// nama Inter Tight 17, meta hitungan nyata 12 di bawah nama, tinggi
+/// baris total ±72 (padding vertikal 8 + mosaik 56). Tanpa border,
+/// tanpa mini waveform — playlist tidak punya waveform tunggal.
+class CollectionRow extends StatelessWidget {
+  final Widget mosaic;
+  final String name;
+  final String meta;
+  final VoidCallback? onTap;
+  const CollectionRow({
+    super.key,
+    required this.mosaic,
+    required this.name,
+    required this.meta,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Row(
+          children: [
+            mosaic,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: displayStyle(17),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    meta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: ClaiColors.inkSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1050,7 +1318,7 @@ class LikedSongsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final handler = ref.watch(audioHandlerProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.homeSavedSongs)),
+      appBar: claiPushedAppBar(context, context.l10n.homeSavedSongs),
       body: FutureBuilder<List<Track>>(
         future: ref.read(appDbProvider).likedTracks(),
         builder: (context, snap) {
@@ -1062,27 +1330,64 @@ class LikedSongsScreen extends ConsumerWidget {
               message: context.l10n.collectionEmptySaved,
             );
           }
-          return FiniteScrollPage(children: [
-            Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(children: [
-                  Expanded(child: Text(context.l10n.collectionSavedCount(tracks.length), style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13))),
-                  Semantics(
-                    button: true,
-                    label: context.l10n.a11yPlay,
-                    child: PressableScale(
-                      child: GestureDetector(
-                        onTap: () => handler.playTracks(tracks, 0, kind: 'liked', label: context.l10n.homeSavedSongs),
-                        child: Container(width: 48, height: 48,
-                            decoration: const BoxDecoration(color: ClaiColors.accent, shape: BoxShape.circle),
-                            child: ClaiIcon(ClaiIcons.play, color: ClaiColors.onAccent, size: 26)),
+          return FiniteScrollPage(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.l10n.collectionSavedCount(tracks.length),
+                        style: const TextStyle(
+                          color: ClaiColors.inkSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
+                    Semantics(
+                      button: true,
+                      label: context.l10n.a11yPlay,
+                      child: PressableScale(
+                        child: GestureDetector(
+                          onTap: () => handler.playTracks(
+                            tracks,
+                            0,
+                            kind: 'liked',
+                            label: context.l10n.homeSavedSongs,
+                          ),
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: const BoxDecoration(
+                              color: ClaiColors.signal,
+                              shape: BoxShape.circle,
+                            ),
+                            child: ClaiIcon(
+                              ClaiIcons.play,
+                              color: ClaiColors.onSignal,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (final t in tracks)
+                SongRow(
+                  track: t,
+                  onTap: () => handler.playTracks(
+                    tracks,
+                    tracks.indexOf(t),
+                    kind: 'liked',
+                    label: context.l10n.homeSavedSongs,
                   ),
-                ])),
-            for (final t in tracks)
-              SongRow(track: t, onTap: () => handler.playTracks(tracks, tracks.indexOf(t), kind: 'liked', label: context.l10n.homeSavedSongs)),
-            SizedBox(height: bottomChromeClearance(context)),
-          ]);
+                ),
+              SizedBox(height: bottomChromeClearance(context)),
+            ],
+          );
         },
       ),
     );

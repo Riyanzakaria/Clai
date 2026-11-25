@@ -76,10 +76,10 @@ List<ChartCard> chartCardsOf(List<ExploreShelf> shelves) {
 /// mematahkan kata yang lebih lebar dari barisnya DI TENGAH KATA
 /// ("INDONESI A" pada bukti 8043). Ukuran diturunkan sampai kata
 /// terpanjang judul muat selebar wajah kartu. Faktor lebar glyph
-/// dikalibrasi ulang pada Ronde Ganti Font (8049): Clash Display 600
-/// terukur 0,61–0,65 × ukuran untuk kata kapital khas judul Charts
+/// dikalibrasi ulang pada Ronde Ganti Font (8049): font tampilan 600
+/// saat itu terukur 0,61–0,65 × ukuran untuk kata kapital khas judul Charts
 /// (INDONESIA 0,613 · TRENDING 0,651 · INTERNASIONAL 0,636) — faktor
-/// aman 0,68. (Space Grotesk lama memakai 0,62.) Lantai 17, plafon 27.
+/// aman 0,68. (Font tampilan lama memakai 0,62.) Lantai 17, plafon 27.
 double chartFallbackTitleSize(String title) {
   var longest = 0;
   for (final w in title.split(RegExp(r'\s+'))) {
@@ -275,7 +275,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ListTile(
             minTileHeight: 56,
             contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            leading: tonalIconBox(ClaiIcons.link, size: 40, iconSize: 20),
+            leading: rowLeadIcon(ClaiIcons.link, size: 40, iconSize: 20),
             title: Text(ctx.l10n.captureLinkTitle,
                 style: const TextStyle(color: ClaiColors.ink, fontSize: 17)),
             onTap: () => Navigator.of(ctx).pop('text'),
@@ -283,7 +283,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ListTile(
             minTileHeight: 56,
             contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            leading: tonalIconBox(ClaiIcons.album, size: 40, iconSize: 20),
+            leading: rowLeadIcon(ClaiIcons.album, size: 40, iconSize: 20),
             title: Text(ctx.l10n.capturePickImage,
                 style: const TextStyle(color: ClaiColors.ink, fontSize: 17)),
             onTap: () => Navigator.of(ctx).pop('image'),
@@ -374,8 +374,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 }),
                 selected: _category == c,
                 onSelected: (_) => setState(() => _category = c),
-                selectedColor: ClaiColors.accent,
-                labelStyle: TextStyle(color: _category == c ? ClaiColors.onAccent : ClaiColors.ink, fontSize: 13, fontWeight: FontWeight.w500),
+                selectedColor: ClaiColors.signal,
+                labelStyle: TextStyle(color: _category == c ? ClaiColors.onSignal : ClaiColors.ink, fontSize: 13, fontWeight: FontWeight.w500),
                 backgroundColor: ClaiColors.surface2, side: BorderSide.none,
               )),
           ]),
@@ -393,7 +393,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4)),
         for (final s in _suggestions)
           EntityRow(
-            leading: tonalIconBox(ClaiIcons.search,
+            leading: rowLeadIcon(ClaiIcons.search,
                 size: 38, iconSize: 18, color: ClaiColors.inkSecondary),
             title: s,
             onTap: () {
@@ -401,7 +401,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               _run(s);
             },
           ),
-        if (_loading) const LinearProgressIndicator(color: ClaiColors.accent, backgroundColor: ClaiColors.surface3),
+        if (_loading) const LinearProgressIndicator(color: ClaiColors.signal, backgroundColor: ClaiColors.surface3),
         SizedBox(height: bottomChromeClearance(context)),
       ]);
     }
@@ -438,7 +438,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final showAlbums = _category == 'all' || _category == 'albums';
     final showArtists = _category == 'all' || _category == 'artists';
     final showPlaylists = _category == 'all' || _category == 'playlists';
-    // Kepala seksi bersama: kicker Volt saat tema menyala, headline
+    // Kepala seksi bersama: kicker putih tinta (DS v5.0) saat tema
+    // menyala, headline
     // klasik saat mati — sama seperti Beranda.
     Widget header(String s) => SectionHeader(s,
         padding: const EdgeInsets.fromLTRB(16, 22, 16, 6));
@@ -457,7 +458,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
     }
     return FiniteScrollPage(children: [
-      if (_loading) const LinearProgressIndicator(color: ClaiColors.accent, backgroundColor: ClaiColors.surface3),
+      if (_loading) const LinearProgressIndicator(color: ClaiColors.signal, backgroundColor: ClaiColors.surface3),
       if (showSongs && res.songs.isNotEmpty) ...[
         header(context.l10n.searchSongs),
         for (final t in res.songs)
@@ -512,14 +513,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             TextButton(
               onPressed: retry,
-              child: Text(l.commonRetry, style: const TextStyle(color: ClaiColors.accent)),
+              child: Text(l.commonRetry, style: const TextStyle(color: ClaiColors.signal)),
             ),
           ]),
         );
     Widget feedLoading() => Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Row(children: [
-            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ClaiColors.accent)),
+            const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ClaiColors.signal)),
             const SizedBox(width: 10),
             Text(l.jelajahLoading,
                 style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
@@ -553,14 +554,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 color: ClaiColors.surface2,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: ClaiIcon(ClaiIcons.link, color: ClaiColors.accent),
+              child: ClaiIcon(ClaiIcons.link, color: ClaiColors.signal),
             ),
             title: Text(l.searchSpotifyCardTitle,
                 style: const TextStyle(fontWeight: FontWeight.w600, color: ClaiColors.ink)),
-            subtitle: Text(l.searchSpotifyCardSub,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
             onTap: () => _focusNode.requestFocus(),
           ),
         ),
@@ -630,7 +627,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     style: const TextStyle(color: ClaiColors.inkFaint, fontSize: 13)))),
         for (final h in _history)
           EntityRow(
-            leading: tonalIconBox(ClaiIcons.history,
+            leading: rowLeadIcon(ClaiIcons.history,
                 size: 38, iconSize: 18, color: ClaiColors.inkSecondary),
             title: h,
             trailing: IconButton(

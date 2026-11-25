@@ -346,21 +346,21 @@ void main() {
           greaterThanOrEqualTo(3.0));
     });
 
-    test('monokrom & hampir-netral & tak aktif → cadangan Volt penjaga', () {
+    test('monokrom & hampir-netral & tak aktif → cadangan putih tinta penjaga (DS v5.0)', () {
       final mono = buildAmbientPalette(
         source: const Color(0xFF808080),
         enabled: true,
         strength: AmbientStrength.hidup,
       );
       expect(mono.fallbackDiam, isTrue);
-      expect(progressToneFor(mono), ClaiColors.accent);
+      expect(progressToneFor(mono), ClaiColors.signal);
       final netral = buildAmbientPalette(
         source: const Color(0xFF8A8F87),
         enabled: true,
         strength: AmbientStrength.hidup,
       );
-      expect(progressToneFor(netral), ClaiColors.accent);
-      expect(progressToneFor(AmbientPalette.inactive), ClaiColors.accent);
+      expect(progressToneFor(netral), ClaiColors.signal);
+      expect(progressToneFor(AmbientPalette.inactive), ClaiColors.signal);
     });
 
     test('onProgressTone memilih sisi kontras yang lebih besar', () {

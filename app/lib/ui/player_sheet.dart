@@ -19,13 +19,18 @@ import 'glass.dart';
 import 'haptics.dart';
 import 'lyrics_sheet.dart';
 import 'queue_screen.dart';
+import 'samaran_pill.dart';
 import 'shuffle_button_state.dart';
 import 'sleep_timer_sheet.dart';
 import 'voice_sheet.dart';
 import 'widgets.dart';
 
 Future<void> openPlayerSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+  // Strip fleksibel 8082 (DS v5.3 §13.1): selama lembar Player terbuka,
+  // strip inset atas cangkang mengikuti sampul (mode ambient); bendera
+  // diturunkan saat future lembar selesai, apa pun jalan keluarnya.
+  claiPlayerSheetOpen.value = true;
+  final future = showModalBottomSheet<void>(
     context: claiRootContext(context), isScrollControlled: true, backgroundColor: ClaiColors.surface1,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     // Scaffold transparan di dalam sheet: SnackBar dari tombol di dalam Player
@@ -34,6 +39,7 @@ Future<void> openPlayerSheet(BuildContext context) {
     builder: (_) => const FractionallySizedBox(heightFactor: 0.94,
         child: Scaffold(backgroundColor: Colors.transparent, body: PlayerSheet())),
   );
+  return future.whenComplete(() => claiPlayerSheetOpen.value = false);
 }
 
 /// Tata letak sampul Player (murni, diuji unit) — v4.4, akar luapan 23px di
@@ -360,7 +366,7 @@ class _LegacyPlayerSheet extends ConsumerWidget {
                       trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
                       overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                       trackShape: const RoundedRectSliderTrackShape(),
-                      activeTrackColor: ClaiColors.accent, inactiveTrackColor: ClaiColors.surface3, thumbColor: ClaiColors.accent),
+                      activeTrackColor: ClaiColors.signal, inactiveTrackColor: ClaiColors.surface3, thumbColor: ClaiColors.signal),
                     child: Semantics(
                       label: context.l10n.a11ySeek,
                       child: Slider(
@@ -425,8 +431,8 @@ class _LegacyPlayerSheet extends ConsumerWidget {
                     child: PressableScale(
                       child: GestureDetector(
                         onTap: () => playing ? handler.pauseNow() : handler.playNow(),
-                        child: Container(width: 64, height: 64, decoration: const BoxDecoration(color: ClaiColors.accent, shape: BoxShape.circle),
-                            child: ClaiIcon(playing ? ClaiIcons.pause : ClaiIcons.play, color: ClaiColors.onAccent, size: 32)),
+                        child: Container(width: 64, height: 64, decoration: const BoxDecoration(color: ClaiColors.signal, shape: BoxShape.circle),
+                            child: ClaiIcon(playing ? ClaiIcons.pause : ClaiIcons.play, color: ClaiColors.onSignal, size: 32)),
                       ),
                     ),
                   ),
@@ -454,17 +460,6 @@ class _LegacyPlayerSheet extends ConsumerWidget {
               _TextAction(icon: ClaiIcons.bedtime, label: context.l10n.playerTimer, onTap: () => openSleepTimerSheet(context)),
               _TextAction(icon: ClaiIcons.mic, label: context.l10n.playerVoice, onTap: () => openVoiceSheet(context)),
             ]),
-            if (engine.autoplayActive)
-              Container(
-                margin: const EdgeInsets.only(top: 18), padding: const EdgeInsets.all(14),
-                decoration: claiCardDecoration(radius: ClaiRadius.card),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  ClaiIcon(ClaiIcons.infinity, size: 18, color: ClaiColors.accent),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(context.l10n.playerAutoplayCard,
-                      style: const TextStyle(fontSize: 13, color: ClaiColors.inkSecondary, height: 1.45))),
-                ]),
-              ),
               ]),
             );
           }),
@@ -498,20 +493,20 @@ class _CtrlButton extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                ClaiIcon(icon, size: big ? 30 : 24, color: active ? ClaiColors.accent : ClaiColors.ink),
+                ClaiIcon(icon, size: big ? 30 : 24, color: active ? ClaiColors.signal : ClaiColors.ink),
                 if (smartBadge)
                   Positioned(
                     right: -3,
                     top: -3,
                     child: Transform.rotate(
                       angle: math.pi / 4,
-                      child: Container(width: 7, height: 7, color: ClaiColors.accent),
+                      child: Container(width: 7, height: 7, color: ClaiColors.signal),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 2),
-            Container(width: 4, height: 4, decoration: BoxDecoration(color: dot ? ClaiColors.accent : Colors.transparent, shape: BoxShape.circle)),
+            Container(width: 4, height: 4, decoration: BoxDecoration(color: dot ? ClaiColors.signal : Colors.transparent, shape: BoxShape.circle)),
           ])),
         ),
       );
@@ -763,11 +758,6 @@ class PlayerBoardBody extends ConsumerWidget {
                               const EdgeInsets.symmetric(horizontal: 16),
                           child: _dockBar(context),
                         ),
-                        if (engine.autoplayActive)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                            child: _autoplayStrip(context),
-                          ),
                         const SizedBox(height: 16),
                       ],
                     ),
@@ -963,6 +953,17 @@ class PlayerBoardBody extends ConsumerWidget {
                     url: item.artUri?.toString(), label: item.title),
               ),
             ),
+          ),
+          // Ronde 8074: pil Mode Samaran — chrome KACA melayang di atas
+          // panggung sampul (sudut kiri bawah kartu, sisipan 10), BUKAN
+          // baris tata letak: nol biaya geometri papan (kontrak G-3 —
+          // sampul tidak boleh menyusut demi elemen baru). Kartu sampul
+          // tidak punya gestur sendiri, jadi pil tidak merebut sentuhan
+          // apa pun.
+          const Positioned(
+            left: 26,
+            bottom: 10,
+            child: SamaranPill(),
           ),
         ],
       ),
@@ -1191,24 +1192,6 @@ class PlayerBoardBody extends ConsumerWidget {
   /// lama), label AUTO di antrean tetap menjadi penanda sambungan,
   /// dan teks penjelasan panjang kini hidup hanya di Player warisan
   /// (tema mati). Lihat DS §6.9.
-  Widget _autoplayStrip(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ClaiIcon(ClaiIcons.infinity, size: 16, color: ClaiColors.accent),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            context.l10n.playerAutoplayStrip,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                fontSize: 13, color: ClaiColors.inkSecondary),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 /// Satu sel bilah dok berlabel: ikon di atas, label di bawah.

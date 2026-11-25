@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/l10n.dart';
 
 import '../app.dart';
+import '../core/display_text.dart';
+import '../core/tokens.dart';
 import '../services/track_metadata_healer.dart';
 import '../domain/models.dart';
+import '../domain/taste_mirror.dart';
 import 'glass.dart';
 import 'widgets.dart';
 
@@ -26,6 +29,10 @@ class PersonalArtistRail extends ConsumerStatefulWidget {
 
 class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
   String? _topArtist;
+
+  /// Hitungan putar NYATA artis teratas (dari artistPlayCounts —
+  /// jumlah peristiwa putar tercatat), untuk byline pita fitur.
+  int _topArtistPlays = 0;
   List<Track> _artistTracks = [];
   bool _healedOnce = false;
 
@@ -39,9 +46,11 @@ class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
     final db = ref.read(appDbProvider);
     final artists = await db.artistPlayCounts(limit: 5);
     String? top;
+    var plays = 0;
     List<Track> artistTracks = [];
     if (artists.isNotEmpty && artists.first.count >= 3) {
       top = artists.first.artistNames;
+      plays = artists.first.count;
       artistTracks = (await db.tracksByArtists([
         top,
       ], limit: 10)).take(10).toList();
@@ -50,6 +59,7 @@ class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
     if (mounted) {
       setState(() {
         _topArtist = top;
+        _topArtistPlays = plays;
         _artistTracks = artistTracks;
       });
     }
@@ -71,11 +81,66 @@ class _PersonalArtistRailState extends ConsumerState<PersonalArtistRail> {
     }
     final handler = ref.read(audioHandlerProvider);
     final title = context.l10n.shelfBecauseArtist(_topArtist ?? '');
-    return CoverRail(
-      title: title,
-      tracks: _artistTracks,
-      onPlay: (tracks, i) =>
-          handler.playTracks(tracks, i, kind: 'search', label: title),
+    final artist = cleanDisplayArtist(_topArtist ?? '');
+    // Ronde 8083 butir 4: pita FITUR berwajah artis (bukan rel sampul
+    // biasa) — sampul besar di kiri dari trek artis itu sendiri, nama
+    // artis font tampilan tegas, byline data nyata (hitungan putar tercatat),
+    // lalu baris lagu-lagu artis itu (maks 3). Ketuk baris memutar
+    // dengan konteks & label yang sama seperti rel lama.
+    final rows = _artistTracks.take(3).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CoverArt(
+                url: _artistTracks.first.artworkUrl,
+                size: 96,
+                label: artist,
+                radius: 12,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      artist,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: displayStyle(20),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.l10n.homePlayCount(_topArtistPlays),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: ClaiColors.inkSecondary,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        for (final t in rows)
+          SongRow(
+            track: t,
+            onTap: () => handler.playTracks(
+              _artistTracks,
+              _artistTracks.indexWhere((x) => x.key == t.key),
+              kind: 'search',
+              label: title,
+            ),
+          ),
+      ],
     );
   }
 }
@@ -100,9 +165,12 @@ class _PersonalShelvesSectionState
   Future<void> _load() async {
     final db = ref.read(appDbProvider);
     final liked = await db.likedWithPlayCounts();
+    // Ronde 8074: rak saran ini juga menghormati pengecualian selera.
+    final excl = await db.tasteExclusions();
     final forgotten = liked
         .where((e) => e.plays == 0)
         .map((e) => e.track)
+        .where((t) => !isTrackExcluded(t, excl))
         .take(5)
         .toList();
     if (mounted) {
@@ -120,10 +188,7 @@ class _PersonalShelvesSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          title,
-          padding: const EdgeInsets.fromLTRB(16, 26, 16, 6),
-        ),
+        SectionHeader(title),
         for (final t in _forgotten)
           SongRow(
             track: t,

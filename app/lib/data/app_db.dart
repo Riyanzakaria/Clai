@@ -3,8 +3,11 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../domain/models.dart';
 import '../domain/personal_rank.dart';
+import '../domain/taste_mirror.dart';
+import '../domain/transfer_data.dart';
 import '../services/waveform.dart';
 
 /// Basis data lokal Clai — skema fisik TECHNICAL-BLUEPRINT Bab 2 (SQLite).
@@ -12,7 +15,7 @@ import '../services/waveform.dart';
 /// cadangan pra-migrasi wajib, kegagalan migrasi membuka cadangan, data pengguna tidak boleh hilang.
 class AppDb {
   static const dbName = 'clai.db';
-  static const schemaVersion = 5;
+  static const schemaVersion = 8;
   Database? _db;
   Future<Database>? _opening;
 
@@ -187,6 +190,71 @@ class AppDb {
       _createF5Tables(b);
       await b.commit(noResult: true);
     }
+    if (oldV < 6) {
+      // v6 (Ronde 8072, Brankas Sesi): arsip sesi putar permanen —
+      // snapshot antrean penuh per sesi bernama (Workstream D, 2.1.0).
+      final b = d.batch();
+      _createF6Tables(b);
+      await b.commit(noResult: true);
+    }
+    if (oldV < 7) {
+      // v7 (Ronde 8074, Ruang Kendali Selera): pengecualian rekomendasi
+      // per artis/lagu — diterapkan sebagai saringan baca di atas
+      // playback_events (retroaktif, dapat diurungkan).
+      final b = d.batch();
+      _createF7Tables(b);
+      await b.commit(noResult: true);
+    }
+    if (oldV < 8) {
+      // v8 (Ronde 8075, Panel Acak Gabungan): potret urutan alami +
+      // himpunan terputar siklus Jujur ikut disimpan di snapshot
+      // antrean L-16. Tanpa kolom ini saveQueueSnapshot MEMBUANG
+      // keduanya: sesudah start dingin, mematikan Acak mode Jujur
+      // menjadi no-op senyap (potret hilang) dan progres siklus
+      // dihitung ulang dari nol — penyakit 8066 yang kambuh lewat
+      // jalur kolom-tetap. (Jalur Brankas menyimpan JSON penuh,
+      // tidak terkena.) Penjaga keberadaan tabel: basis data nyata
+      // selalu punya queue_snapshots (lahir di onCreate v1), tetapi
+      // migrasi tidak boleh meledak pada basis data parsial.
+      final tables = await d.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='queue_snapshots'",
+      );
+      if (tables.isNotEmpty) {
+        final b = d.batch();
+        b.execute(
+          'ALTER TABLE queue_snapshots ADD COLUMN natural_continuation_json TEXT',
+        );
+        b.execute(
+          'ALTER TABLE queue_snapshots ADD COLUMN natural_autoplay_json TEXT',
+        );
+        b.execute(
+          'ALTER TABLE queue_snapshots ADD COLUMN cycle_played_json TEXT',
+        );
+        await b.commit(noResult: true);
+      }
+    }
+  }
+
+  /// Tabel Ruang Kendali Selera (v7) — dipakai jalur buat-baru & migrasi v6→v7.
+  static void _createF7Tables(Batch b) {
+    b.execute('''CREATE TABLE IF NOT EXISTS taste_exclusions (
+      kind TEXT NOT NULL, key TEXT NOT NULL, label TEXT NOT NULL,
+      created_at INTEGER NOT NULL, PRIMARY KEY (kind, key))''');
+  }
+
+  /// Tabel Brankas Sesi (v6) — dipakai jalur buat-baru & migrasi v5→v6.
+  /// snapshot_json = peta snapshot QueueEngine persis seperti yang
+  /// disimpan jalur Lanjut Besok (D-15); kolom lain adalah denormalisasi
+  /// tampilan (daftar & rak Beranda membaca tanpa mendekode snapshot).
+  static void _createF6Tables(Batch b) {
+    b.execute('''CREATE TABLE IF NOT EXISTS saved_sessions (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, saved_at INTEGER NOT NULL,
+      snapshot_json TEXT NOT NULL, track_count INTEGER NOT NULL DEFAULT 0,
+      current_title TEXT, current_artist TEXT, current_artwork TEXT,
+      context_label TEXT, position_ms INTEGER NOT NULL DEFAULT 0)''');
+    b.execute(
+      'CREATE INDEX IF NOT EXISTS idx_saved_sessions_at ON saved_sessions (saved_at DESC)',
+    );
   }
 
   /// Tabel Ronde Player B (v5) — dipakai jalur buat-baru & migrasi v4→v5.
@@ -297,6 +365,7 @@ class AppDb {
       autoplay_json TEXT NOT NULL, current_ref TEXT, position_ms INTEGER NOT NULL DEFAULT 0,
       shuffle_mode TEXT NOT NULL DEFAULT 'off', repeat_mode TEXT NOT NULL DEFAULT 'off',
       autoplay_enabled INTEGER NOT NULL DEFAULT 1, session_signals_json TEXT NOT NULL DEFAULT '{}',
+      natural_continuation_json TEXT, natural_autoplay_json TEXT, cycle_played_json TEXT,
       saved_at INTEGER NOT NULL)''');
     b.execute('''CREATE TABLE stream_cache (
       provider_id TEXT NOT NULL, provider_track_id TEXT NOT NULL, resolved_url TEXT NOT NULL,
@@ -315,6 +384,8 @@ class AppDb {
     _createF3Tables(b);
     _createF4Tables(b);
     _createF5Tables(b);
+    _createF6Tables(b);
+    _createF7Tables(b);
     b.execute(
       "ALTER TABLE queue_snapshots ADD COLUMN played_json TEXT NOT NULL DEFAULT '[]'",
     );
@@ -664,6 +735,31 @@ class AppDb {
     return out;
   }
 
+  /// Sampul per artis untuk Selera Cermin Panggung (Ronde 8089):
+  /// artwork trek PALING SERING DIPUTAR milik tiap artis (seri diputus
+  /// putar terakhir terbaru). Baris dikembalikan urut peringkat trek
+  /// global; pemenang per artis dipilih di sini: artwork NON-NULL
+  /// pertama dalam urutan itu — trek pemenang tanpa artwork memberi
+  /// jalan ke trek berikutnya milik artis yang sama. Artis tanpa
+  /// artwork apa pun → null (UI menggambar ubin motif).
+  Future<Map<String, String?>> topTrackArtworkByArtist() async {
+    final d = await db;
+    final rows = await d.rawQuery(
+      '''SELECT t.artist_names a, t.artwork_url art, COUNT(*) c, MAX(e.started_at) last FROM playback_events e JOIN tracks t ON t.provider_id=e.provider_id AND t.provider_track_id=e.provider_track_id GROUP BY e.provider_id, e.provider_track_id ORDER BY c DESC, last DESC''',
+    );
+    final out = <String, String?>{};
+    for (final r in rows) {
+      final a = (r['a'] as String?) ?? '';
+      final art = r['art'] as String?;
+      if (!out.containsKey(a)) {
+        out[a] = art;
+      } else if (out[a] == null && art != null) {
+        out[a] = art;
+      }
+    }
+    return out;
+  }
+
   /// "Putar Lagi": peringkat CAMPURAN (F2.5) — kemutakhiran berpeluruhan
   /// ±30 hari ditopang lantai sepanjang masa; bukan lagi hitungan mentah
   /// sepanjang masa (temuan vonis 2008 #1: rak terasa tidak berubah).
@@ -672,10 +768,18 @@ class AppDb {
     final rows = await d.rawQuery('''SELECT t.* FROM playback_events e
       JOIN tracks t ON t.provider_id=e.provider_id AND t.provider_track_id=e.provider_track_id
       GROUP BY e.provider_id, e.provider_track_id''');
-    final tracks = rows.map(Track.fromDbRow).toList();
+    // Ronde 8074: pengecualian selera menyaring rak rekomendasi ini
+    // (retroaktif — peristiwa lama ikut tersaring karena saringan baca),
+    // dan peringkat memakai bobot selera pengguna (bawaan = campuran
+    // F2.5 persis).
+    final excl = await tasteExclusions();
+    final tracks = rows
+        .map(Track.fromDbRow)
+        .where((t) => !isTrackExcluded(t, excl))
+        .toList();
     final plays = await trackPlayTimestamps();
     final now = DateTime.now().millisecondsSinceEpoch;
-    final scores = hybridTrackScores(plays, now);
+    final scores = tasteTrackScores(plays, now, await tasteRecentEmphasis());
     tracks.sort((a, b) {
       final pa = plays[a.key] ?? const <int>[];
       final pb = plays[b.key] ?? const <int>[];
@@ -703,22 +807,122 @@ class AppDb {
     int limit = 3,
   }) async {
     final d = await db;
+    // Ronde 8074: ambil lebih banyak dari batas, saring pengecualian
+    // selera di Dart (pencocokan artis butuh normalisasi), baru potong —
+    // rak mingguan tidak boleh memajang trek/artis yang dikeluarkan.
     final rows = await d.rawQuery(
       '''SELECT t.*, COUNT(*) c, MAX(e.started_at) last FROM playback_events e
       JOIN tracks t ON t.provider_id=e.provider_id AND t.provider_track_id=e.provider_track_id
       WHERE e.started_at >= ? GROUP BY e.provider_id, e.provider_track_id
       ORDER BY c DESC, last DESC LIMIT ?''',
-      [fromMs, limit],
+      [fromMs, limit * 4],
     );
+    final excl = await tasteExclusions();
     return [
       for (final r in rows)
-        (track: Track.fromDbRow(r), count: (r['c'] as int?) ?? 0),
-    ];
+        if (!isTrackExcluded(Track.fromDbRow(r), excl))
+          (track: Track.fromDbRow(r), count: (r['c'] as int?) ?? 0),
+    ].take(limit).toList();
   }
 
   Future<void> clearHistory() async {
     final d = await db;
     await d.delete('playback_events');
+  }
+
+  // ---------- Ruang Kendali Selera (Ronde 8074, skema v7) ----------
+
+  /// Kunci pref bobot selera (penekanan terkini 0..1; bawaan 1,0 =
+  /// peringkat campuran F2.5 persis) dan Mode Samaran.
+  static const prefTasteRecentEmphasis = 'taste.recentEmphasis';
+  static const prefTasteSamaran = 'taste.samaran';
+
+  /// Ronde 8079: "Jangan tampilkan lagi" pada lembar penjelas Mode
+  /// Samaran (S1) — sekali terisi true, pengaktifan Samaran langsung
+  /// tanpa lembar di kedua pintu masuk (pill Player & saklar Selera).
+  static const prefTasteSamaranHowSeen = 'taste.samaranHowSeen';
+
+  /// Kunci pref cap waktu ekspor D2 terakhir yang berhasil (ditulis
+  /// LibraryTransferService; dibaca lembar Reset Selera sebagai
+  /// "Cadangan terakhir").
+  static const prefLastExportAt = 'transfer.lastExportAt';
+
+  /// Semua pengecualian rekomendasi, terbaru dulu.
+  Future<List<TasteExclusion>> tasteExclusions() async {
+    final d = await db;
+    final rows = await d.query('taste_exclusions',
+        orderBy: 'created_at DESC, label ASC');
+    return rows.map(TasteExclusion.fromRow).toList();
+  }
+
+  Future<void> addTasteExclusion(TasteExclusion e) async {
+    final d = await db;
+    await d.insert('taste_exclusions', e.toRow(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> removeTasteExclusion(String kind, String key) async {
+    final d = await db;
+    await d.delete('taste_exclusions',
+        where: 'kind=? AND key=?', whereArgs: [kind, key]);
+  }
+
+  /// Kunci trek yang dikeluarkan langsung (untuk tangga Putar Otomatis).
+  Future<Set<TrackKey>> tasteExcludedTrackKeys() async {
+    final excl = await tasteExclusions();
+    final out = <TrackKey>{};
+    for (final e in excl) {
+      if (e.isArtist) continue;
+      final parts = e.key.split('\u001f');
+      if (parts.length == 2) out.add(TrackKey(parts[0], parts[1]));
+    }
+    return out;
+  }
+
+  /// Byline artis yang dikeluarkan (untuk tangga Putar Otomatis —
+  /// pemanggil menormalkannya dengan kunci artis primer miliknya).
+  Future<List<String>> tasteExcludedArtistBylines() async {
+    final excl = await tasteExclusions();
+    return [for (final e in excl) if (e.isArtist) e.key];
+  }
+
+  /// Penekanan terkini pengguna (0..1). Bawaan 1,0: peringkat campuran
+  /// F2.5 yang sudah berjalan — slider Selera mengubahnya dari sana.
+  Future<double> tasteRecentEmphasis() async {
+    final v = await pref<num>(prefTasteRecentEmphasis);
+    if (v == null) return 1.0;
+    return v.toDouble().clamp(0.0, 1.0).toDouble();
+  }
+
+  /// Peristiwa putar mentah untuk Cermin Selera (cap waktu + durasi
+  /// dengar), urut waktu naik.
+  Future<List<({int startedAt, int listenedMs})>> allPlayEvents() async {
+    final d = await db;
+    final rows = await d.rawQuery(
+      'SELECT started_at, listened_ms FROM playback_events ORDER BY started_at',
+    );
+    return [
+      for (final r in rows)
+        (
+          startedAt: (r['started_at'] as int?) ?? 0,
+          listenedMs: (r['listened_ms'] as int?) ?? 0,
+        ),
+    ];
+  }
+
+  /// Reset Selera: hapus SEMUA data turunan selera dalam satu transaksi —
+  /// riwayat putar (bahan baku selera), pengecualian, dan bobot.
+  /// Perpustakaan, playlist, lagu suka, unduhan, dan Brankas Sesi TIDAK
+  /// disentuh. Mode Samaran adalah keadaan sesi, bukan data selera —
+  /// tidak ikut direset.
+  Future<void> resetTaste() async {
+    final d = await db;
+    await d.transaction((txn) async {
+      await txn.delete('playback_events');
+      await txn.delete('taste_exclusions');
+      await txn.delete('user_prefs',
+          where: 'key=?', whereArgs: [prefTasteRecentEmphasis]);
+    });
   }
 
   // ---------- statistik personal (F2 Batch 2: rak Beranda) ----------
@@ -743,14 +947,20 @@ class AppDb {
   }) async {
     final byArtist = await artistPlayTimestamps();
     final now = DateTime.now().millisecondsSinceEpoch;
+    // Ronde 8074: artis yang dikeluarkan tidak lagi memimpin peringkat
+    // (rak "karena artis" Beranda membaca dari sini), dan skor memakai
+    // bobot selera pengguna (bawaan = campuran F2.5 persis).
+    final excl = await tasteExclusions();
+    final emphasis = await tasteRecentEmphasis();
     final out = <({String artistNames, int count, double score, int last})>[
       for (final e in byArtist.entries)
-        (
-          artistNames: e.key,
-          count: e.value.length,
-          score: hybridPlayScore(e.value, now),
-          last: e.value.isEmpty ? 0 : e.value.reduce((a, b) => a > b ? a : b),
-        ),
+        if (!isArtistExcluded(e.key, excl))
+          (
+            artistNames: e.key,
+            count: e.value.length,
+            score: tastePlayScore(e.value, now, emphasis),
+            last: e.value.isEmpty ? 0 : e.value.reduce((a, b) => a > b ? a : b),
+          ),
     ];
     out.sort(
       (a, b) => compareHybridRank(
@@ -819,9 +1029,13 @@ class AppDb {
     // hidup & mapan di atas; trek artis yang belum pernah diputar menyusul
     // di ekor dengan urutan temuan semula). Batas [limit] diterapkan
     // SESUDAH pengurutan agar yang tampil benar-benar peringkat teratas.
+    // Ronde 8074: trek yang dikeluarkan (langsung atau lewat artisnya)
+    // gugur dari rak; skor memakai bobot selera pengguna.
+    final excl = await tasteExclusions();
+    out.removeWhere((t) => isTrackExcluded(t, excl));
     final plays = await trackPlayTimestamps();
     final now = DateTime.now().millisecondsSinceEpoch;
-    final scores = hybridTrackScores(plays, now);
+    final scores = tasteTrackScores(plays, now, await tasteRecentEmphasis());
     final indexed = <(int, Track)>[
       for (var i = 0; i < out.length; i++) (i, out[i]),
     ];
@@ -976,6 +1190,18 @@ class AppDb {
           ? 1
           : 0,
       'session_signals_json': jsonEncode(snapshot['signals'] ?? {}),
+      // v8 (Ronde 8075): potret urutan alami & himpunan terputar
+      // siklus ikut disimpan — tanpa ini keduanya terbuang senyap di
+      // jalur kolom-tetap ini (lihat catatan migrasi v8).
+      'natural_continuation_json': snapshot['naturalContinuation'] == null
+          ? null
+          : jsonEncode(snapshot['naturalContinuation']),
+      'natural_autoplay_json': snapshot['naturalAutoplay'] == null
+          ? null
+          : jsonEncode(snapshot['naturalAutoplay']),
+      'cycle_played_json': snapshot['cyclePlayed'] == null
+          ? null
+          : jsonEncode(snapshot['cyclePlayed']),
       // D-34: riwayat sesi (played) & volume kini benar-benar disimpan —
       // sebelumnya saveQueueSnapshot membuang 'played' senyap karena kolomnya
       // tidak ada (Blueprint kini diamendemen terbuka mencatat kolom ini).
@@ -1019,6 +1245,17 @@ class AppDb {
       'autoplayEnabled': (r['autoplay_enabled'] as int) == 1,
       'signals': decodeTolerant(r['session_signals_json'], const {}),
       'played': decodeTolerant(r['played_json'], const []),
+      // v8 (Ronde 8075): kunci hanya disertakan bila kolomnya terisi,
+      // agar restore() membedakan "potret memang tidak ada" dari
+      // "potret kosong" persis seperti snapshot di ingatan.
+      if (r['natural_continuation_json'] != null)
+        'naturalContinuation':
+            decodeTolerant(r['natural_continuation_json'], const []),
+      if (r['natural_autoplay_json'] != null)
+        'naturalAutoplay':
+            decodeTolerant(r['natural_autoplay_json'], const []),
+      if (r['cycle_played_json'] != null)
+        'cyclePlayed': decodeTolerant(r['cycle_played_json'], const []),
       'volume': (r['volume'] as num?)?.toDouble(),
     };
   }
@@ -1031,6 +1268,92 @@ class AppDb {
   Future<void> deleteQueueSnapshot() async {
     final d = await db;
     await d.delete('queue_snapshots', where: 'id=1');
+  }
+
+  // ---------- Brankas Sesi (Ronde 8072, v6) ----------
+  /// Simpan satu sesi bernama dari snapshot antrean PENUH (bentuk yang
+  /// sama dengan snapshot L-16 / simpanan Lanjut Besok D-15). Mengembalikan
+  /// id sesi. Satu INSERT tunggal — simpan bersifat atomik: sesi tercatat
+  /// utuh atau tidak sama sekali (titik bunuh di tengah simpan tidak
+  /// meninggalkan baris setengah jadi).
+  Future<String> saveVaultSession({
+    required String name,
+    required Map<String, Object?> snapshot,
+    Track? currentTrack,
+  }) async {
+    final d = await db;
+    final id = const Uuid().v4();
+    int countOf(String key) {
+      final v = snapshot[key];
+      return v is List ? v.length : 0;
+    }
+
+    final trackCount = countOf('played') +
+        (snapshot['currentRef'] != null ? 1 : 0) +
+        countOf('manual') +
+        countOf('continuation') +
+        countOf('autoplay');
+    await d.insert('saved_sessions', {
+      'id': id,
+      'name': name,
+      'saved_at': DateTime.now().millisecondsSinceEpoch,
+      'snapshot_json': jsonEncode(snapshot),
+      'track_count': trackCount,
+      'current_title': currentTrack?.title,
+      'current_artist': currentTrack?.artistNames,
+      'current_artwork': currentTrack?.artworkUrl,
+      'context_label': snapshot['contextLabel'],
+      'position_ms': (snapshot['positionMs'] as num?)?.toInt() ?? 0,
+    });
+    return id;
+  }
+
+  /// Metadata semua sesi tersimpan, terbaru dulu (daftar Brankas & rak
+  /// Beranda). Snapshot TIDAK ikut — muat terpisah lewat [vaultSnapshot].
+  Future<List<Map<String, Object?>>> vaultSessions() async {
+    final d = await db;
+    final rows = await d.query(
+      'saved_sessions',
+      columns: [
+        'id',
+        'name',
+        'saved_at',
+        'track_count',
+        'current_title',
+        'current_artist',
+        'current_artwork',
+        'context_label',
+        'position_ms',
+      ],
+      orderBy: 'saved_at DESC, rowid DESC',
+    );
+    return rows;
+  }
+
+  /// Snapshot antrean penuh milik sesi [id]; null bila sesi tak ada atau
+  /// JSON-nya rusak (dekode toleran: sesi rusak tidak boleh menjatuhkan
+  /// layar — pemanggil menawarkannya sebagai tak-bisa-dipulihkan).
+  Future<Map<String, Object?>?> vaultSnapshot(String id) async {
+    final d = await db;
+    final rows = await d.query(
+      'saved_sessions',
+      columns: ['snapshot_json'],
+      where: 'id=?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(rows.first['snapshot_json'] as String);
+      return decoded is Map ? decoded.cast<String, Object?>() : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> deleteVaultSession(String id) async {
+    final d = await db;
+    await d.delete('saved_sessions', where: 'id=?', whereArgs: [id]);
   }
 
   // ---------- cache aliran ----------
@@ -1507,5 +1830,432 @@ class AppDb {
     if (rows.isEmpty) return null;
     final exp = rows.first['expires_at'] as int;
     return Duration(milliseconds: exp - DateTime.now().millisecondsSinceEpoch);
+  }
+
+  // ---------- ekspor/impor kepemilikan (Ronde 8070, D2 / F-12) ----------
+  // Seksi ADITIF penuh: tidak satu pun metode lama diubah. Penerapan
+  // impor berjalan dalam SATU transaksi (F-12: gagal di tengah = tidak
+  // ada perubahan sebagian); penguraian & validasi berkas selesai di
+  // services/library_transfer.dart SEBELUM metode terapkan dipanggil.
+
+  /// Semua playlist pengguna (bukan sistem) beserta treknya, urutan
+  /// pembuatan & posisi entri dipertahankan. Entri yang baris katalognya
+  /// sudah terhapus retensi dilewati — metadata-nya tidak ada lagi di
+  /// mana pun di aplikasi, jadi tidak bisa direkonstruksi dengan jujur.
+  Future<List<TransferPlaylist>> exportPlaylistsData() async {
+    final d = await db;
+    final pls = await d.query(
+      'playlists',
+      where: 'is_system=0',
+      orderBy: 'created_at ASC',
+    );
+    final out = <TransferPlaylist>[];
+    for (final p in pls) {
+      final rows = await d.rawQuery(
+        '''SELECT t.* FROM playlist_entries e
+        JOIN tracks t ON t.provider_id=e.provider_id AND t.provider_track_id=e.provider_track_id
+        WHERE e.playlist_id=? ORDER BY e.position ASC''',
+        [p['id']],
+      );
+      out.add(TransferPlaylist(
+        name: p['name'] as String,
+        description: p['description'] as String?,
+        createdAt: p['created_at'] as int?,
+        tracks: [
+          for (final r in rows)
+            TransferTrack.fromTrack(Track.fromDbRow(r)),
+        ],
+      ));
+    }
+    return out;
+  }
+
+  /// Lagu disukai beserta waktu sukanya, urutan suka menaik.
+  Future<List<TransferLike>> exportLikedData() async {
+    final d = await db;
+    final rows = await d.rawQuery('''SELECT t.*, l.liked_at FROM liked_tracks l
+      JOIN tracks t ON t.provider_id=l.provider_id AND t.provider_track_id=l.provider_track_id
+      ORDER BY l.liked_at ASC''');
+    return [
+      for (final r in rows)
+        TransferLike(
+          track: TransferTrack.fromTrack(Track.fromDbRow(r)),
+          likedAt: (r['liked_at'] as int?) ?? 0,
+        ),
+    ];
+  }
+
+  /// Peristiwa putar mentah beserta metadata treknya, urutan waktu
+  /// menaik. Peristiwa yang baris katalognya sudah terhapus retensi
+  /// dilewati (alasan sama seperti ekspor playlist).
+  Future<List<TransferEvent>> exportHistoryData() async {
+    final d = await db;
+    final rows = await d.rawQuery('''SELECT t.*, e.started_at, e.listened_ms,
+        e.completed, e.context_kind, e.context_id FROM playback_events e
+      JOIN tracks t ON t.provider_id=e.provider_id AND t.provider_track_id=e.provider_track_id
+      ORDER BY e.started_at ASC''');
+    return [
+      for (final r in rows)
+        TransferEvent(
+          track: TransferTrack.fromTrack(Track.fromDbRow(r)),
+          startedAt: (r['started_at'] as int?) ?? 0,
+          listenedMs: (r['listened_ms'] as int?) ?? 0,
+          completed: (r['completed'] as int? ?? 0) == 1,
+          contextKind: r['context_kind'] as String?,
+          contextId: r['context_id'] as String?,
+        ),
+    ];
+  }
+
+  /// Item tersimpan (album/artis) untuk berkas ekspor.
+  Future<List<TransferSavedItem>> exportSavedItemsData() async {
+    final d = await db;
+    final rows = await d.query('saved_items', orderBy: 'saved_at ASC');
+    return [
+      for (final r in rows)
+        TransferSavedItem(
+          kind: r['kind'] as String,
+          providerId: r['provider_id'] as String,
+          itemId: r['item_id'] as String,
+          title: r['title'] as String,
+          subtitle: r['subtitle'] as String?,
+          artworkUrl: r['artwork_url'] as String?,
+          savedAt: (r['saved_at'] as int?) ?? 0,
+        ),
+    ];
+  }
+
+  /// Hitungan pustaka saat ini (bahan lembar Ekspor & dialog konfirmasi).
+  Future<({int playlists, int liked, int history})> libraryCounts() async {
+    final d = await db;
+    Future<int> count(String sql) async {
+      final r = await d.rawQuery(sql);
+      return (r.first.values.first as int?) ?? 0;
+    }
+
+    return (
+      playlists: await count(
+          'SELECT COUNT(*) FROM playlists WHERE is_system=0'),
+      liked: await count('SELECT COUNT(*) FROM liked_tracks'),
+      history: await count('SELECT COUNT(*) FROM playback_events'),
+    );
+  }
+
+  /// Proyeksi mode Gabungkan atas [data] terhadap keadaan basis data
+  /// sekarang — murni baca, tidak menulis apa pun.
+  Future<ImportProjection> projectLibraryImport(
+      LibraryTransferData data) async {
+    final d = await db;
+    final existingPl = await d.query(
+      'playlists',
+      columns: ['id', 'name'],
+      where: 'is_system=0',
+      orderBy: 'updated_at DESC',
+    );
+    final idByName = <String, String>{};
+    for (final r in existingPl) {
+      idByName.putIfAbsent(r['name'] as String, () => r['id'] as String);
+    }
+    var newPl = 0, mergedPl = 0, tracksAdded = 0;
+    for (final p in data.playlists) {
+      final distinct = <TrackKey>{for (final t in p.tracks) t.key};
+      final targetId = idByName[p.name];
+      if (targetId == null) {
+        newPl++;
+        tracksAdded += distinct.length;
+      } else {
+        mergedPl++;
+        final rows = await d.query(
+          'playlist_entries',
+          columns: ['provider_id', 'provider_track_id'],
+          where: 'playlist_id=?',
+          whereArgs: [targetId],
+        );
+        final have = <TrackKey>{
+          for (final r in rows)
+            TrackKey(
+                r['provider_id'] as String, r['provider_track_id'] as String),
+        };
+        tracksAdded += distinct.difference(have).length;
+      }
+    }
+    final likedNow = await likedKeys();
+    final likedAdded =
+        data.liked.where((l) => !likedNow.contains(l.track.key)).length;
+    var historyAdded = 0;
+    final history = data.history;
+    if (history != null) {
+      final rows = await d.rawQuery(
+          'SELECT provider_id, provider_track_id, started_at, listened_ms FROM playback_events');
+      final seen = <String>{
+        for (final r in rows)
+          '${r['provider_id']}|${r['provider_track_id']}|${r['started_at']}|${r['listened_ms']}',
+      };
+      for (final e in history) {
+        final k =
+            '${e.track.providerId}|${e.track.trackId}|${e.startedAt}|${e.listenedMs}';
+        if (seen.add(k)) historyAdded++;
+      }
+    }
+    return ImportProjection(
+      newPlaylists: newPl,
+      mergedPlaylists: mergedPl,
+      playlistTracksAdded: tracksAdded,
+      likedAdded: likedAdded,
+      historyAdded: historyAdded,
+    );
+  }
+
+  /// Terapkan berkas ekspor yang SUDAH tervalidasi penuh, dalam satu
+  /// transaksi. [replace] = mode Ganti semua: playlist pengguna, suka,
+  /// dan riwayat saat ini dihapus di dalam transaksi yang sama sebelum
+  /// isi berkas ditulis (riwayat hanya dihapus bila berkas memuat
+  /// riwayat — berkas tanpa riwayat tidak menyentuhnya, F-12).
+  Future<void> applyLibraryImport(
+    LibraryTransferData data, {
+    required bool replace,
+  }) async {
+    final d = await db;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await d.transaction((tx) async {
+      // 1) Semua trek dirujuk berkas → katalog (penjaga metadata sama
+      //    seperti cacheTracks: nilai kosong mewarisi nilai lama).
+      final byKey = <TrackKey, TransferTrack>{};
+      for (final p in data.playlists) {
+        for (final t in p.tracks) {
+          byKey[t.key] = t;
+        }
+      }
+      for (final l in data.liked) {
+        byKey[l.track.key] = l.track;
+      }
+      final history = data.history;
+      if (history != null) {
+        for (final e in history) {
+          byKey[e.track.key] = e.track;
+        }
+      }
+      await _upsertTransferTracks(tx, byKey.values);
+
+      // 2) Mode ganti: kosongkan milik pengguna di transaksi yang sama.
+      if (replace) {
+        await tx.rawDelete(
+            'DELETE FROM playlist_entries WHERE playlist_id IN (SELECT id FROM playlists WHERE is_system=0)');
+        await tx.delete('playlists', where: 'is_system=0');
+        await tx.delete('liked_tracks');
+        if (history != null) await tx.delete('playback_events');
+      }
+
+      // 3) Playlist: gabung per nama (mode gabung) atau buat baru.
+      for (final p in data.playlists) {
+        String? targetId;
+        if (!replace) {
+          final rows = await tx.query(
+            'playlists',
+            columns: ['id'],
+            where: 'name=? AND is_system=0',
+            whereArgs: [p.name],
+            orderBy: 'updated_at DESC',
+            limit: 1,
+          );
+          if (rows.isNotEmpty) targetId = rows.first['id'] as String;
+        }
+        if (targetId == null) {
+          targetId = const Uuid().v4();
+          await tx.insert('playlists', {
+            'id': targetId,
+            'name': p.name,
+            'description': p.description,
+            'is_system': 0,
+            'created_at': p.createdAt ?? now,
+            'updated_at': now,
+          });
+        }
+        final existing = await tx.query(
+          'playlist_entries',
+          columns: ['provider_id', 'provider_track_id', 'position'],
+          where: 'playlist_id=?',
+          whereArgs: [targetId],
+        );
+        final have = <TrackKey>{};
+        var pos = 0;
+        for (final r in existing) {
+          have.add(TrackKey(
+              r['provider_id'] as String, r['provider_track_id'] as String));
+          final rp = (r['position'] as int?) ?? 0;
+          if (rp >= pos) pos = rp + 1;
+        }
+        final batch = tx.batch();
+        var inserted = 0;
+        for (final t in p.tracks) {
+          if (!have.add(t.key)) continue; // dedupe per kunci trek
+          batch.insert('playlist_entries', {
+            'playlist_id': targetId,
+            'position': pos++,
+            'provider_id': t.providerId,
+            'provider_track_id': t.trackId,
+            'added_at': now,
+          });
+          inserted++;
+        }
+        if (inserted > 0) await batch.commit(noResult: true);
+        await tx.update(
+          'playlists',
+          {'updated_at': now},
+          where: 'id=?',
+          whereArgs: [targetId],
+        );
+      }
+
+      // 4) Suka: gabungan — baris yang sudah ada mempertahankan waktu
+      //    sukanya (insert ignore).
+      final likeBatch = tx.batch();
+      for (final l in data.liked) {
+        likeBatch.insert(
+          'liked_tracks',
+          {
+            'provider_id': l.track.providerId,
+            'provider_track_id': l.track.trackId,
+            'liked_at': l.likedAt,
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+      if (data.liked.isNotEmpty) await likeBatch.commit(noResult: true);
+
+      // 5) Riwayat: tambahkan peristiwa yang belum tercatat (dedupe
+      //    tupel persis terhadap isi tabel + isi berkas itu sendiri).
+      if (history != null) {
+        final rows = await tx.rawQuery(
+            'SELECT provider_id, provider_track_id, started_at, listened_ms FROM playback_events');
+        final seen = <String>{
+          for (final r in rows)
+            '${r['provider_id']}|${r['provider_track_id']}|${r['started_at']}|${r['listened_ms']}',
+        };
+        final evBatch = tx.batch();
+        var evInserted = 0;
+        for (final e in history) {
+          final k =
+              '${e.track.providerId}|${e.track.trackId}|${e.startedAt}|${e.listenedMs}';
+          if (!seen.add(k)) continue;
+          evBatch.insert('playback_events', {
+            'provider_id': e.track.providerId,
+            'provider_track_id': e.track.trackId,
+            'started_at': e.startedAt,
+            'listened_ms': e.listenedMs,
+            'completed': e.completed ? 1 : 0,
+            'context_kind': e.contextKind,
+            'context_id': e.contextId,
+          });
+          evInserted++;
+        }
+        if (evInserted > 0) await evBatch.commit(noResult: true);
+      }
+
+      // 6) Item tersimpan: tulis per kunci utama (idempoten).
+      final savedBatch = tx.batch();
+      for (final s in data.savedItems) {
+        savedBatch.insert(
+          'saved_items',
+          {
+            'kind': s.kind,
+            'provider_id': s.providerId,
+            'item_id': s.itemId,
+            'title': s.title,
+            'subtitle': s.subtitle,
+            'artwork_url': s.artworkUrl,
+            'saved_at': s.savedAt,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      if (data.savedItems.isNotEmpty) {
+        await savedBatch.commit(noResult: true);
+      }
+    });
+  }
+
+  /// Impor satu playlist bagikan (QR/berkas) sebagai playlist BARU —
+  /// penerima selalu mendapat salinannya sendiri; tabrakan nama diberi
+  /// akhiran " (2)", " (3)", … Mengembalikan nama final yang dipakai.
+  Future<String> importSharedPlaylist(SharedPlaylistData data) async {
+    final d = await db;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return d.transaction((tx) async {
+      await _upsertTransferTracks(tx, data.tracks);
+      var name = data.name;
+      var suffix = 2;
+      while (true) {
+        final rows = await tx.query(
+          'playlists',
+          columns: ['id'],
+          where: 'name=? AND is_system=0',
+          whereArgs: [name],
+          limit: 1,
+        );
+        if (rows.isEmpty) break;
+        name = '${data.name} (${suffix++})';
+      }
+      final id = const Uuid().v4();
+      await tx.insert('playlists', {
+        'id': id,
+        'name': name,
+        'is_system': 0,
+        'created_at': now,
+        'updated_at': now,
+      });
+      final have = <TrackKey>{};
+      final batch = tx.batch();
+      var pos = 0;
+      for (final t in data.tracks) {
+        if (!have.add(t.key)) continue;
+        batch.insert('playlist_entries', {
+          'playlist_id': id,
+          'position': pos++,
+          'provider_id': t.providerId,
+          'provider_track_id': t.trackId,
+          'added_at': now,
+        });
+      }
+      if (pos > 0) await batch.commit(noResult: true);
+      return name;
+    });
+  }
+
+  /// Tulis trek transfer ke katalog di dalam transaksi, dengan penjaga
+  /// metadata yang sama seperti [cacheTracks]: nilai tak-kosong yang
+  /// masuk menang; yang kosong mewarisi baris lama.
+  Future<void> _upsertTransferTracks(
+    Transaction tx,
+    Iterable<TransferTrack> tracks,
+  ) async {
+    for (final tt in tracks) {
+      final t = tt.toTrack();
+      final row = t.toDbRow();
+      final old = await tx.query(
+        'tracks',
+        where: 'provider_id=? AND provider_track_id=?',
+        whereArgs: [t.providerId, t.id],
+        limit: 1,
+      );
+      if (old.isNotEmpty) {
+        final o = old.first;
+        if ((row['artist_names'] as String).trim().isEmpty &&
+            (o['artist_names'] as String).trim().isNotEmpty) {
+          row['artist_names'] = o['artist_names'];
+        }
+        if (row['artwork_url'] == null && o['artwork_url'] != null) {
+          row['artwork_url'] = o['artwork_url'];
+        }
+        if (row['duration_ms'] == null && o['duration_ms'] != null) {
+          row['duration_ms'] = o['duration_ms'];
+        }
+      }
+      await tx.insert(
+        'tracks',
+        row,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
   }
 }

@@ -138,13 +138,10 @@ class _DirectPathSectionState extends ConsumerState<DirectPathSection> {
     const valueStyle = TextStyle(color: ClaiColors.inkSecondary, fontSize: 12, height: 1.45);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        // 8045: bingkai seksi selaras kartu Diagnostik (surface-1,
-        // radius 16); isi & kepadatan datanya tidak berubah.
-        decoration: BoxDecoration(
-            color: ClaiColors.surface1, borderRadius: BorderRadius.circular(16)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Ronde 8084: wadah kartu surface-1 radius 16 DIBUANG — isi
+      // tampil datar di latar halaman; isi & kepadatan datanya
+      // tidak berubah.
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('DIRECT-1 · jalur resolusi produksi (Tahap 3)', style: labelStyle),
           const SizedBox(height: 6),
           Text(
@@ -166,13 +163,14 @@ class _DirectPathSectionState extends ConsumerState<DirectPathSection> {
             Text('Galat terakhir: ${stats.lastError}', style: valueStyle),
           // Audit 8047 (§6.14): dense dibuang, ukuran teks ke kelas
           // skala type (judul 15/badan, subjudul 13/keterangan).
+          // Ronde 8084: sub teks keras penjelas di bawah sakelar
+          // DIBUANG (§13.2) — label sakelar + baris nilai/status di
+          // atasnya tetap; baris kini terkunci 60 / label 15/600.
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Jalur DIRECT aktif (kill-switch)',
-                style: TextStyle(color: ClaiColors.ink, fontSize: 15)),
-            subtitle: const Text(
-                'Mati = semua resolusi lewat rantai warisan (itag 18) seperti sebelum Tahap 3.',
-                style: TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
+            minTileHeight: 60,
+            title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 'Jalur DIRECT aktif (kill-switch)',
+                style: rowTitleStyle()),
             value: _enabled ?? true,
             onChanged: _enabled == null ? null : _setSwitch,
           ),
@@ -207,7 +205,6 @@ class _DirectPathSectionState extends ConsumerState<DirectPathSection> {
           ]),
           if (_byteCompare != null) Text(_byteCompare!, style: valueStyle),
         ]),
-      ),
     );
   }
 }

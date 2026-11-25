@@ -24,9 +24,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offlineBarText => 'Offline mode — downloads & local files only';
 
   @override
-  String get miniSwipeHint => 'Swipe the player card to change tracks';
-
-  @override
   String get eqTitle => 'Equalizer';
 
   @override
@@ -37,12 +34,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Equalizer is not available on this device — the Android Equalizer effect refused to be created on the live player session. Technical details are recorded in the Incident log (Settings → Local Diagnostics).';
 
   @override
-  String get eqSubtitle =>
-      'Shapes Clai\'s audio only (attached to the player session, not system audio).';
-
-  @override
   String get eqWaitingSession =>
-      'Start playing a song so the EQ can be applied to the audio session; settings are saved and applied automatically when a song starts.';
+      'Start playing a song so the EQ can be applied.';
 
   @override
   String get eqPreset => 'Preset';
@@ -60,7 +53,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String ocrModelInstalled(Object size, Object versionPart) {
-    return 'Installed · $size$versionPart — image reading works offline.';
+    return 'Installed · $size$versionPart';
   }
 
   @override
@@ -78,7 +71,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ocrModelNotDownloaded =>
-      'Not downloaded yet. Downloaded once from GitHub Releases (±4 MB), stored on the device, then Capture image works offline. Capture via link doesn\'t need it.';
+      'Not downloaded · one-time download ±4 MB.';
 
   @override
   String get ocrModelDeleteTitle => 'Delete the text reader model?';
@@ -109,9 +102,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateInstalling => 'Handing over to the system installer…';
 
   @override
-  String get updateTapToCheck => 'Tap to check for the latest release.';
-
-  @override
   String updateInstalledLabel(Object label, Object status) {
     return 'Installed: $label · $status';
   }
@@ -122,43 +112,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get updateDownloadSub =>
-      'The APK is downloaded inside the app, then installed through Android\'s system confirmation.';
-
-  @override
   String get updateInstall => 'Install update';
-
-  @override
-  String get updateInstallSub =>
-      'The file is downloaded. Installation shows a system confirmation — that\'s an Android limit, not Clai\'s choice.';
 
   @override
   String get updateAutoCheck => 'Automatic checks';
 
   @override
-  String get updateAutoCheckSub =>
-      'At most once a day, public requests to GitHub only — no user data.';
-
-  @override
   String get updateAutoDownload => 'Auto-update (download in background)';
-
-  @override
-  String get updateAutoDownloadSub =>
-      'New releases download themselves; installation still goes through Android\'s system confirmation.';
 
   @override
   String get updateWifiOnly => 'Download on Wi-Fi only';
 
   @override
-  String get updateWifiOnlySub =>
-      'Automatic downloads wait for Wi-Fi; manual downloads can still use mobile data.';
-
-  @override
   String get updateInstallPermTitle => 'Install permission not granted';
-
-  @override
-  String get updateInstallPermSub =>
-      'Android requires the \"install unknown apps\" permission before Clai can install its own updates.';
 
   @override
   String updateBannerTitle(Object version) {
@@ -174,6 +140,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Download inside the app, install through the system confirmation.';
 
   @override
+  String get updateWhatsNewBtn => 'What\'s new';
+
+  @override
+  String updateWhatsNewTitle(Object version) {
+    return 'What\'s new in $version';
+  }
+
+  @override
+  String updateBuildLabel(int build) {
+    return 'Build $build';
+  }
+
+  @override
   String get commonInstall => 'Install';
 
   @override
@@ -187,7 +166,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get groupPlaybackSum =>
-      'Quality, Autoplay, Smart Shuffle, transitions';
+      'Quality, Autoplay, Shuffle & Smart Shuffle, transitions';
 
   @override
   String get groupAudio => 'Audio';
@@ -205,7 +184,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupAppearance => 'Appearance';
 
   @override
-  String get groupAppearanceSum => 'Accent color from song artwork';
+  String get groupAppearanceSum => 'Cover theme, greeting name & language';
 
   @override
   String get groupDriving => 'Driving';
@@ -254,6 +233,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupAboutSum => 'Version, license, and how Clai works';
 
   @override
+  String get groupExtras => 'Extra Features';
+
+  @override
+  String get groupExtrasSum => 'Driving, capture & ListenBrainz';
+
+  @override
+  String get groupSystem => 'System';
+
+  @override
+  String get groupSystemSum => 'Background, data, updates & diagnostics';
+
+  @override
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'No settings for \"$query\"';
+  }
+
+  @override
   String get setQuality => 'Streaming quality';
 
   @override
@@ -269,27 +268,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setAutoplay => 'Autoplay';
 
   @override
-  String get setAutoplaySub =>
-      'Continues with related songs when the queue ends.';
-
-  @override
   String get setSmartShuffle => 'Smart Shuffle';
-
-  @override
-  String get setSmartShuffleSub =>
-      'Reorders the continuation and Autoplay (artists spread out, favorites first). Never adds new songs.';
 
   @override
   String get setAutoResume => 'Resume automatically after interruptions';
 
   @override
-  String get setAutoResumeSub => 'E.g. after a phone call ends.';
-
-  @override
   String get setTransition => 'Transition mode';
-
-  @override
-  String get setTransitionSub => 'Applies from the next song boundary.';
 
   @override
   String get transitionSnack => 'The new mode applies from the next song.';
@@ -299,70 +284,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String crossfadeDurVal(Object secs) {
-    return '$secs seconds — range 1–12 seconds.';
+    return '$secs seconds';
   }
 
   @override
-  String get playbackFootnote =>
-      'Gapless joins songs with no gap. Crossfade fades out the end of a song as the next one comes in (equal-power, no silent gap). Switching modes never cuts the song that\'s playing (ADR-002).';
-
-  @override
   String get setNormalization => 'Loudness normalization';
-
-  @override
-  String get setNormalizationSub =>
-      'Evens out song loudness from real playback measurements.';
 
   @override
   String get normMicSnack =>
       'Without microphone permission, Android\'s Visualizer may not measure — every song\'s gain stays neutral. The permission is only for measuring levels, never recording.';
 
   @override
-  String get audioFootnote =>
-      'Song loudness is measured from real playback (Visualizer), stored per song, and applied from the next play — songs never measured use a neutral gain.';
-
-  @override
   String get setOfflineMode => 'Offline mode';
-
-  @override
-  String get setOfflineModeSub => 'Only downloaded songs & local files play.';
 
   @override
   String get setManageDownloads => 'Manage downloads';
 
   @override
-  String get setManageDownloadsSub =>
-      'List, progress, play, and delete downloaded songs.';
-
-  @override
-  String get downloadsFootnote =>
-      'Turning on offline mode filters the running queue without cutting the song that\'s playing; Autoplay continuation becomes \"limited — offline\".';
-
-  @override
   String get setDynamicAccent => 'Dynamic cover accent';
 
   @override
-  String get setDynamicAccentSub =>
-      'Artwork color tints the Player background & the Home card.';
-
-  @override
-  String get appearanceFootnote =>
-      'The tint comes from the current artwork\'s signature color and stays dark; the play button & status indicators are always Volt.';
-
-  @override
   String get languageTitle => 'Language';
-
-  @override
-  String get languageSub => 'System default or a manual choice.';
 
   @override
   String get languageSystem => 'System';
 
   @override
   String get captureLinkTitle => 'Capture link/text';
-
-  @override
-  String get captureLinkSub => 'Paste a playlist/song link or a keyword.';
 
   @override
   String get captureHint => 'Paste a link or type a keyword…';
@@ -372,10 +320,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchCaptureTitle => 'Capture a song list';
-
-  @override
-  String get searchCaptureSub =>
-      'Paste a link or text (including a Spotify playlist) or pick an image — the songs are matched for you.';
 
   @override
   String get capturePickImage => 'Pick an image from the gallery';
@@ -404,9 +348,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setAllow => 'Allow';
 
   @override
-  String get setAllowSub => 'Request both permissions via system dialogs.';
-
-  @override
   String get setXiaomi => 'Xiaomi / HyperOS';
 
   @override
@@ -421,15 +362,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Samsung: don\'t put Clai in \"Sleeping apps\".';
 
   @override
-  String get backgroundFootnote =>
-      'If background playback is still killed by the system despite permission on Xiaomi/HyperOS: open Clai\'s App info, enable \"Auto-start\" and set Battery to \"No restrictions\" — those two switches only exist on the system page; Android doesn\'t let apps change them for you. Oppo/Vivo: allow background activity in the brand\'s battery manager.';
-
-  @override
   String get setClearCache => 'Clear stream cache';
-
-  @override
-  String get setClearCacheSub =>
-      'Stream URLs are discarded; fetched again when played.';
 
   @override
   String get cacheClearedSnack => 'Stream cache cleared.';
@@ -438,34 +371,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setClearHistory => 'Clear play history';
 
   @override
-  String get setClearHistorySub =>
-      'History lives only on this device and is yours.';
-
-  @override
   String get historyClearedSnack => 'Play history cleared.';
 
   @override
   String get setDiagTitle => 'Playback Diagnostics';
 
   @override
-  String get setDiagSub => 'Test the playback chain and copy its report.';
-
-  @override
   String get setLogTitle => 'Incident log (on device)';
 
   @override
   String setLogCount(int count) {
-    return '$count entries — never sent anywhere.';
+    return '$count entries';
   }
 
   @override
   String aboutVersion(String version) {
     return 'Clai $version';
   }
-
-  @override
-  String get aboutBody =>
-      'An open-source music player (GPL-3.0), built clean-room: no code or assets from other services. The catalogue and songs come from a third-party music service through an unofficial API — declared openly in the repo README; the provider architecture lets other sources be added without touching the player. You can also paste a public playlist link from another music app: its track list is read, then matched to the catalogue here — no account needed. Lyrics from LRCLIB; artwork enrichment from MusicBrainz/Cover Art Archive; optional scrobbling to ListenBrainz with your own token. All your personal data — library, history, downloads — lives only on your phone.';
 
   @override
   String get logTitle => 'Incident log';
@@ -480,15 +402,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drvMode => 'Driving Mode';
 
   @override
-  String get drvModeSub =>
-      'Giant touch surface + audio controls. Turning it on opens its screen.';
-
-  @override
   String get drvScheme => 'Control scheme';
-
-  @override
-  String get drvSchemeSub =>
-      'Standard media buttons (default) / single-button press patterns (1× play-pause, 2× next, 3× previous) / voice commands.';
 
   @override
   String get drvSchemeButtons => 'Media buttons';
@@ -503,15 +417,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drvAnnounce => 'Voice announcements';
 
   @override
-  String get drvAnnounceSub =>
-      'The next song\'s title is read aloud (TTS) before it plays (off by default).';
-
-  @override
   String get drvSpeedVolume => 'Speed-based volume';
-
-  @override
-  String get drvSpeedVolumeSub =>
-      'Needs location permission. Volume only moves between the two points below; poor GPS = volume freezes.';
 
   @override
   String get drvVolStop => 'Volume when stopped';
@@ -521,7 +427,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String drvVolFastSub(int pct) {
-    return '$pct% — the ceiling, never exceeded.';
+    return '$pct%';
   }
 
   @override
@@ -534,15 +440,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String drvAnchorSub(int kmh) {
-    return '$kmh km/h — at this speed the volume reaches its fastest point.';
+    return '$kmh km/h';
   }
 
   @override
   String get drvVehicles => 'Vehicle devices (Bluetooth)';
-
-  @override
-  String get drvVehiclesHint =>
-      'Tap to load paired devices — marked ones trigger Driving Mode automatically when connected.';
 
   @override
   String get drvVehiclesNone =>
@@ -554,14 +456,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get drvMarkVehicle => 'Mark as vehicle';
-
-  @override
   String get lbTitle => 'Send listening history to ListenBrainz';
-
-  @override
-  String get lbSub =>
-      'Optional and off by default. What\'s sent: title, artist, album, and listening time — to your own ListenBrainz account.';
 
   @override
   String get lbTokenLabel => 'ListenBrainz user token';
@@ -579,13 +474,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lbSaveCheck => 'Save & check token';
 
   @override
-  String get lbSafeTitle => 'Send failures never interrupt playback';
-
-  @override
-  String get lbSafeSub =>
-      'Scrobbles are sent in the background after a song finishes playing (≥30 seconds). The token is stored only on this device.';
-
-  @override
   String get greetMorning => 'Good morning';
 
   @override
@@ -601,18 +489,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeBgCardTitle => 'So the system doesn\'t kill the music';
 
   @override
-  String get homeBgCardSub =>
-      'Background permissions aren\'t complete yet. Without them, some phones stop playback when the screen turns off.';
-
-  @override
   String get homeSetupNow => 'Set up now';
 
   @override
   String get homeEmptyTitle => 'What do you want to hear today?';
 
   @override
-  String get homeEmptySub =>
-      'Find your first song — after that, Autoplay keeps it going.';
+  String get homeEmptySub => 'Find your first song.';
 
   @override
   String get homeSearchSong => 'Search songs';
@@ -647,8 +530,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTopWeek => 'Most played this week';
 
   @override
-  String get homeTopWeekEmpty =>
-      'Nothing on repeat this week yet — what you play will count here.';
+  String get homeTopWeekEmpty => 'Nothing on repeat this week yet.';
 
   @override
   String homePlayCount(int count) {
@@ -733,18 +615,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playerVoice => 'Voice';
-
-  @override
-  String get playerAutoplayCard =>
-      'Autoplay is on — when this context ends, Clai continues with related songs. The music doesn\'t stop midway.';
-
-  @override
-  String get playerAutoplayStrip =>
-      'Autoplay on — continuing with related songs';
-
-  @override
-  String get queueSmartShuffleNote =>
-      'Smart Shuffle — reorders the continuation and Autoplay (artists spread out, favorites pushed up). Never adds new songs.';
 
   @override
   String get queueEmpty => 'The queue is empty. Play a song to start.';
@@ -965,12 +835,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchSpotifyCardTitle => 'Open a Spotify playlist';
 
   @override
-  String get searchSpotifyCardSub =>
-      'Paste a public Spotify playlist link in the search field above — no account needed, songs are matched to the catalogue.';
-
-  @override
-  String get searchEmpty =>
-      'Type to search the catalogue.\nResults appear as you type.';
+  String get searchEmpty => 'Type to search the catalogue.';
 
   @override
   String get searchRecent => 'Recent searches';
@@ -982,8 +847,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchClearQuery => 'Clear search';
 
   @override
-  String get searchNoResults =>
-      'Not found. Try another keyword — this isn\'t a network failure, there simply are no results.';
+  String get searchNoResults => 'Not found. Try another keyword.';
 
   @override
   String get searchResultsLabel => 'Search results';
@@ -1168,10 +1032,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localRescan => 'Rescan';
 
   @override
-  String get localSub =>
-      'Scan your device\'s music folders. Local files are equal to streaming songs in the queue & playlists.';
-
-  @override
   String get localDenied =>
       'Audio permission denied. Local files can\'t be scanned without it.';
 
@@ -1188,7 +1048,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dlEmpty =>
-      'No downloads yet. Download a song from the ⋯ menu on any song row — downloaded songs play without a network.';
+      'No downloads yet. Download a song from the ⋯ menu on any song row.';
 
   @override
   String get dlFailed => 'Download failed.';
@@ -1205,10 +1065,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String dlProgressDone(Object done) {
     return '$done downloaded…';
   }
-
-  @override
-  String get dlFootnote =>
-      'Files live in the app\'s private storage. Downloads can be paused and resumed from the last byte; a full cancel deletes the partial file.';
 
   @override
   String get capGateTitle => 'Text reader model not downloaded';
@@ -1288,10 +1144,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sleepTitle => 'Sleep timer';
 
   @override
-  String get sleepSubOff =>
-      'Music stops on its own — then you can resume tomorrow from the same position.';
-
-  @override
   String sleepSubMinutes(Object remaining) {
     return 'Timer active — $remaining. The volume fades out smoothly over the final stretch, then the music pauses.';
   }
@@ -1331,7 +1183,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceExamples =>
-      'Try: \"play [song title]\", \"add [title] after this\", \"skip\", \"pause\", \"resume\".';
+      'Try: \"play [title]\", \"skip\", \"pause\", \"resume\".';
 
   @override
   String get voiceInputHint => 'Type a command (voice simulation)…';
@@ -1349,18 +1201,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get drvExit => 'Exit';
 
   @override
-  String get drvSwipeHint => 'Swipe left/right anywhere for next/previous.';
-
-  @override
   String get drvNoSong => 'No song';
-
-  @override
-  String get drvAnnounceSubShort =>
-      'The next song\'s title is read aloud before it plays.';
-
-  @override
-  String get drvSpeedVolumeNote =>
-      'Volume only moves between the two points you calibrated in Settings.';
 
   @override
   String get vcDisconnected =>
@@ -1440,10 +1281,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diagTitle => 'Playback Diagnostics';
-
-  @override
-  String get diagIntro =>
-      'Tests the playback chain link by link (resolution → download → plain ExoPlayer → +headers → muxed → app path → local pipeline) for a Song track & a Video item, including native errors from the process logcat. The result is one text report — copy & send it to the developer if a song won\'t play.';
 
   @override
   String get diagRun => 'Run Diagnostics';
@@ -1847,10 +1684,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setDataSaver => 'Data saver mode';
 
   @override
-  String get setDataSaverSub =>
-      'Streaming is always Low quality while on; High quality is blocked on mobile networks.';
-
-  @override
   String get setDataSaverCellularBlock =>
       'High quality is blocked: data saver is on and the device is using a mobile network.';
 
@@ -1991,10 +1824,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Settings → Battery → App launch → Clai → manage manually: enable auto-launch, secondary launch, and run in background.';
 
   @override
-  String get bgAutostartNote =>
-      'Auto-start (autostart) status cannot be detected automatically by apps on Android — check it manually for your device brand below.';
-
-  @override
   String get noticeRegionUnavailable =>
       'This content is not available in your region.';
 
@@ -2072,10 +1901,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setThemeDynamic => 'Dynamic Theme';
 
   @override
-  String get setThemeDynamicSub =>
-      'Ambient colour follows the playing cover; glass and ambient glow turn on. Off = the classic look.';
-
-  @override
   String get setAmbientStrength => 'Ambient Strength';
 
   @override
@@ -2088,29 +1913,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setAmbientBreathing => 'Breathing Ambience';
 
   @override
-  String get setAmbientBreathingSub =>
-      'The glow on the Player pulses very subtly with the music\'s loudness. Stops when paused.';
-
-  @override
   String get setReduceEffects => 'Reduce Effects';
-
-  @override
-  String get setReduceEffectsSub =>
-      'Turn off ambient breathing, colour transitions, and touch vibration.';
 
   @override
   String get setGreetingName => 'Greeting name';
 
   @override
-  String get setGreetingNameSub =>
-      'The name that greets you on Home. Leave empty for a greeting without a name.';
-
-  @override
   String get greetingNameHint => 'Your name';
-
-  @override
-  String get setAmbientStrengthSub =>
-      'How strongly the song\'s colour tints the screen';
 
   @override
   String get searchChartsKicker => 'Charts · This Week';
@@ -2248,4 +2057,564 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lyrCreditShort => 'Lyrics source: LRCLIB (lrclib.net)';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get groupOwnership => 'Ownership';
+
+  @override
+  String get ownSectionData => 'Your data';
+
+  @override
+  String get ownSectionShare => 'Share & receive';
+
+  @override
+  String get ownExportTitle => 'Export data';
+
+  @override
+  String get ownExportSub =>
+      'Save playlists, liked songs & history to one file';
+
+  @override
+  String get ownImportTitle => 'Import data';
+
+  @override
+  String get ownImportSub => 'Restore from a Clai export file';
+
+  @override
+  String get ownShareTitle => 'Share a playlist';
+
+  @override
+  String get ownShareSub => 'Send one playlist via QR code or file';
+
+  @override
+  String get ownReceiveTitle => 'Receive a playlist';
+
+  @override
+  String get ownReceiveSub => 'Scan a QR code from a friend\'s Clai';
+
+  @override
+  String get ownSectionSessions => 'Saved sessions';
+
+  @override
+  String get ownVaultSub => 'Saved listening sessions you can restore anytime';
+
+  @override
+  String ownPlaylistsCount(int count) {
+    return '$count playlists';
+  }
+
+  @override
+  String ownLikedCount(int count) {
+    return '$count liked songs';
+  }
+
+  @override
+  String ownHistoryCount(int count) {
+    return '$count plays';
+  }
+
+  @override
+  String get exportIncludeHistory => 'Include listening history';
+
+  @override
+  String get exportAction => 'Export & share';
+
+  @override
+  String get exportM3uSection => 'Playlists as M3U';
+
+  @override
+  String get exportEmpty => 'Nothing to export yet';
+
+  @override
+  String get exportFailed => 'Export failed. Try again.';
+
+  @override
+  String importFromFile(Object name) {
+    return 'File: $name';
+  }
+
+  @override
+  String get importModeMerge => 'Merge';
+
+  @override
+  String get importModeReplace => 'Replace everything';
+
+  @override
+  String importSumNewPlaylists(int count) {
+    return '$count new playlists added';
+  }
+
+  @override
+  String importSumMergedPlaylists(int count) {
+    return '$count playlists merged into existing ones';
+  }
+
+  @override
+  String importSumTracksAdded(int count) {
+    return '$count songs added to playlists';
+  }
+
+  @override
+  String importSumLikedAdded(int count) {
+    return '$count liked songs added';
+  }
+
+  @override
+  String importSumHistoryAdded(int count) {
+    return '$count plays added';
+  }
+
+  @override
+  String get importApplyMerge => 'Merge now';
+
+  @override
+  String get importApplyReplace => 'Replace everything…';
+
+  @override
+  String get importSuccess => 'Import complete';
+
+  @override
+  String get importNothingNew =>
+      'Nothing new — everything in the file is already here';
+
+  @override
+  String get importReplaceTitle => 'Replace all data?';
+
+  @override
+  String get importReplaceBody =>
+      'Your current playlists, liked songs, and listening history will be deleted and replaced with this file\'s contents. This can\'t be undone.';
+
+  @override
+  String get importFailTitle => 'This file can\'t be imported';
+
+  @override
+  String get importFailNotJson =>
+      'This file\'s contents aren\'t a readable Clai export.';
+
+  @override
+  String get importFailUnrecognized =>
+      'This file isn\'t a Clai export. Pick a file made by Clai\'s Export data.';
+
+  @override
+  String importFailNewer(Object version) {
+    return 'This file was made by a newer Clai (format $version) and can\'t be read by this version. Update Clai and try again.';
+  }
+
+  @override
+  String get importFailCorrupt =>
+      'This export file is damaged or incomplete, so nothing was applied.';
+
+  @override
+  String get importFailTooBig =>
+      'This file is too large to import (max 20 MB).';
+
+  @override
+  String get shareTooBigForQr =>
+      'This playlist is too large for a QR code — share it as a file instead.';
+
+  @override
+  String get shareFileAction => 'Share file';
+
+  @override
+  String get sharePickPlaylist => 'Choose a playlist';
+
+  @override
+  String get shareNoPlaylists => 'No playlists to share yet';
+
+  @override
+  String get scanTitle => 'Scan QR code';
+
+  @override
+  String get scanImportFile => 'Import from file';
+
+  @override
+  String scanFoundSub(int count) {
+    return '$count songs · from QR code';
+  }
+
+  @override
+  String get scanImportAction => 'Import playlist';
+
+  @override
+  String get scanAgain => 'Scan again';
+
+  @override
+  String get scanNotClai => 'This code isn\'t a Clai playlist share';
+
+  @override
+  String scanImported(Object name) {
+    return 'Playlist \"$name\" added';
+  }
+
+  @override
+  String get scanPermDenied => 'Camera permission is needed to scan';
+
+  @override
+  String get scanPermDeniedSub =>
+      'Enable the camera permission, or receive the playlist from a file instead.';
+
+  @override
+  String get scanOpenSettings => 'Open app settings';
+
+  @override
+  String shareFoundFileSub(int count) {
+    return '$count songs · from file';
+  }
+
+  @override
+  String get scanUnavailable => 'Camera is not available on this device';
+
+  @override
+  String get shareQrImageAction => 'Share QR image';
+
+  @override
+  String get shareQrCardFooter => 'Scan this code from Clai';
+
+  @override
+  String get scanPickImage => 'Choose QR image';
+
+  @override
+  String get scanImageNoQr => 'No readable QR code in that image';
+
+  @override
+  String get scanImageUnreadable => 'That image could not be read';
+
+  @override
+  String shareLocalExcluded(int count) {
+    return '$count local songs aren\'t included';
+  }
+
+  @override
+  String scanResolving(int done, int total) {
+    return 'Rebuilding songs from the catalog… $done of $total';
+  }
+
+  @override
+  String get scanRefsNoneFound =>
+      'No songs were found in the catalog — check your connection, or these songs are no longer available.';
+
+  @override
+  String scanSkippedCount(int count) {
+    return '$count songs weren\'t found in the catalog and were skipped';
+  }
+
+  @override
+  String scanImportedSkips(Object name, int count) {
+    return 'Playlist \"$name\" added · $count songs skipped';
+  }
+
+  @override
+  String get vaultTitle => 'Session Vault';
+
+  @override
+  String get vaultSaveAction => 'Save session';
+
+  @override
+  String get vaultSaveTitle => 'Save to Session Vault';
+
+  @override
+  String get vaultNameLabel => 'Session name';
+
+  @override
+  String get vaultSavedSnack => 'Session saved to the Vault';
+
+  @override
+  String get vaultEmptyTitle => 'No saved sessions yet';
+
+  @override
+  String get vaultSaveCurrent => 'Save current queue';
+
+  @override
+  String get vaultRestore => 'Restore session';
+
+  @override
+  String get vaultRestoreBody =>
+      'Your current queue will be replaced by this session, and it will play from where it stopped. The session stays in the Vault after restoring.';
+
+  @override
+  String get vaultRestoredSnack => 'Session restored';
+
+  @override
+  String get vaultRestoreFailed =>
+      'This session can\'t be restored — its tracks are no longer in the local catalog.';
+
+  @override
+  String get vaultDeleteTitle => 'Delete session?';
+
+  @override
+  String vaultDeleteBody(Object name) {
+    return 'The session \"$name\" will be permanently deleted from the Vault.';
+  }
+
+  @override
+  String get vaultSeeAll => 'See all';
+
+  @override
+  String get vaultPlayedSection => 'Already played';
+
+  @override
+  String get vaultCurrentBadge => 'Stopped here';
+
+  @override
+  String get groupTaste => 'Taste';
+
+  @override
+  String get groupTasteSum =>
+      'Taste mirror, incognito mode, recommendation exclusions, and taste reset';
+
+  @override
+  String get tasteBalanceLifetime => 'All time';
+
+  @override
+  String get tasteBalanceRecent => 'Last 30 days';
+
+  @override
+  String get tasteBalanceTitle => 'Taste balance';
+
+  @override
+  String get tasteDayFri => 'Fri';
+
+  @override
+  String get tasteDayMon => 'Mon';
+
+  @override
+  String get tasteDaySat => 'Sat';
+
+  @override
+  String get tasteDaySun => 'Sun';
+
+  @override
+  String get tasteDayThu => 'Thu';
+
+  @override
+  String get tasteDayTue => 'Tue';
+
+  @override
+  String get tasteDayWed => 'Wed';
+
+  @override
+  String get tasteDaypartDiniHari => 'late night';
+
+  @override
+  String get tasteDaypartMalam => 'evening';
+
+  @override
+  String get tasteDaypartPagi => 'morning';
+
+  @override
+  String get tasteDaypartSiang => 'midday';
+
+  @override
+  String get tasteDaypartSore => 'afternoon';
+
+  @override
+  String get tasteExcludeAction => 'Exclude';
+
+  @override
+  String get tasteExcludeEmpty => 'Nothing excluded yet.';
+
+  @override
+  String get tasteExcludeTitle => 'Exclude from Recommendations';
+
+  @override
+  String tasteExcludedDone(Object name) {
+    return '$name excluded from recommendations';
+  }
+
+  @override
+  String get tasteExportFirst => 'Export first';
+
+  @override
+  String tasteGenreEstimate(Object tags) {
+    return 'Estimated genres · MusicBrainz: $tags';
+  }
+
+  @override
+  String get tasteKindArtist => 'Artist';
+
+  @override
+  String get tasteKindTrack => 'Track';
+
+  @override
+  String get tasteMirrorEmpty =>
+      'Your taste has not taken shape yet. Play a few tracks first.';
+
+  @override
+  String get tasteMirrorTitle => 'Taste Mirror';
+
+  @override
+  String get tastePatternsTitle => 'Listening patterns';
+
+  @override
+  String tastePeakDaypart(Object label) {
+    return 'You listen most: $label';
+  }
+
+  @override
+  String get tastePickArtists => 'From your top artists';
+
+  @override
+  String get tastePickTracks => 'From your most played tracks';
+
+  @override
+  String tastePlaysCount(int count) {
+    return '$count plays';
+  }
+
+  @override
+  String tasteResetBackup(Object date) {
+    return 'Last backup: $date';
+  }
+
+  @override
+  String get tasteResetConfirm => 'Reset taste';
+
+  @override
+  String get tasteResetDone => 'Your taste has been reset';
+
+  @override
+  String get tasteResetNoBackup => 'Last backup: none yet';
+
+  @override
+  String get tasteResetSheetBody =>
+      'Listening history, recommendation exclusions, and recommendation weight will be permanently erased. Your library, playlists, downloads, Session Vault, and liked tracks will NOT be touched.';
+
+  @override
+  String get tasteResetSheetTitle => 'Reset your taste?';
+
+  @override
+  String get tasteResetTitle => 'Reset Taste';
+
+  @override
+  String get tasteSamaranPill => 'Incognito';
+
+  @override
+  String get tasteSamaranTitle => 'Incognito Mode';
+
+  @override
+  String get tasteTitle => 'Your Taste';
+
+  @override
+  String get tasteTopArtists => 'Top artists';
+
+  @override
+  String get tasteUndo => 'Undo';
+
+  @override
+  String get tasteWeightLifetime => 'All time';
+
+  @override
+  String get tasteWeightRecent => 'Recent';
+
+  @override
+  String get tasteWeightsTitle => 'Recommendation weight';
+
+  @override
+  String get shufflePanelTitle => 'Shuffle';
+
+  @override
+  String get shufflePanelWhy =>
+      'Every song plays once before anything repeats. The order below is the real play order.';
+
+  @override
+  String get shuffleSmartSub =>
+      'Spread artists apart & put the rarely played first';
+
+  @override
+  String shuffleCycleProgress(int done, int total) {
+    return '$done of $total played in this cycle';
+  }
+
+  @override
+  String get shuffleReshuffle => 'Shuffle again';
+
+  @override
+  String get shuffleOrderTitle => 'Play order, up next';
+
+  @override
+  String get shuffleCardOffSub => 'Off — songs follow their original order';
+
+  @override
+  String get setShuffle => 'Shuffle';
+
+  @override
+  String get menuButtonLabel => 'Menu';
+
+  @override
+  String get menuTasteSub => 'Taste mirror, incognito mode & recommendations';
+
+  @override
+  String get menuVaultSub => 'Queues you saved for later';
+
+  @override
+  String get menuOwnershipSub => 'Export, import, share & receive playlists';
+
+  @override
+  String get menuSettingsSub => 'Appearance, playback, audio & more';
+
+  @override
+  String announceKicker(Object version) {
+    return 'NEW IN CLAI $version';
+  }
+
+  @override
+  String get announceTitle => 'What\'s new in Clai';
+
+  @override
+  String get announceStart => 'Start';
+
+  @override
+  String get announceCtaVault => 'Open Session Vault';
+
+  @override
+  String get announceCtaShare => 'Share a playlist';
+
+  @override
+  String get announceCtaTaste => 'See your taste';
+
+  @override
+  String get announceCtaShuffle => 'Open the Shuffle Panel';
+
+  @override
+  String announceMoreCount(int count) {
+    return 'and $count more new things';
+  }
+
+  @override
+  String patchInstalledTitle(Object version) {
+    return 'Clai $version is installed';
+  }
+
+  @override
+  String get patchInstalledSub => 'Small fixes behind the scenes';
+
+  @override
+  String get patchInstalledSee => 'View';
+
+  @override
+  String get samaranHowTitle => 'How Incognito Mode works';
+
+  @override
+  String get samaranHowRowHistory =>
+      'What you listen to stays out of your Play history.';
+
+  @override
+  String get samaranHowRowTaste =>
+      'It doesn\'t affect your Taste Mirror or recommendations.';
+
+  @override
+  String get samaranHowRowListenBrainz => 'Nothing is sent to ListenBrainz.';
+
+  @override
+  String get samaranHowRowNoLimit =>
+      'It stays on until you turn it off yourself — there\'s no time limit.';
+
+  @override
+  String get samaranHowDontShow => 'Don\'t show again';
+
+  @override
+  String get samaranHowActivate => 'Turn on Incognito';
 }

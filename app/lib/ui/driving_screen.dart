@@ -48,8 +48,9 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen> {
     final driving = ref.watch(drivingServiceProvider);
     // Wajah (Ronde Sapuan 8045, perintah pemilik "ga hanya mobil,
     // tapi seluruhnya app"): Mode Mobil ikut tata bahasa rombak —
-    // kicker + judul display, sampul trek berjalan, sakelar dalam
-    // kartu tonal. PERILAKU terkunci utuh: target raksasa (putar
+    // kicker + judul display, sampul trek berjalan, sakelar datar
+    // (kartu tonalnya pensiun di Ronde 8084). PERILAKU terkunci
+    // utuh: target raksasa (putar
     // 120, sisi 96, suara 72), usap horizontal, keterbacaan besar.
     return Scaffold(
       backgroundColor: ClaiColors.base,
@@ -73,7 +74,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen> {
                 FilledButton.tonal(
                   style: FilledButton.styleFrom(
                     backgroundColor: ClaiColors.surface3,
-                    foregroundColor: ClaiColors.accent,
+                    foregroundColor: ClaiColors.signal,
                   ),
                   onPressed: () async {
                     await driving.setOn(false);
@@ -82,9 +83,6 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen> {
                   child: Text(context.l10n.drvExit),
                 ),
               ]),
-              const SizedBox(height: 8),
-              Text(context.l10n.drvSwipeHint,
-                  style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13)),
               const Spacer(),
               StreamBuilder<MediaItem?>(
                 stream: handler.mediaItem.stream,
@@ -146,37 +144,38 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen> {
                 },
               ),
               const SizedBox(height: 28),
-              Container(
-                decoration: BoxDecoration(
-                  color: ClaiColors.surface1,
-                  borderRadius: BorderRadius.circular(20),
+              // Ronde 8084: wadah kartu surface1 r20 DIBUANG — dua
+              // sakelar tampil datar terkunci (60 / label 15/600);
+              // sub penjelas drvAnnounceSubShort + drvSpeedVolumeNote
+              // DIBUANG (§13.2). Tombol raksasa di atas tidak disentuh.
+              Column(children: [
+                SwitchListTile(
+                  minTileHeight: 60,
+                  title: Text(context.l10n.drvAnnounce,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: ClaiColors.ink)),
+                  value: driving.announceOn,
+                  onChanged: (v) => driving.setAnnounce(v),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(children: [
-                  SwitchListTile(
-                    title: Text(context.l10n.drvAnnounce,
-                        style: const TextStyle(color: ClaiColors.ink)),
-                    subtitle: Text(context.l10n.drvAnnounceSubShort,
-                        style: const TextStyle(color: ClaiColors.inkSecondary)),
-                    value: driving.announceOn,
-                    onChanged: (v) => driving.setAnnounce(v),
-                  ),
-                  const Divider(height: 1, indent: 16, endIndent: 16, color: ClaiColors.divider),
-                  SwitchListTile(
-                    title: Text(context.l10n.drvSpeedVolume,
-                        style: const TextStyle(color: ClaiColors.ink)),
-                    subtitle: Text(context.l10n.drvSpeedVolumeNote,
-                        style: const TextStyle(color: ClaiColors.inkSecondary)),
-                    value: driving.speedVolumeOn,
-                    onChanged: (v) => driving.setSpeedVolume(v),
-                  ),
-                ]),
-              ),
+                const Divider(height: 1, indent: 16, endIndent: 16, color: ClaiColors.divider),
+                SwitchListTile(
+                  minTileHeight: 60,
+                  title: Text(context.l10n.drvSpeedVolume,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: ClaiColors.ink)),
+                  value: driving.speedVolumeOn,
+                  onChanged: (v) => driving.setSpeedVolume(v),
+                ),
+              ]),
               const SizedBox(height: 12),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                    backgroundColor: ClaiColors.accent,
-                    foregroundColor: ClaiColors.onAccent,
+                    backgroundColor: ClaiColors.signal,
+                    foregroundColor: ClaiColors.onSignal,
                     minimumSize: const Size.fromHeight(72)),
                 onPressed: () => openVoiceSheet(context),
                 icon: ClaiIcon(ClaiIcons.mic, size: 26),
@@ -207,10 +206,10 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen> {
           width: size,
           height: size,
           decoration: BoxDecoration(
-              color: filled ? ClaiColors.accent : ClaiColors.surface2,
+              color: filled ? ClaiColors.signal : ClaiColors.surface2,
               shape: BoxShape.circle),
           child: ClaiIcon(icon,
-              color: filled ? ClaiColors.onAccent : ClaiColors.ink,
+              color: filled ? ClaiColors.onSignal : ClaiColors.ink,
               size: size * 0.42),
         ),
       ),

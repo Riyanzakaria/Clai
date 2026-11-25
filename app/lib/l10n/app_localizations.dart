@@ -128,12 +128,6 @@ abstract class AppLocalizations {
   /// **'Mode offline — hanya unduhan & file lokal'**
   String get offlineBarText;
 
-  /// No description provided for @miniSwipeHint.
-  ///
-  /// In id, this message translates to:
-  /// **'Geser kartu pemutar untuk ganti lagu'**
-  String get miniSwipeHint;
-
   /// No description provided for @eqTitle.
   ///
   /// In id, this message translates to:
@@ -152,16 +146,10 @@ abstract class AppLocalizations {
   /// **'Equalizer tidak tersedia di perangkat ini — efek Equalizer Android menolak dibuat pada sesi pemain yang sedang hidup. Detail teknisnya tercatat di Log insiden (Pengaturan → Diagnosis Lokal).'**
   String get eqUnavailable;
 
-  /// No description provided for @eqSubtitle.
-  ///
-  /// In id, this message translates to:
-  /// **'Membentuk frekuensi audio Clai saja (menempel ke sesi pemain, bukan audio sistem).'**
-  String get eqSubtitle;
-
   /// No description provided for @eqWaitingSession.
   ///
   /// In id, this message translates to:
-  /// **'Mulai putar lagu agar EQ dapat diterapkan ke sesi audio; setelan tersimpan dan diterapkan otomatis saat lagu mulai.'**
+  /// **'Mulai putar lagu agar EQ dapat diterapkan.'**
   String get eqWaitingSession;
 
   /// No description provided for @eqPreset.
@@ -191,7 +179,7 @@ abstract class AppLocalizations {
   /// No description provided for @ocrModelInstalled.
   ///
   /// In id, this message translates to:
-  /// **'Terpasang · {size}{versionPart} — membaca gambar bekerja offline.'**
+  /// **'Terpasang · {size}{versionPart}'**
   String ocrModelInstalled(Object size, Object versionPart);
 
   /// No description provided for @ocrModelVersionPart.
@@ -215,7 +203,7 @@ abstract class AppLocalizations {
   /// No description provided for @ocrModelNotDownloaded.
   ///
   /// In id, this message translates to:
-  /// **'Belum diunduh. Diunduh sekali dari GitHub Releases (±4 MB), tersimpan di perangkat, lalu Tangkap gambar bekerja offline. Tangkap lewat tautan tidak membutuhkannya.'**
+  /// **'Belum diunduh · unduhan sekali ±4 MB.'**
   String get ocrModelNotDownloaded;
 
   /// No description provided for @ocrModelDeleteTitle.
@@ -272,12 +260,6 @@ abstract class AppLocalizations {
   /// **'Menyerahkan ke pemasang sistem…'**
   String get updateInstalling;
 
-  /// No description provided for @updateTapToCheck.
-  ///
-  /// In id, this message translates to:
-  /// **'Ketuk untuk memeriksa rilis terbaru.'**
-  String get updateTapToCheck;
-
   /// No description provided for @updateInstalledLabel.
   ///
   /// In id, this message translates to:
@@ -290,23 +272,11 @@ abstract class AppLocalizations {
   /// **'Unduh {tag}'**
   String updateDownloadTag(Object tag);
 
-  /// No description provided for @updateDownloadSub.
-  ///
-  /// In id, this message translates to:
-  /// **'APK diunduh di dalam aplikasi, lalu dipasang lewat konfirmasi sistem Android.'**
-  String get updateDownloadSub;
-
   /// No description provided for @updateInstall.
   ///
   /// In id, this message translates to:
   /// **'Pasang pembaruan'**
   String get updateInstall;
-
-  /// No description provided for @updateInstallSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Berkas sudah terunduh. Pemasangan menampilkan konfirmasi sistem — itu batas Android, bukan pilihan Clai.'**
-  String get updateInstallSub;
 
   /// No description provided for @updateAutoCheck.
   ///
@@ -314,23 +284,11 @@ abstract class AppLocalizations {
   /// **'Periksa otomatis'**
   String get updateAutoCheck;
 
-  /// No description provided for @updateAutoCheckSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Paling sering sekali sehari, hanya permintaan publik ke GitHub — tanpa data pengguna.'**
-  String get updateAutoCheckSub;
-
   /// No description provided for @updateAutoDownload.
   ///
   /// In id, this message translates to:
   /// **'Perbarui otomatis (unduh di latar)'**
   String get updateAutoDownload;
-
-  /// No description provided for @updateAutoDownloadSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Rilis baru diunduh sendiri; pemasangannya tetap lewat konfirmasi sistem Android.'**
-  String get updateAutoDownloadSub;
 
   /// No description provided for @updateWifiOnly.
   ///
@@ -338,23 +296,11 @@ abstract class AppLocalizations {
   /// **'Unduh hanya via Wi-Fi'**
   String get updateWifiOnly;
 
-  /// No description provided for @updateWifiOnlySub.
-  ///
-  /// In id, this message translates to:
-  /// **'Unduhan otomatis menunggu Wi-Fi; unduhan manual tetap bisa memakai data seluler.'**
-  String get updateWifiOnlySub;
-
   /// No description provided for @updateInstallPermTitle.
   ///
   /// In id, this message translates to:
   /// **'Izin pasang belum diberikan'**
   String get updateInstallPermTitle;
-
-  /// No description provided for @updateInstallPermSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Android mewajibkan izin \"pasang aplikasi tak dikenal\" sebelum Clai bisa memasang pembaruannya sendiri.'**
-  String get updateInstallPermSub;
 
   /// No description provided for @updateBannerTitle.
   ///
@@ -373,6 +319,24 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Unduh di dalam aplikasi, pasang lewat konfirmasi sistem.'**
   String get updateBannerDefault;
+
+  /// No description provided for @updateWhatsNewBtn.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang baru'**
+  String get updateWhatsNewBtn;
+
+  /// No description provided for @updateWhatsNewTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang baru di {version}'**
+  String updateWhatsNewTitle(Object version);
+
+  /// No description provided for @updateBuildLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Bangun {build}'**
+  String updateBuildLabel(int build);
 
   /// No description provided for @commonInstall.
   ///
@@ -401,7 +365,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupPlaybackSum.
   ///
   /// In id, this message translates to:
-  /// **'Kualitas, Putar Otomatis, Acak Cerdas, transisi'**
+  /// **'Kualitas, Putar Otomatis, Acak & Acak Cerdas, transisi'**
   String get groupPlaybackSum;
 
   /// No description provided for @groupAudio.
@@ -437,7 +401,7 @@ abstract class AppLocalizations {
   /// No description provided for @groupAppearanceSum.
   ///
   /// In id, this message translates to:
-  /// **'Aksen warna dari sampul lagu'**
+  /// **'Tema sampul, nama sapaan & bahasa'**
   String get groupAppearanceSum;
 
   /// No description provided for @groupDriving.
@@ -530,6 +494,42 @@ abstract class AppLocalizations {
   /// **'Versi, lisensi, dan cara Clai bekerja'**
   String get groupAboutSum;
 
+  /// No description provided for @groupExtras.
+  ///
+  /// In id, this message translates to:
+  /// **'Fitur Tambahan'**
+  String get groupExtras;
+
+  /// No description provided for @groupExtrasSum.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkendara, tangkap & ListenBrainz'**
+  String get groupExtrasSum;
+
+  /// No description provided for @groupSystem.
+  ///
+  /// In id, this message translates to:
+  /// **'Sistem'**
+  String get groupSystem;
+
+  /// No description provided for @groupSystemSum.
+  ///
+  /// In id, this message translates to:
+  /// **'Jalan di latar, data, pembaruan & diagnosis'**
+  String get groupSystemSum;
+
+  /// No description provided for @settingsSearchHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Cari pengaturan'**
+  String get settingsSearchHint;
+
+  /// No description provided for @settingsSearchEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada pengaturan untuk \"{query}\"'**
+  String settingsSearchEmpty(String query);
+
   /// No description provided for @setQuality.
   ///
   /// In id, this message translates to:
@@ -560,23 +560,11 @@ abstract class AppLocalizations {
   /// **'Putar Otomatis'**
   String get setAutoplay;
 
-  /// No description provided for @setAutoplaySub.
-  ///
-  /// In id, this message translates to:
-  /// **'Menyambung lagu terkait saat antrean habis.'**
-  String get setAutoplaySub;
-
   /// No description provided for @setSmartShuffle.
   ///
   /// In id, this message translates to:
   /// **'Acak Cerdas (Smart Shuffle)'**
   String get setSmartShuffle;
-
-  /// No description provided for @setSmartShuffleSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didahulukan). Tidak menambah lagu baru.'**
-  String get setSmartShuffleSub;
 
   /// No description provided for @setAutoResume.
   ///
@@ -584,23 +572,11 @@ abstract class AppLocalizations {
   /// **'Lanjut otomatis setelah interupsi'**
   String get setAutoResume;
 
-  /// No description provided for @setAutoResumeSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Mis. sesudah panggilan telepon selesai.'**
-  String get setAutoResumeSub;
-
   /// No description provided for @setTransition.
   ///
   /// In id, this message translates to:
   /// **'Mode transisi'**
   String get setTransition;
-
-  /// No description provided for @setTransitionSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Berlaku mulai batas lagu berikutnya.'**
-  String get setTransitionSub;
 
   /// No description provided for @transitionSnack.
   ///
@@ -617,14 +593,8 @@ abstract class AppLocalizations {
   /// No description provided for @crossfadeDurVal.
   ///
   /// In id, this message translates to:
-  /// **'{secs} detik — rentang 1–12 detik.'**
+  /// **'{secs} detik'**
   String crossfadeDurVal(Object secs);
-
-  /// No description provided for @playbackFootnote.
-  ///
-  /// In id, this message translates to:
-  /// **'Gapless menyambung lagu tanpa jeda. Crossfade memudarkan ujung lagu sambil awal lagu berikut masuk (equal-power, tanpa jeda sunyi). Alih mode tidak pernah memotong lagu yang sedang berbunyi (ADR-002).'**
-  String get playbackFootnote;
 
   /// No description provided for @setNormalization.
   ///
@@ -632,23 +602,11 @@ abstract class AppLocalizations {
   /// **'Normalisasi kenyaringan'**
   String get setNormalization;
 
-  /// No description provided for @setNormalizationSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Samakan keras lagu dari pengukuran putar nyata.'**
-  String get setNormalizationSub;
-
   /// No description provided for @normMicSnack.
   ///
   /// In id, this message translates to:
   /// **'Tanpa izin mikrofon, Visualizer Android tidak boleh mengukur — gain semua lagu tetap netral. Izinnya hanya untuk mengukur level, tidak merekam.'**
   String get normMicSnack;
-
-  /// No description provided for @audioFootnote.
-  ///
-  /// In id, this message translates to:
-  /// **'Keras lagu diukur dari pemutaran nyata (Visualizer), disimpan per lagu, dan dipakai mulai putaran berikutnya — lagu yang belum pernah terukur memakai gain netral.'**
-  String get audioFootnote;
 
   /// No description provided for @setOfflineMode.
   ///
@@ -656,29 +614,11 @@ abstract class AppLocalizations {
   /// **'Mode offline'**
   String get setOfflineMode;
 
-  /// No description provided for @setOfflineModeSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Hanya lagu terunduh & file lokal yang diputar.'**
-  String get setOfflineModeSub;
-
   /// No description provided for @setManageDownloads.
   ///
   /// In id, this message translates to:
   /// **'Kelola unduhan'**
   String get setManageDownloads;
-
-  /// No description provided for @setManageDownloadsSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Daftar, progres, putar, dan hapus lagu terunduh.'**
-  String get setManageDownloadsSub;
-
-  /// No description provided for @downloadsFootnote.
-  ///
-  /// In id, this message translates to:
-  /// **'Menyalakan mode offline menyaring antrean berjalan tanpa memotong lagu yang sedang berbunyi; sambungan Putar Otomatis menjadi \"terbatas — offline\".'**
-  String get downloadsFootnote;
 
   /// No description provided for @setDynamicAccent.
   ///
@@ -686,29 +626,11 @@ abstract class AppLocalizations {
   /// **'Aksen cover dinamis'**
   String get setDynamicAccent;
 
-  /// No description provided for @setDynamicAccentSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Warna sampul mewarnai latar Player & kartu Beranda.'**
-  String get setDynamicAccentSub;
-
-  /// No description provided for @appearanceFootnote.
-  ///
-  /// In id, this message translates to:
-  /// **'Nuansa diambil dari warna khas sampul yang sedang tampil dan tetap gelap; tombol putar & indikator status selalu Volt.'**
-  String get appearanceFootnote;
-
   /// No description provided for @languageTitle.
   ///
   /// In id, this message translates to:
   /// **'Bahasa'**
   String get languageTitle;
-
-  /// No description provided for @languageSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Bawaan sistem atau pilihan manual.'**
-  String get languageSub;
 
   /// No description provided for @languageSystem.
   ///
@@ -721,12 +643,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Tangkap tautan/teks'**
   String get captureLinkTitle;
-
-  /// No description provided for @captureLinkSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Tempel tautan playlist/lagu atau kata kunci.'**
-  String get captureLinkSub;
 
   /// No description provided for @captureHint.
   ///
@@ -745,12 +661,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Tangkap daftar lagu'**
   String get searchCaptureTitle;
-
-  /// No description provided for @searchCaptureSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Tempel tautan/teks (termasuk playlist Spotify) atau pilih gambar — lagunya dicocokkan untukmu.'**
-  String get searchCaptureSub;
 
   /// No description provided for @capturePickImage.
   ///
@@ -800,12 +710,6 @@ abstract class AppLocalizations {
   /// **'Izinkan'**
   String get setAllow;
 
-  /// No description provided for @setAllowSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Minta kedua izin lewat dialog sistem.'**
-  String get setAllowSub;
-
   /// No description provided for @setXiaomi.
   ///
   /// In id, this message translates to:
@@ -830,23 +734,11 @@ abstract class AppLocalizations {
   /// **'Samsung: jangan masukkan Clai ke \"Aplikasi tidur\".'**
   String get setOtherBrandsSub;
 
-  /// No description provided for @backgroundFootnote.
-  ///
-  /// In id, this message translates to:
-  /// **'Bila putar latar masih dibunuh sistem walau sudah diizinkan di Xiaomi/HyperOS: buka Info aplikasi Clai, aktifkan \"Mulai otomatis\" dan setel Baterai ke \"Tanpa batasan\" — dua sakelar itu hanya ada di halaman sistem, Android tidak mengizinkan aplikasi mengubahnya untukmu. Oppo/Vivo: izinkan aktivitas latar di pengelola baterai merek.'**
-  String get backgroundFootnote;
-
   /// No description provided for @setClearCache.
   ///
   /// In id, this message translates to:
   /// **'Hapus cache aliran'**
   String get setClearCache;
-
-  /// No description provided for @setClearCacheSub.
-  ///
-  /// In id, this message translates to:
-  /// **'URL aliran dibuang; diambil ulang saat diputar.'**
-  String get setClearCacheSub;
 
   /// No description provided for @cacheClearedSnack.
   ///
@@ -860,12 +752,6 @@ abstract class AppLocalizations {
   /// **'Hapus riwayat putar'**
   String get setClearHistory;
 
-  /// No description provided for @setClearHistorySub.
-  ///
-  /// In id, this message translates to:
-  /// **'Riwayat hanya hidup di perangkat ini dan milikmu.'**
-  String get setClearHistorySub;
-
   /// No description provided for @historyClearedSnack.
   ///
   /// In id, this message translates to:
@@ -878,12 +764,6 @@ abstract class AppLocalizations {
   /// **'Diagnostik Putar'**
   String get setDiagTitle;
 
-  /// No description provided for @setDiagSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Uji rantai putar dan salin laporannya.'**
-  String get setDiagSub;
-
   /// No description provided for @setLogTitle.
   ///
   /// In id, this message translates to:
@@ -893,7 +773,7 @@ abstract class AppLocalizations {
   /// No description provided for @setLogCount.
   ///
   /// In id, this message translates to:
-  /// **'{count} catatan — tidak dikirim ke mana pun.'**
+  /// **'{count} catatan'**
   String setLogCount(int count);
 
   /// About page title: app name + the package versionName read dynamically from the installed package (never hardcoded).
@@ -901,12 +781,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Clai {version}'**
   String aboutVersion(String version);
-
-  /// No description provided for @aboutBody.
-  ///
-  /// In id, this message translates to:
-  /// **'Pemutar musik sumber terbuka (GPL-3.0) yang dibangun clean-room: tanpa kode atau aset dari layanan lain. Katalog dan lagu berasal dari layanan musik pihak ketiga lewat API tidak resmi — dinyatakan terbuka di README repo; arsitektur provider memungkinkan sumber lain ditambahkan tanpa menyentuh player. Kamu juga bisa menempel tautan playlist publik dari aplikasi musik lain: daftar lagunya dibaca, lalu dicocokkan ke katalog di sini — tanpa akun. Lirik dari LRCLIB; pengayaan sampul dari MusicBrainz/Cover Art Archive; scrobble opsional ke ListenBrainz dengan token milikmu sendiri. Semua data pribadimu — koleksi, riwayat, unduhan — hanya tersimpan di HP-mu.'**
-  String get aboutBody;
 
   /// No description provided for @logTitle.
   ///
@@ -932,23 +806,11 @@ abstract class AppLocalizations {
   /// **'Mode Berkendara'**
   String get drvMode;
 
-  /// No description provided for @drvModeSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Permukaan sentuh raksasa + kendali audio. Menyalakan membuka layarnya.'**
-  String get drvModeSub;
-
   /// No description provided for @drvScheme.
   ///
   /// In id, this message translates to:
   /// **'Skema kendali'**
   String get drvScheme;
-
-  /// No description provided for @drvSchemeSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Tombol media standar (bawaan) / pola tekan satu tombol (1× putar-jeda, 2× berikutnya, 3× sebelumnya) / perintah suara.'**
-  String get drvSchemeSub;
 
   /// No description provided for @drvSchemeButtons.
   ///
@@ -974,23 +836,11 @@ abstract class AppLocalizations {
   /// **'Pengumuman suara'**
   String get drvAnnounce;
 
-  /// No description provided for @drvAnnounceSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Judul lagu berikutnya dibacakan TTS sebelum diputar (bawaan mati).'**
-  String get drvAnnounceSub;
-
   /// No description provided for @drvSpeedVolume.
   ///
   /// In id, this message translates to:
   /// **'Volume ikut kecepatan'**
   String get drvSpeedVolume;
-
-  /// No description provided for @drvSpeedVolumeSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Perlu izin lokasi. Volume hanya bergerak di antara dua titik di bawah; GPS buruk = volume membeku.'**
-  String get drvSpeedVolumeSub;
 
   /// No description provided for @drvVolStop.
   ///
@@ -1007,7 +857,7 @@ abstract class AppLocalizations {
   /// No description provided for @drvVolFastSub.
   ///
   /// In id, this message translates to:
-  /// **'{pct}% — plafon, tidak pernah dilampaui.'**
+  /// **'{pct}%'**
   String drvVolFastSub(int pct);
 
   /// No description provided for @drvVolPct.
@@ -1025,7 +875,7 @@ abstract class AppLocalizations {
   /// No description provided for @drvAnchorSub.
   ///
   /// In id, this message translates to:
-  /// **'{kmh} km/jam — pada kecepatan ini volume mencapai titik tercepat.'**
+  /// **'{kmh} km/jam'**
   String drvAnchorSub(int kmh);
 
   /// No description provided for @drvVehicles.
@@ -1033,12 +883,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Perangkat kendaraan (Bluetooth)'**
   String get drvVehicles;
-
-  /// No description provided for @drvVehiclesHint.
-  ///
-  /// In id, this message translates to:
-  /// **'Ketuk untuk memuat perangkat terpasang — yang ditandai memicu Mode Berkendara otomatis saat tersambung.'**
-  String get drvVehiclesHint;
 
   /// No description provided for @drvVehiclesNone.
   ///
@@ -1052,23 +896,11 @@ abstract class AppLocalizations {
   /// **'{count} perangkat terpasang.'**
   String drvVehiclesCount(int count);
 
-  /// No description provided for @drvMarkVehicle.
-  ///
-  /// In id, this message translates to:
-  /// **'Tandai sebagai kendaraan'**
-  String get drvMarkVehicle;
-
   /// No description provided for @lbTitle.
   ///
   /// In id, this message translates to:
   /// **'Kirim riwayat dengar ke ListenBrainz'**
   String get lbTitle;
-
-  /// No description provided for @lbSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Opsional dan mati secara default. Yang dikirim: judul, artis, album, dan waktu dengar — ke akun ListenBrainz milikmu sendiri.'**
-  String get lbSub;
 
   /// No description provided for @lbTokenLabel.
   ///
@@ -1100,18 +932,6 @@ abstract class AppLocalizations {
   /// **'Simpan & periksa token'**
   String get lbSaveCheck;
 
-  /// No description provided for @lbSafeTitle.
-  ///
-  /// In id, this message translates to:
-  /// **'Kegagalan kirim tidak mengganggu putar'**
-  String get lbSafeTitle;
-
-  /// No description provided for @lbSafeSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Scrobble dikirim di latar sesudah lagu selesai didengar (≥30 detik). Token hanya tersimpan di perangkat ini.'**
-  String get lbSafeSub;
-
   /// No description provided for @greetMorning.
   ///
   /// In id, this message translates to:
@@ -1142,12 +962,6 @@ abstract class AppLocalizations {
   /// **'Agar musik tidak dibunuh sistem'**
   String get homeBgCardTitle;
 
-  /// No description provided for @homeBgCardSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Izin jalan di latar belum lengkap. Tanpa itu, sebagian ponsel menghentikan putar saat layar mati.'**
-  String get homeBgCardSub;
-
   /// No description provided for @homeSetupNow.
   ///
   /// In id, this message translates to:
@@ -1163,7 +977,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeEmptySub.
   ///
   /// In id, this message translates to:
-  /// **'Cari lagu pertamamu — sesudahnya biar Putar Otomatis yang menyambung.'**
+  /// **'Cari lagu pertamamu.'**
   String get homeEmptySub;
 
   /// No description provided for @homeSearchSong.
@@ -1229,7 +1043,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeTopWeekEmpty.
   ///
   /// In id, this message translates to:
-  /// **'Belum ada lagu yang sering diputar minggu ini — yang kamu putar akan terhitung di sini.'**
+  /// **'Belum ada lagu yang sering diputar minggu ini.'**
   String get homeTopWeekEmpty;
 
   /// No description provided for @homePlayCount.
@@ -1375,24 +1189,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Suara'**
   String get playerVoice;
-
-  /// No description provided for @playerAutoplayCard.
-  ///
-  /// In id, this message translates to:
-  /// **'Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.'**
-  String get playerAutoplayCard;
-
-  /// No description provided for @playerAutoplayStrip.
-  ///
-  /// In id, this message translates to:
-  /// **'Putar Otomatis aktif — menyambung lagu terkait'**
-  String get playerAutoplayStrip;
-
-  /// No description provided for @queueSmartShuffleNote.
-  ///
-  /// In id, this message translates to:
-  /// **'Acak Cerdas — mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didorong). Tidak menambah lagu baru.'**
-  String get queueSmartShuffleNote;
 
   /// No description provided for @queueEmpty.
   ///
@@ -1754,16 +1550,10 @@ abstract class AppLocalizations {
   /// **'Buka playlist Spotify'**
   String get searchSpotifyCardTitle;
 
-  /// No description provided for @searchSpotifyCardSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Tempel tautan playlist publik Spotify di bidang cari di atas — tanpa akun, lagu dicocokkan ke katalog.'**
-  String get searchSpotifyCardSub;
-
   /// No description provided for @searchEmpty.
   ///
   /// In id, this message translates to:
-  /// **'Ketik untuk mencari di katalog.\nHasil muncul sambil kamu mengetik.'**
+  /// **'Ketik untuk mencari di katalog.'**
   String get searchEmpty;
 
   /// No description provided for @searchRecent.
@@ -1787,7 +1577,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchNoResults.
   ///
   /// In id, this message translates to:
-  /// **'Tidak ditemukan. Coba kata kunci lain — ini bukan gagal jaringan, memang tidak ada hasilnya.'**
+  /// **'Tidak ditemukan. Coba kata kunci lain.'**
   String get searchNoResults;
 
   /// No description provided for @searchResultsLabel.
@@ -2102,12 +1892,6 @@ abstract class AppLocalizations {
   /// **'Pindai ulang'**
   String get localRescan;
 
-  /// No description provided for @localSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Pindai folder musik perangkatmu. File lokal setara dengan lagu streaming di antrean & playlist.'**
-  String get localSub;
-
   /// No description provided for @localDenied.
   ///
   /// In id, this message translates to:
@@ -2135,7 +1919,7 @@ abstract class AppLocalizations {
   /// No description provided for @dlEmpty.
   ///
   /// In id, this message translates to:
-  /// **'Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun — lagu terunduh bisa diputar tanpa jaringan.'**
+  /// **'Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun.'**
   String get dlEmpty;
 
   /// No description provided for @dlFailed.
@@ -2161,12 +1945,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'{done} diunduh…'**
   String dlProgressDone(Object done);
-
-  /// No description provided for @dlFootnote.
-  ///
-  /// In id, this message translates to:
-  /// **'Berkas tinggal di penyimpanan privat aplikasi. Unduhan bisa dijeda dan dilanjutkan dari byte terakhir; pembatalan penuh menghapus berkas sebagian.'**
-  String get dlFootnote;
 
   /// No description provided for @capGateTitle.
   ///
@@ -2306,12 +2084,6 @@ abstract class AppLocalizations {
   /// **'Timer tidur'**
   String get sleepTitle;
 
-  /// No description provided for @sleepSubOff.
-  ///
-  /// In id, this message translates to:
-  /// **'Musik berhenti sendiri — lalu bisa dilanjutkan besok dari posisi yang sama.'**
-  String get sleepSubOff;
-
   /// No description provided for @sleepSubMinutes.
   ///
   /// In id, this message translates to:
@@ -2375,7 +2147,7 @@ abstract class AppLocalizations {
   /// No description provided for @voiceExamples.
   ///
   /// In id, this message translates to:
-  /// **'Coba: \"putar [judul lagu]\", \"tambah [judul] setelah ini\", \"lewati\", \"jeda\", \"lanjut\".'**
+  /// **'Coba: \"putar [judul]\", \"lewati\", \"jeda\", \"lanjut\".'**
   String get voiceExamples;
 
   /// No description provided for @voiceInputHint.
@@ -2408,29 +2180,11 @@ abstract class AppLocalizations {
   /// **'Keluar'**
   String get drvExit;
 
-  /// No description provided for @drvSwipeHint.
-  ///
-  /// In id, this message translates to:
-  /// **'Usap kiri/kanan di mana saja untuk berikutnya/sebelumnya.'**
-  String get drvSwipeHint;
-
   /// No description provided for @drvNoSong.
   ///
   /// In id, this message translates to:
   /// **'Tidak ada lagu'**
   String get drvNoSong;
-
-  /// No description provided for @drvAnnounceSubShort.
-  ///
-  /// In id, this message translates to:
-  /// **'Judul lagu berikutnya dibacakan sebelum diputar.'**
-  String get drvAnnounceSubShort;
-
-  /// No description provided for @drvSpeedVolumeNote.
-  ///
-  /// In id, this message translates to:
-  /// **'Volume bergerak hanya di antara dua titik yang kamu kalibrasi di Pengaturan.'**
-  String get drvSpeedVolumeNote;
 
   /// No description provided for @vcDisconnected.
   ///
@@ -2551,12 +2305,6 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Diagnostik Putar'**
   String get diagTitle;
-
-  /// No description provided for @diagIntro.
-  ///
-  /// In id, this message translates to:
-  /// **'Menguji rantai putar per mata rantai (resolusi → unduh → ExoPlayer polos → +header → muxed → jalur aplikasi → pipa lokal) untuk lagu Song & item Video, lengkap dengan galat natif dari logcat proses. Hasilnya satu laporan teks — salin & kirim ke pengembang bila lagu tidak bunyi.'**
-  String get diagIntro;
 
   /// No description provided for @diagRun.
   ///
@@ -3218,12 +2966,6 @@ abstract class AppLocalizations {
   /// **'Mode hemat data'**
   String get setDataSaver;
 
-  /// No description provided for @setDataSaverSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Streaming selalu kualitas Rendah saat aktif; kualitas Tinggi dicegah di jaringan seluler.'**
-  String get setDataSaverSub;
-
   /// No description provided for @setDataSaverCellularBlock.
   ///
   /// In id, this message translates to:
@@ -3482,12 +3224,6 @@ abstract class AppLocalizations {
   /// **'Pengaturan → Baterai → Peluncuran aplikasi → Clai → kelola manual: aktifkan mulai-otomatis, peluncuran sekunder, dan jalan di latar.'**
   String get setHuaweiSub;
 
-  /// No description provided for @bgAutostartNote.
-  ///
-  /// In id, this message translates to:
-  /// **'Status mulai-otomatis (autostart) tidak dapat dideteksi aplikasi secara otomatis di Android — periksa manual sesuai merek perangkatmu di bawah.'**
-  String get bgAutostartNote;
-
   /// No description provided for @noticeRegionUnavailable.
   ///
   /// In id, this message translates to:
@@ -3608,12 +3344,6 @@ abstract class AppLocalizations {
   /// **'Tema Dinamis'**
   String get setThemeDynamic;
 
-  /// No description provided for @setThemeDynamicSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Warna suasana mengikuti sampul lagu yang diputar; kaca dan cahaya ambien ikut menyala. Mati = tampilan klasik.'**
-  String get setThemeDynamicSub;
-
   /// No description provided for @setAmbientStrength.
   ///
   /// In id, this message translates to:
@@ -3638,23 +3368,11 @@ abstract class AppLocalizations {
   /// **'Ambien Bernapas'**
   String get setAmbientBreathing;
 
-  /// No description provided for @setAmbientBreathingSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Cahaya di Player berdenyut sangat halus mengikuti kerasnya musik. Mati saat lagu dijeda.'**
-  String get setAmbientBreathingSub;
-
   /// No description provided for @setReduceEffects.
   ///
   /// In id, this message translates to:
   /// **'Kurangi Efek'**
   String get setReduceEffects;
-
-  /// No description provided for @setReduceEffectsSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Matikan napas ambien, peralihan warna, dan getaran sentuh.'**
-  String get setReduceEffectsSub;
 
   /// No description provided for @setGreetingName.
   ///
@@ -3662,23 +3380,11 @@ abstract class AppLocalizations {
   /// **'Nama sapaan'**
   String get setGreetingName;
 
-  /// No description provided for @setGreetingNameSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Nama yang menyapa kamu di Beranda. Kosongkan untuk sapaan tanpa nama.'**
-  String get setGreetingNameSub;
-
   /// No description provided for @greetingNameHint.
   ///
   /// In id, this message translates to:
   /// **'Nama kamu'**
   String get greetingNameHint;
-
-  /// No description provided for @setAmbientStrengthSub.
-  ///
-  /// In id, this message translates to:
-  /// **'Seberapa pekat warna lagu mewarnai layar'**
-  String get setAmbientStrengthSub;
 
   /// No description provided for @searchChartsKicker.
   ///
@@ -3913,6 +3619,978 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Sumber lirik: LRCLIB (lrclib.net)'**
   String get lyrCreditShort;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In id, this message translates to:
+  /// **'Tutup'**
+  String get commonClose;
+
+  /// No description provided for @groupOwnership.
+  ///
+  /// In id, this message translates to:
+  /// **'Kepemilikan'**
+  String get groupOwnership;
+
+  /// No description provided for @ownSectionData.
+  ///
+  /// In id, this message translates to:
+  /// **'Data kamu'**
+  String get ownSectionData;
+
+  /// No description provided for @ownSectionShare.
+  ///
+  /// In id, this message translates to:
+  /// **'Bagikan & terima'**
+  String get ownSectionShare;
+
+  /// No description provided for @ownExportTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Ekspor data'**
+  String get ownExportTitle;
+
+  /// No description provided for @ownExportSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan playlist, lagu disukai & riwayat ke satu berkas'**
+  String get ownExportSub;
+
+  /// No description provided for @ownImportTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Impor data'**
+  String get ownImportTitle;
+
+  /// No description provided for @ownImportSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Pulihkan dari berkas ekspor Clai'**
+  String get ownImportSub;
+
+  /// No description provided for @ownShareTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Bagikan playlist'**
+  String get ownShareTitle;
+
+  /// No description provided for @ownShareSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim satu playlist lewat kode QR atau berkas'**
+  String get ownShareSub;
+
+  /// No description provided for @ownReceiveTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Terima playlist'**
+  String get ownReceiveTitle;
+
+  /// No description provided for @ownReceiveSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Pindai kode QR dari Clai temanmu'**
+  String get ownReceiveSub;
+
+  /// No description provided for @ownSectionSessions.
+  ///
+  /// In id, this message translates to:
+  /// **'Sesi tersimpan'**
+  String get ownSectionSessions;
+
+  /// No description provided for @ownVaultSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Sesi putar tersimpan yang bisa dipulihkan kapan saja'**
+  String get ownVaultSub;
+
+  /// No description provided for @ownPlaylistsCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} playlist'**
+  String ownPlaylistsCount(int count);
+
+  /// No description provided for @ownLikedCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu disukai'**
+  String ownLikedCount(int count);
+
+  /// No description provided for @ownHistoryCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} riwayat putar'**
+  String ownHistoryCount(int count);
+
+  /// No description provided for @exportIncludeHistory.
+  ///
+  /// In id, this message translates to:
+  /// **'Sertakan riwayat putar'**
+  String get exportIncludeHistory;
+
+  /// No description provided for @exportAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Ekspor & bagikan'**
+  String get exportAction;
+
+  /// No description provided for @exportM3uSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist sebagai M3U'**
+  String get exportM3uSection;
+
+  /// No description provided for @exportEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada data untuk diekspor'**
+  String get exportEmpty;
+
+  /// No description provided for @exportFailed.
+  ///
+  /// In id, this message translates to:
+  /// **'Ekspor gagal. Coba lagi.'**
+  String get exportFailed;
+
+  /// No description provided for @importFromFile.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkas: {name}'**
+  String importFromFile(Object name);
+
+  /// No description provided for @importModeMerge.
+  ///
+  /// In id, this message translates to:
+  /// **'Gabungkan'**
+  String get importModeMerge;
+
+  /// No description provided for @importModeReplace.
+  ///
+  /// In id, this message translates to:
+  /// **'Ganti semua'**
+  String get importModeReplace;
+
+  /// No description provided for @importSumNewPlaylists.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} playlist baru ditambahkan'**
+  String importSumNewPlaylists(int count);
+
+  /// No description provided for @importSumMergedPlaylists.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} playlist digabungkan ke yang sudah ada'**
+  String importSumMergedPlaylists(int count);
+
+  /// No description provided for @importSumTracksAdded.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu ditambahkan ke playlist'**
+  String importSumTracksAdded(int count);
+
+  /// No description provided for @importSumLikedAdded.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu disukai ditambahkan'**
+  String importSumLikedAdded(int count);
+
+  /// No description provided for @importSumHistoryAdded.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} riwayat putar ditambahkan'**
+  String importSumHistoryAdded(int count);
+
+  /// No description provided for @importApplyMerge.
+  ///
+  /// In id, this message translates to:
+  /// **'Gabungkan sekarang'**
+  String get importApplyMerge;
+
+  /// No description provided for @importApplyReplace.
+  ///
+  /// In id, this message translates to:
+  /// **'Ganti semua…'**
+  String get importApplyReplace;
+
+  /// No description provided for @importSuccess.
+  ///
+  /// In id, this message translates to:
+  /// **'Impor selesai'**
+  String get importSuccess;
+
+  /// No description provided for @importNothingNew.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada yang baru — semua isi berkas sudah ada di sini'**
+  String get importNothingNew;
+
+  /// No description provided for @importReplaceTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Ganti semua data?'**
+  String get importReplaceTitle;
+
+  /// No description provided for @importReplaceBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist, lagu disukai, dan riwayat putar kamu sekarang akan dihapus lalu diganti isi berkas ini. Tindakan ini tidak bisa dibatalkan.'**
+  String get importReplaceBody;
+
+  /// No description provided for @importFailTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkas tidak bisa diimpor'**
+  String get importFailTitle;
+
+  /// No description provided for @importFailNotJson.
+  ///
+  /// In id, this message translates to:
+  /// **'Isi berkas ini bukan berkas ekspor Clai yang bisa dibaca.'**
+  String get importFailNotJson;
+
+  /// No description provided for @importFailUnrecognized.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkas ini bukan ekspor Clai. Pilih berkas hasil Ekspor data dari Clai.'**
+  String get importFailUnrecognized;
+
+  /// No description provided for @importFailNewer.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkas ini dibuat oleh Clai yang lebih baru (format {version}) dan tidak bisa dibaca versi ini. Perbarui Clai lalu coba lagi.'**
+  String importFailNewer(Object version);
+
+  /// No description provided for @importFailCorrupt.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkas ekspor ini rusak atau tidak lengkap, jadi tidak ada yang diterapkan.'**
+  String get importFailCorrupt;
+
+  /// No description provided for @importFailTooBig.
+  ///
+  /// In id, this message translates to:
+  /// **'Berkas ini terlalu besar untuk diimpor (maks 20 MB).'**
+  String get importFailTooBig;
+
+  /// No description provided for @shareTooBigForQr.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist ini terlalu besar untuk kode QR — bagikan sebagai berkas saja.'**
+  String get shareTooBigForQr;
+
+  /// No description provided for @shareFileAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Bagikan berkas'**
+  String get shareFileAction;
+
+  /// No description provided for @sharePickPlaylist.
+  ///
+  /// In id, this message translates to:
+  /// **'Pilih playlist'**
+  String get sharePickPlaylist;
+
+  /// No description provided for @shareNoPlaylists.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada playlist untuk dibagikan'**
+  String get shareNoPlaylists;
+
+  /// No description provided for @scanTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Pindai kode QR'**
+  String get scanTitle;
+
+  /// No description provided for @scanImportFile.
+  ///
+  /// In id, this message translates to:
+  /// **'Impor dari berkas'**
+  String get scanImportFile;
+
+  /// No description provided for @scanFoundSub.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu · dari kode QR'**
+  String scanFoundSub(int count);
+
+  /// No description provided for @scanImportAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Impor playlist'**
+  String get scanImportAction;
+
+  /// No description provided for @scanAgain.
+  ///
+  /// In id, this message translates to:
+  /// **'Pindai lagi'**
+  String get scanAgain;
+
+  /// No description provided for @scanNotClai.
+  ///
+  /// In id, this message translates to:
+  /// **'Kode ini bukan bagikan playlist Clai'**
+  String get scanNotClai;
+
+  /// No description provided for @scanImported.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist \"{name}\" ditambahkan'**
+  String scanImported(Object name);
+
+  /// No description provided for @scanPermDenied.
+  ///
+  /// In id, this message translates to:
+  /// **'Izin kamera diperlukan untuk memindai'**
+  String get scanPermDenied;
+
+  /// No description provided for @scanPermDeniedSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Aktifkan izin kamera, atau terima playlist lewat berkas.'**
+  String get scanPermDeniedSub;
+
+  /// No description provided for @scanOpenSettings.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka pengaturan aplikasi'**
+  String get scanOpenSettings;
+
+  /// No description provided for @shareFoundFileSub.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu · dari berkas'**
+  String shareFoundFileSub(int count);
+
+  /// No description provided for @scanUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Kamera tidak tersedia di perangkat ini'**
+  String get scanUnavailable;
+
+  /// No description provided for @shareQrImageAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Bagikan gambar QR'**
+  String get shareQrImageAction;
+
+  /// No description provided for @shareQrCardFooter.
+  ///
+  /// In id, this message translates to:
+  /// **'Pindai kode ini dari Clai'**
+  String get shareQrCardFooter;
+
+  /// No description provided for @scanPickImage.
+  ///
+  /// In id, this message translates to:
+  /// **'Pilih gambar QR'**
+  String get scanPickImage;
+
+  /// No description provided for @scanImageNoQr.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada kode QR yang terbaca di gambar itu'**
+  String get scanImageNoQr;
+
+  /// No description provided for @scanImageUnreadable.
+  ///
+  /// In id, this message translates to:
+  /// **'Gambar itu tidak bisa dibaca'**
+  String get scanImageUnreadable;
+
+  /// No description provided for @shareLocalExcluded.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu lokal tidak ikut'**
+  String shareLocalExcluded(int count);
+
+  /// No description provided for @scanResolving.
+  ///
+  /// In id, this message translates to:
+  /// **'Membangun ulang lagu dari katalog… {done} dari {total}'**
+  String scanResolving(int done, int total);
+
+  /// No description provided for @scanRefsNoneFound.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada lagu yang ditemukan di katalog — periksa koneksimu, atau lagu-lagu ini sudah tidak tersedia.'**
+  String get scanRefsNoneFound;
+
+  /// No description provided for @scanSkippedCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} lagu tidak ditemukan di katalog dan dilewati'**
+  String scanSkippedCount(int count);
+
+  /// No description provided for @scanImportedSkips.
+  ///
+  /// In id, this message translates to:
+  /// **'Playlist \"{name}\" ditambahkan · {count} lagu dilewati'**
+  String scanImportedSkips(Object name, int count);
+
+  /// No description provided for @vaultTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Brankas Sesi'**
+  String get vaultTitle;
+
+  /// No description provided for @vaultSaveAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan sesi'**
+  String get vaultSaveAction;
+
+  /// No description provided for @vaultSaveTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan ke Brankas Sesi'**
+  String get vaultSaveTitle;
+
+  /// No description provided for @vaultNameLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Nama sesi'**
+  String get vaultNameLabel;
+
+  /// No description provided for @vaultSavedSnack.
+  ///
+  /// In id, this message translates to:
+  /// **'Sesi tersimpan di Brankas'**
+  String get vaultSavedSnack;
+
+  /// No description provided for @vaultEmptyTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada sesi tersimpan'**
+  String get vaultEmptyTitle;
+
+  /// No description provided for @vaultSaveCurrent.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan antrean saat ini'**
+  String get vaultSaveCurrent;
+
+  /// No description provided for @vaultRestore.
+  ///
+  /// In id, this message translates to:
+  /// **'Pulihkan sesi'**
+  String get vaultRestore;
+
+  /// No description provided for @vaultRestoreBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Antrean yang sekarang akan digantikan oleh sesi ini, dan sesi akan diputar dari titik berhentinya. Sesi tetap tersimpan di Brankas sesudah dipulihkan.'**
+  String get vaultRestoreBody;
+
+  /// No description provided for @vaultRestoredSnack.
+  ///
+  /// In id, this message translates to:
+  /// **'Sesi dipulihkan'**
+  String get vaultRestoredSnack;
+
+  /// No description provided for @vaultRestoreFailed.
+  ///
+  /// In id, this message translates to:
+  /// **'Sesi ini tidak bisa dipulihkan — lagunya sudah tidak ada di katalog lokal.'**
+  String get vaultRestoreFailed;
+
+  /// No description provided for @vaultDeleteTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus sesi?'**
+  String get vaultDeleteTitle;
+
+  /// No description provided for @vaultDeleteBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Sesi \"{name}\" akan dihapus permanen dari Brankas.'**
+  String vaultDeleteBody(Object name);
+
+  /// No description provided for @vaultSeeAll.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat semua'**
+  String get vaultSeeAll;
+
+  /// No description provided for @vaultPlayedSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Sudah diputar'**
+  String get vaultPlayedSection;
+
+  /// No description provided for @vaultCurrentBadge.
+  ///
+  /// In id, this message translates to:
+  /// **'Berhenti di sini'**
+  String get vaultCurrentBadge;
+
+  /// No description provided for @groupTaste.
+  ///
+  /// In id, this message translates to:
+  /// **'Selera'**
+  String get groupTaste;
+
+  /// No description provided for @groupTasteSum.
+  ///
+  /// In id, this message translates to:
+  /// **'Cermin selera, mode samaran, keluarkan dari rekomendasi, dan reset selera'**
+  String get groupTasteSum;
+
+  /// No description provided for @tasteBalanceLifetime.
+  ///
+  /// In id, this message translates to:
+  /// **'Seumur'**
+  String get tasteBalanceLifetime;
+
+  /// No description provided for @tasteBalanceRecent.
+  ///
+  /// In id, this message translates to:
+  /// **'30 hari terakhir'**
+  String get tasteBalanceRecent;
+
+  /// No description provided for @tasteBalanceTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Keseimbangan selera'**
+  String get tasteBalanceTitle;
+
+  /// No description provided for @tasteDayFri.
+  ///
+  /// In id, this message translates to:
+  /// **'Jum'**
+  String get tasteDayFri;
+
+  /// No description provided for @tasteDayMon.
+  ///
+  /// In id, this message translates to:
+  /// **'Sen'**
+  String get tasteDayMon;
+
+  /// No description provided for @tasteDaySat.
+  ///
+  /// In id, this message translates to:
+  /// **'Sab'**
+  String get tasteDaySat;
+
+  /// No description provided for @tasteDaySun.
+  ///
+  /// In id, this message translates to:
+  /// **'Min'**
+  String get tasteDaySun;
+
+  /// No description provided for @tasteDayThu.
+  ///
+  /// In id, this message translates to:
+  /// **'Kam'**
+  String get tasteDayThu;
+
+  /// No description provided for @tasteDayTue.
+  ///
+  /// In id, this message translates to:
+  /// **'Sel'**
+  String get tasteDayTue;
+
+  /// No description provided for @tasteDayWed.
+  ///
+  /// In id, this message translates to:
+  /// **'Rab'**
+  String get tasteDayWed;
+
+  /// No description provided for @tasteDaypartDiniHari.
+  ///
+  /// In id, this message translates to:
+  /// **'dini hari'**
+  String get tasteDaypartDiniHari;
+
+  /// No description provided for @tasteDaypartMalam.
+  ///
+  /// In id, this message translates to:
+  /// **'malam'**
+  String get tasteDaypartMalam;
+
+  /// No description provided for @tasteDaypartPagi.
+  ///
+  /// In id, this message translates to:
+  /// **'pagi'**
+  String get tasteDaypartPagi;
+
+  /// No description provided for @tasteDaypartSiang.
+  ///
+  /// In id, this message translates to:
+  /// **'siang'**
+  String get tasteDaypartSiang;
+
+  /// No description provided for @tasteDaypartSore.
+  ///
+  /// In id, this message translates to:
+  /// **'sore'**
+  String get tasteDaypartSore;
+
+  /// No description provided for @tasteExcludeAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Keluarkan'**
+  String get tasteExcludeAction;
+
+  /// No description provided for @tasteExcludeEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada yang dikeluarkan.'**
+  String get tasteExcludeEmpty;
+
+  /// No description provided for @tasteExcludeTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Keluarkan dari Rekomendasi'**
+  String get tasteExcludeTitle;
+
+  /// No description provided for @tasteExcludedDone.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} dikeluarkan dari rekomendasi'**
+  String tasteExcludedDone(Object name);
+
+  /// No description provided for @tasteExportFirst.
+  ///
+  /// In id, this message translates to:
+  /// **'Ekspor dulu'**
+  String get tasteExportFirst;
+
+  /// No description provided for @tasteGenreEstimate.
+  ///
+  /// In id, this message translates to:
+  /// **'Perkiraan genre · MusicBrainz: {tags}'**
+  String tasteGenreEstimate(Object tags);
+
+  /// No description provided for @tasteKindArtist.
+  ///
+  /// In id, this message translates to:
+  /// **'Artis'**
+  String get tasteKindArtist;
+
+  /// No description provided for @tasteKindTrack.
+  ///
+  /// In id, this message translates to:
+  /// **'Lagu'**
+  String get tasteKindTrack;
+
+  /// No description provided for @tasteMirrorEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Selera kamu belum terbentuk. Dengarkan beberapa lagu dulu.'**
+  String get tasteMirrorEmpty;
+
+  /// No description provided for @tasteMirrorTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Cermin Selera'**
+  String get tasteMirrorTitle;
+
+  /// No description provided for @tastePatternsTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Pola mendengar'**
+  String get tastePatternsTitle;
+
+  /// No description provided for @tastePeakDaypart.
+  ///
+  /// In id, this message translates to:
+  /// **'Paling sering mendengar: {label}'**
+  String tastePeakDaypart(Object label);
+
+  /// No description provided for @tastePickArtists.
+  ///
+  /// In id, this message translates to:
+  /// **'Dari artis teratasmu'**
+  String get tastePickArtists;
+
+  /// No description provided for @tastePickTracks.
+  ///
+  /// In id, this message translates to:
+  /// **'Dari lagu yang sering diputar'**
+  String get tastePickTracks;
+
+  /// No description provided for @tastePlaysCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} putar'**
+  String tastePlaysCount(int count);
+
+  /// No description provided for @tasteResetBackup.
+  ///
+  /// In id, this message translates to:
+  /// **'Cadangan terakhir: {date}'**
+  String tasteResetBackup(Object date);
+
+  /// No description provided for @tasteResetConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Reset selera'**
+  String get tasteResetConfirm;
+
+  /// No description provided for @tasteResetDone.
+  ///
+  /// In id, this message translates to:
+  /// **'Selera sudah direset'**
+  String get tasteResetDone;
+
+  /// No description provided for @tasteResetNoBackup.
+  ///
+  /// In id, this message translates to:
+  /// **'Cadangan terakhir: belum ada'**
+  String get tasteResetNoBackup;
+
+  /// No description provided for @tasteResetSheetBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Riwayat putar, pengecualian rekomendasi, dan bobot rekomendasi akan dihapus permanen. Perpustakaan, playlist, unduhan, Brankas Sesi, dan lagu yang kamu sukai TIDAK ikut terhapus.'**
+  String get tasteResetSheetBody;
+
+  /// No description provided for @tasteResetSheetTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Reset selera kamu?'**
+  String get tasteResetSheetTitle;
+
+  /// No description provided for @tasteResetTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Reset Selera'**
+  String get tasteResetTitle;
+
+  /// No description provided for @tasteSamaranPill.
+  ///
+  /// In id, this message translates to:
+  /// **'Samaran'**
+  String get tasteSamaranPill;
+
+  /// No description provided for @tasteSamaranTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Mode Samaran'**
+  String get tasteSamaranTitle;
+
+  /// No description provided for @tasteTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Selera kamu'**
+  String get tasteTitle;
+
+  /// No description provided for @tasteTopArtists.
+  ///
+  /// In id, this message translates to:
+  /// **'Artis teratas'**
+  String get tasteTopArtists;
+
+  /// No description provided for @tasteUndo.
+  ///
+  /// In id, this message translates to:
+  /// **'Urungkan'**
+  String get tasteUndo;
+
+  /// No description provided for @tasteWeightLifetime.
+  ///
+  /// In id, this message translates to:
+  /// **'Seumur'**
+  String get tasteWeightLifetime;
+
+  /// No description provided for @tasteWeightRecent.
+  ///
+  /// In id, this message translates to:
+  /// **'Terkini'**
+  String get tasteWeightRecent;
+
+  /// No description provided for @tasteWeightsTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Bobot rekomendasi'**
+  String get tasteWeightsTitle;
+
+  /// No description provided for @shufflePanelTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Acak'**
+  String get shufflePanelTitle;
+
+  /// No description provided for @shufflePanelWhy.
+  ///
+  /// In id, this message translates to:
+  /// **'Setiap lagu diputar sekali sebelum ada yang berulang. Urutan di bawah adalah urutan putar yang sebenarnya.'**
+  String get shufflePanelWhy;
+
+  /// No description provided for @shuffleSmartSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Sebar artis & utamakan yang jarang diputar'**
+  String get shuffleSmartSub;
+
+  /// No description provided for @shuffleCycleProgress.
+  ///
+  /// In id, this message translates to:
+  /// **'{done} dari {total} sudah diputar dalam siklus ini'**
+  String shuffleCycleProgress(int done, int total);
+
+  /// No description provided for @shuffleReshuffle.
+  ///
+  /// In id, this message translates to:
+  /// **'Acak ulang'**
+  String get shuffleReshuffle;
+
+  /// No description provided for @shuffleOrderTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Urutan putar berikutnya'**
+  String get shuffleOrderTitle;
+
+  /// No description provided for @shuffleCardOffSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Mati — lagu mengikuti urutan aslinya'**
+  String get shuffleCardOffSub;
+
+  /// No description provided for @setShuffle.
+  ///
+  /// In id, this message translates to:
+  /// **'Acak'**
+  String get setShuffle;
+
+  /// No description provided for @menuButtonLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Menu'**
+  String get menuButtonLabel;
+
+  /// No description provided for @menuTasteSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Cermin selera, mode samaran & rekomendasi'**
+  String get menuTasteSub;
+
+  /// No description provided for @menuVaultSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Antrean yang kamu simpan untuk nanti'**
+  String get menuVaultSub;
+
+  /// No description provided for @menuOwnershipSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Ekspor, impor, bagikan & terima playlist'**
+  String get menuOwnershipSub;
+
+  /// No description provided for @menuSettingsSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Tampilan, pemutaran, audio & lainnya'**
+  String get menuSettingsSub;
+
+  /// No description provided for @announceKicker.
+  ///
+  /// In id, this message translates to:
+  /// **'BARU DI CLAI {version}'**
+  String announceKicker(Object version);
+
+  /// No description provided for @announceTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang baru di Clai'**
+  String get announceTitle;
+
+  /// No description provided for @announceStart.
+  ///
+  /// In id, this message translates to:
+  /// **'Mulai'**
+  String get announceStart;
+
+  /// No description provided for @announceCtaVault.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka Brankas Sesi'**
+  String get announceCtaVault;
+
+  /// No description provided for @announceCtaShare.
+  ///
+  /// In id, this message translates to:
+  /// **'Bagikan playlist'**
+  String get announceCtaShare;
+
+  /// No description provided for @announceCtaTaste.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat Selera kamu'**
+  String get announceCtaTaste;
+
+  /// No description provided for @announceCtaShuffle.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka Panel Acak'**
+  String get announceCtaShuffle;
+
+  /// No description provided for @announceMoreCount.
+  ///
+  /// In id, this message translates to:
+  /// **'dan {count} hal baru lainnya'**
+  String announceMoreCount(int count);
+
+  /// No description provided for @patchInstalledTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Clai {version} sudah terpasang'**
+  String patchInstalledTitle(Object version);
+
+  /// No description provided for @patchInstalledSub.
+  ///
+  /// In id, this message translates to:
+  /// **'Perbaikan kecil di balik layar'**
+  String get patchInstalledSub;
+
+  /// No description provided for @patchInstalledSee.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat'**
+  String get patchInstalledSee;
+
+  /// No description provided for @samaranHowTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Cara kerja Mode Samaran'**
+  String get samaranHowTitle;
+
+  /// No description provided for @samaranHowRowHistory.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang kamu dengarkan tidak masuk Riwayat putar.'**
+  String get samaranHowRowHistory;
+
+  /// No description provided for @samaranHowRowTaste.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak memengaruhi Cermin Selera & rekomendasi.'**
+  String get samaranHowRowTaste;
+
+  /// No description provided for @samaranHowRowListenBrainz.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak dikirim ke ListenBrainz.'**
+  String get samaranHowRowListenBrainz;
+
+  /// No description provided for @samaranHowRowNoLimit.
+  ///
+  /// In id, this message translates to:
+  /// **'Tetap aktif sampai kamu mematikannya sendiri — tidak ada batas waktu.'**
+  String get samaranHowRowNoLimit;
+
+  /// No description provided for @samaranHowDontShow.
+  ///
+  /// In id, this message translates to:
+  /// **'Jangan tampilkan lagi'**
+  String get samaranHowDontShow;
+
+  /// No description provided for @samaranHowActivate.
+  ///
+  /// In id, this message translates to:
+  /// **'Aktifkan Samaran'**
+  String get samaranHowActivate;
 }
 
 class _AppLocalizationsDelegate

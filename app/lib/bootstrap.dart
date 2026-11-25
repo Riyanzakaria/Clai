@@ -223,6 +223,16 @@ class _ClaiBootstrapAppState extends State<ClaiBootstrapApp> {
           // Butir D: nilai engine yang ditetapkan langsung di sini wajib
           // diterbitkan ke playbackState, sama seperti jalur lain.
           handler!.syncShuffleState();
+        } else {
+          // Ronde 8075: sakelar utama panel Acak (fondasi Jujur tanpa
+          // lapisan Cerdas) juga persisten — pulihkan flag-nya di boot;
+          // snapshot sesi yang direstorasi sesudahnya tetap menjadi
+          // sumber kebenaran terakhir untuk mode sesi berjalan.
+          final jujur = await db!.pref<bool>('playback.shuffle');
+          if (jujur == true) {
+            handler!.engine.shuffle = ShuffleMode.pure;
+            handler!.syncShuffleState();
+          }
         }
         final transition = await db!.pref<String>('playback.transition');
         if (transition == 'crossfade') {
@@ -248,7 +258,12 @@ class _ClaiBootstrapAppState extends State<ClaiBootstrapApp> {
         // pemutar tidak pernah menunggu mereka.
         final lb = ListenBrainzService(db!);
         final enrich = EnrichmentService(db!);
-        handler!.trackStartedListeners.add((t) => unawaited(lb.playingNow(t)));
+        handler!.trackStartedListeners.add((t) {
+          // Mode Samaran (Ronde 8074): "sedang diputar" pun jejak keluar —
+          // dilompati saat samaran menyala.
+          if (handler!.samaranOn) return;
+          unawaited(lb.playingNow(t));
+        });
         handler!.onListenFinished = (t, listenedMs, _) {
           if (listenedMs >= 30000) {
             unawaited(
@@ -405,7 +420,7 @@ class SplashScreen extends StatelessWidget {
                 height: 26,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  color: ClaiColors.accent,
+                  color: ClaiColors.signal,
                 ),
               ),
               const SizedBox(height: ClaiSpace.md),
@@ -476,8 +491,8 @@ class StartupErrorScreen extends StatelessWidget {
               const SizedBox(height: ClaiSpace.xxl),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: ClaiColors.accent,
-                  foregroundColor: ClaiColors.onAccent,
+                  backgroundColor: ClaiColors.signal,
+                  foregroundColor: ClaiColors.onSignal,
                 ),
                 onPressed: onRetry,
                 child: Text(context.l10n.startupRetry),

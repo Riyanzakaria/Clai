@@ -1,4 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+/// Penampilan bilah sistem aplikasi: ikon bilah status SELALU terang
+/// dan bilah navigasi sistem SELALU dasar Clai. Warna strip status bar
+/// sendiri TIDAK ditetapkan di sini — sejak ronde 8082 (DS v5.3 §13.1,
+/// koreksi vonis HP pemilik 23 Nov 01:51 atas aturan global 8080/8081)
+/// strip itu FLEKSIBEL mengikuti permukaan atas halaman yang dibuka,
+/// dan satu-satunya pelukisnya adalah lapisan strip di akar cangkang
+/// (app.dart, keputusan murni claiStripFollowsAmbient): halaman
+/// ambient meneruskan sapuan sampul sampai tepi atas, halaman solid
+/// dicat dasar #0A0A0E. Maka statusBarColor di sini TRANSPARAN agar
+/// gaya sistem tidak melawan lukisan jendela pada API < 35 (pada API
+/// 35+ warna ini memang diabaikan demi edge-to-edge). Disematkan di
+/// tema (AppBarTheme.systemOverlayStyle, mencakup kedua MaterialApp)
+/// dan sebagai bawaan proses di main() (SystemChrome).
+const SystemUiOverlayStyle claiSystemUiOverlayStyle = SystemUiOverlayStyle(
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: Brightness.light,
+  statusBarBrightness: Brightness.dark,
+  systemNavigationBarColor: ClaiColors.base,
+  systemNavigationBarIconBrightness: Brightness.light,
+  systemNavigationBarDividerColor: Colors.transparent,
+);
 
 /// Token Clai DS v3.1 "Volt" — satu sumber kebenaran visual (DESIGN-SYSTEM.md Bab 2–4).
 class ClaiColors {
@@ -17,6 +40,15 @@ class ClaiColors {
   static const accent = Color(0xFFB8F135);
   static const onAccent = Color(0xFF10130A);
   static const accentPressed = Color(0xFF9BD62A);
+  // SINYAL PUTIH (DS v5.0, Ronde 8073): Volt turun pangkat menjadi
+  // TANDA TANGAN saja — titik wordmark, titik aktif navigasi, batang
+  // ekualiser, rel saklar menyala. Seluruh sinyal FUNGSIONAL (progres,
+  // tombol primer, keadaan aktif/terpilih, tautan, lencana) memakai
+  // putih tinta lewat token ini; `accent` TIDAK boleh dipakai di luar
+  // pagar tanda tangan (DESIGN-SYSTEM.md Bab 12).
+  static const signal = Color(0xFFF4F6F1);
+  static const onSignal = Color(0xFF10130A);
+  static const signalPressed = Color(0xFFD9DCD3);
   static const liked = Color(0xFFFF5C7A);
   static const error = Color(0xFFFF6B5E);
   static const warning = Color(0xFFFFB224);

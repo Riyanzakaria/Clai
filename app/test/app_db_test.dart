@@ -66,11 +66,12 @@ void main() {
     await v4.insert('user_prefs',
         {'key': 'ui.themeDynamic', 'value_json': 'false', 'schema_v': 1});
     await v4.close();
-    // Buka lewat AppDb (skema v5): migrasi berjalan, pref lama terbaca,
-    // tabel baru bisa dipakai.
+    // Buka lewat AppDb (skema kini): migrasi berjalan berjenjang
+    // (v4→v5→v6 sejak Ronde 8072), pref lama terbaca, tabel baru bisa
+    // dipakai.
     final db = AppDb();
     final d = await db.openAt(path);
-    expect(await d.getVersion(), 5);
+    expect(await d.getVersion(), AppDb.schemaVersion);
     expect(await db.pref<bool>('ui.themeDynamic'), isFalse);
     expect(await db.waveformFor(const TrackKey('ytmusic', 'x')), isNull);
     await db.saveWaveform(const TrackKey('ytmusic', 'x'),

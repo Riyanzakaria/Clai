@@ -14,7 +14,8 @@ import '../player/queue_engine.dart' as qe;
 enum ShuffleButtonLook { off, pure, smart }
 
 /// Mode engine → wujud tombol: mati = redup; murni = aktif biasa
-/// (Volt + titik); cerdas = aktif + lencana berlian Volt di sudut ikon.
+/// (putih tinta + titik); cerdas = aktif + lencana berlian putih
+/// tinta di sudut ikon. (DS v5.0: keadaan aktif = sinyal putih tinta.)
 ShuffleButtonLook shuffleButtonLook(qe.ShuffleMode mode) => switch (mode) {
       qe.ShuffleMode.off => ShuffleButtonLook.off,
       qe.ShuffleMode.pure => ShuffleButtonLook.pure,

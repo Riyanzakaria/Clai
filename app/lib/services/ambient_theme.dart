@@ -6,7 +6,8 @@ import '../core/tokens.dart';
 import 'cover_accent.dart';
 
 /// Mesin tema "Sampul Hidup" (DS v4.0 §5, Workstream E F3) — MURNI &
-/// teruji unit. Doktrin dua lapis: Volt = sinyal (tidak disentuh di
+/// teruji unit. Doktrin dua lapis: sinyal = putih tinta (DS v5.0;
+/// Volt hanya tanda tangan — tidak disentuh di
 /// sini); tinta sampul = suasana. Semua fungsi deterministik: warna
 /// sumber yang sama selalu menghasilkan palet yang sama.
 ///
@@ -292,11 +293,11 @@ class TintSettler {
 /// lightness naik berundak +0,06 sampai maks 0,68.
 /// Cadangan penjaga: palet tak aktif, sampul monokrom/`amb/diam`,
 /// atau rona hampir-netral (saturasi norm < 0,12 — memekatkan abu
-/// hanya akan mengarang warna dan tenggelam di kaca) → Volt, yang
-/// selalu terbaca. Volt sesudah aturan ini berdomain: keadaan aktif
-/// + aksen merek saja.
+/// hanya akan mengarang warna dan tenggelam di kaca) → putih tinta
+/// sinyal (DS v5.0), yang selalu terbaca. (Sebelum v5.0 cadangan ini
+/// Volt; Sinyal Putih memindahkannya ke putih tinta.)
 Color progressToneFor(AmbientPalette palette) {
-  if (!palette.active || palette.fallbackDiam) return ClaiColors.accent;
+  if (!palette.active || palette.fallbackDiam) return ClaiColors.signal;
   return deepToneFromColor(palette.norm);
 }
 
@@ -306,11 +307,12 @@ Color progressToneFor(AmbientPalette palette) {
 /// kartu panggung Koleksi, tombol panel Spotify). Matematika yang sama
 /// persis seperti [progressToneFor]: saturasi ×1,3 (lantai 0,55),
 /// lightness di pita tegas 0,45–0,58, penjaga kontras ≥ 3:1 terhadap
-/// hampir-hitam; rona hampir-netral (saturasi < 0,12) jatuh ke Volt —
+/// hampir-hitam; rona hampir-netral (saturasi < 0,12) jatuh ke putih
+/// tinta sinyal (DS v5.0; sebelum v5.0: Volt) —
 /// memekatkan abu hanya akan mengarang warna. Murni & diuji.
 Color deepToneFromColor(Color base) {
   final hsl = HSLColor.fromColor(base);
-  if (hsl.saturation < 0.12) return ClaiColors.accent;
+  if (hsl.saturation < 0.12) return ClaiColors.signal;
   final sat = (hsl.saturation * 1.3).clamp(0.55, 1.0);
   var light = hsl.lightness.clamp(0.45, 0.58);
   var tone = hsl.withSaturation(sat).withLightness(light).toColor();

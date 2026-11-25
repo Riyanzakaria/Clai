@@ -80,7 +80,8 @@ class _CoverAccentBuilderState extends ConsumerState<CoverAccentBuilder> {
 
 /// Latar tonal di belakang sampul (F2 Batch 2, DS Bab 2): warna diturunkan
 /// dari sampul yang sedang tampil, dijenuhkan 20%, hanya sebagai latar —
-/// tombol putar & indikator status tetap Volt. Bila sakelar mati atau aksen
+/// tombol putar & indikator status tetap putih tinta (DS v5.0). Bila
+/// sakelar mati atau aksen
 /// tak tersedia, anak tampil apa adanya (tanpa latar).
 class CoverAccentGlow extends ConsumerStatefulWidget {
   final String? artworkUrl;
@@ -137,7 +138,7 @@ class _CoverAccentGlowState extends ConsumerState<CoverAccentGlow> {
         // sekelilingnya — bingkai padat saja (5–10 dp, 72% hitam pada
         // rumus lama) berada di bawah ambang persepsi layar HP. Bayangan
         // berwarna membuat nuansa sampul terbaca nyata, sementara isi
-        // kotak tetap gelap dan tombol/indikator tetap Volt.
+        // kotak tetap gelap dan tombol/indikator tetap putih tinta.
         boxShadow: [
           BoxShadow(
             color: tonal.withValues(alpha: 0.55),

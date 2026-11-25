@@ -431,7 +431,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                               height: 22,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: ClaiColors.accent,
+                                                color: ClaiColors.signal,
                                               ),
                                             ),
                                           ),
@@ -451,14 +451,14 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer>
                                               width: 40,
                                               height: 40,
                                               decoration: const BoxDecoration(
-                                                color: ClaiColors.accent,
+                                                color: ClaiColors.signal,
                                                 shape: BoxShape.circle,
                                               ),
                                               child: ClaiIcon(
                                                 playing
                                                     ? ClaiIcons.pause
                                                     : ClaiIcons.play,
-                                                color: ClaiColors.onAccent,
+                                                color: ClaiColors.onSignal,
                                                 size: 20,
                                               ),
                                             ),
@@ -532,11 +532,11 @@ class _VoltLine extends StatelessWidget {
                 widthFactor: fraction,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: ClaiColors.accent,
+                    color: ClaiColors.signal,
                     boxShadow: glowing
                         ? [
                             BoxShadow(
-                              color: ClaiColors.accent
+                              color: ClaiColors.signal
                                   .withValues(alpha: 0.45 + 0.4 * p),
                               blurRadius: 4 + 7 * p,
                             ),
@@ -550,10 +550,10 @@ class _VoltLine extends StatelessWidget {
                   opacity: p * 0.8,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: ClaiColors.accent,
+                      color: ClaiColors.signal,
                       boxShadow: [
                         BoxShadow(
-                          color: ClaiColors.accent.withValues(alpha: 0.9),
+                          color: ClaiColors.signal.withValues(alpha: 0.9),
                           blurRadius: 10,
                         ),
                       ],

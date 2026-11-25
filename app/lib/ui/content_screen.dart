@@ -343,7 +343,7 @@ class _ContentScreenState extends ConsumerState<ContentScreen> {
                       return DockAction(
                         icon: ClaiIcons.check,
                         label: l.contentDownloaded,
-                        color: ClaiColors.accent,
+                        color: ClaiColors.signal,
                         onTap: null,
                       );
                     }
@@ -360,7 +360,7 @@ class _ContentScreenState extends ConsumerState<ContentScreen> {
                                 ? null
                                 : doneCount / downloadable.length,
                             strokeWidth: 2,
-                            color: ClaiColors.accent,
+                            color: ClaiColors.signal,
                           ),
                         ),
                         onTap: () => _downloadAll(page),
@@ -546,7 +546,8 @@ class _ContentScreenState extends ConsumerState<ContentScreen> {
 
   /// Tombol Putar panggung: lingkaran 56 diisi nada sampul diperdalam
   /// (§11.9 lewat [CoverAccentBuilder] + [deepToneFromColor]); sampul
-  /// tanpa tinta / ambien mati → Volt, konsisten dengan kartu Lanjut
+  /// tanpa tinta / ambien mati → putih tinta sinyal (DS v5.0),
+  /// konsisten dengan kartu Lanjut
   /// Beranda. Ikon putih di atas nada (penjaga kontras di fungsi nada).
   Widget _stagePlayButton(BuildContext context, ContentPage page) {
     final handler = ref.read(audioHandlerProvider);
@@ -554,7 +555,7 @@ class _ContentScreenState extends ConsumerState<ContentScreen> {
       artworkUrl: page.artworkUrl,
       builder: (context, tonal) {
         final tone =
-            tonal == null ? ClaiColors.accent : deepToneFromColor(tonal);
+            tonal == null ? ClaiColors.signal : deepToneFromColor(tonal);
         return PressableScale(
           child: GestureDetector(
             onTap: page.tracks.isEmpty

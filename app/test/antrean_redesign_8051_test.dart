@@ -100,7 +100,7 @@ void main() {
     });
 
     test('panel Acak Cerdas berikon kotak tonal, sakelar & perilaku sama', () {
-      expect(src, contains('tonalIconBox(ClaiIcons.shuffle)'));
+      expect(src, contains('rowLeadIcon(ClaiIcons.shuffle)'));
       expect(src, contains('handler.setSmartShuffle(v)'));
       expect(src, contains('engine.shuffle == qe.ShuffleMode.smart'));
     });

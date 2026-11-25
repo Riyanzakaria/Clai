@@ -20,7 +20,8 @@ import 'widgets.dart';
 ///
 /// Gelombang 2 (8048): komposisi papan — kepala (kicker + nama display
 /// 28 + garis asal + garis kejujuran), PANEL pencocokan (hitungan besar
-/// tabular, bilah Volt = proporsi cocok persis, tombol Putar yang Cocok
+/// tabular, bilah putih tinta = proporsi cocok persis, tombol Putar
+/// yang Cocok
 /// bernada sampul diperdalam), lalu daftar Trek. Perilaku mesin
 /// pencocokan (3 pekerja, prioritaskan ketukan, coba-lagi paksa) utuh;
 /// tombol Putar tetap bisa diketuk selama pencocokan berjalan (perilaku
@@ -285,7 +286,7 @@ class _SpotifyPlaylistScreenState extends ConsumerState<SpotifyPlaylistScreen> {
                     minHeight: 6,
                     backgroundColor: ClaiColors.surface3,
                     valueColor:
-                        const AlwaysStoppedAnimation<Color>(ClaiColors.accent),
+                        const AlwaysStoppedAnimation<Color>(ClaiColors.signal),
                   ),
                 ),
                 if (pl.nonTrackItems > 0) ...[
@@ -309,7 +310,7 @@ class _SpotifyPlaylistScreenState extends ConsumerState<SpotifyPlaylistScreen> {
                   artworkUrl: pl.imageUrl,
                   builder: (context, tonal) {
                     final tone = tonal == null
-                        ? ClaiColors.accent
+                        ? ClaiColors.signal
                         : deepToneFromColor(tonal);
                     final onTone = onProgressTone(tone);
                     return Material(
@@ -407,7 +408,7 @@ class _SpotifyPlaylistScreenState extends ConsumerState<SpotifyPlaylistScreen> {
                 onPressed: () => _matchOne(i, force: true),
                 child: Text(
                   context.l10n.commonRetry,
-                  style: const TextStyle(color: ClaiColors.accent),
+                  style: const TextStyle(color: ClaiColors.signal),
                 ),
               ),
             ],
@@ -424,7 +425,7 @@ class _SpotifyPlaylistScreenState extends ConsumerState<SpotifyPlaylistScreen> {
             width: 18,
             height: 18,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: ClaiColors.accent)),
+                strokeWidth: 2, color: ClaiColors.signal)),
         _MState.matched => Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -439,7 +440,7 @@ class _SpotifyPlaylistScreenState extends ConsumerState<SpotifyPlaylistScreen> {
                 ),
                 const SizedBox(width: 8),
               ],
-              ClaiIcon(ClaiIcons.check, size: 18, color: ClaiColors.accent),
+              ClaiIcon(ClaiIcons.check, size: 18, color: ClaiColors.signal),
             ],
           ),
         _ => Text(

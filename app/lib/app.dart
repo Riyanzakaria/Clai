@@ -30,6 +30,9 @@ import 'services/enrichment_service.dart';
 import 'services/voice_service.dart';
 import 'services/sleep_service.dart';
 import 'services/library_controller.dart';
+import 'services/library_transfer.dart';
+import 'services/session_vault.dart';
+import 'services/taste_service.dart';
 import 'services/listenbrainz_service.dart';
 import 'services/track_metadata_healer.dart';
 import 'services/local_files.dart';
@@ -125,6 +128,21 @@ final updateControllerProvider = ChangeNotifierProvider<UpdateController>(
   (ref) => UpdateController(ref.watch(appDbProvider)),
 );
 
+/// Transfer kepemilikan D2 (Ronde 8070): ekspor/impor + bagikan.
+final libraryTransferProvider = Provider<LibraryTransferService>(
+  (ref) => LibraryTransferService(ref.watch(appDbProvider)),
+);
+
+/// Brankas Sesi (Ronde 8072): arsip permanen sesi putar (Workstream D).
+final sessionVaultProvider = ChangeNotifierProvider<SessionVaultService>(
+  (ref) => SessionVaultService(ref.watch(appDbProvider)),
+);
+
+/// Ruang Kendali Selera (Ronde 8074): Samaran, bobot, pengecualian, cermin.
+final tasteServiceProvider = ChangeNotifierProvider<TasteService>(
+  (ref) => TasteService(ref.watch(appDbProvider)),
+);
+
 /// Layanan F2 Batch 1 di atas AppDb yang sama.
 final lyricsServiceProvider = Provider<LyricsService>(
   (ref) => LyricsService(ref.watch(appDbProvider)),
@@ -195,8 +213,8 @@ ThemeData buildClaiTheme() {
   return base.copyWith(
     scaffoldBackgroundColor: ClaiColors.base,
     colorScheme: base.colorScheme.copyWith(
-      primary: ClaiColors.accent,
-      onPrimary: ClaiColors.onAccent,
+      primary: ClaiColors.signal,
+      onPrimary: ClaiColors.onSignal,
       surface: ClaiColors.surface1,
       onSurface: ClaiColors.ink,
       error: ClaiColors.error,
@@ -208,7 +226,23 @@ ThemeData buildClaiTheme() {
       backgroundColor: ClaiColors.base,
       foregroundColor: ClaiColors.ink,
       elevation: 0,
-      // DS Bab 3: judul layar = type/title (Clash Display 20/26 600).
+      // Cacat C (Ronde 8083): tanpa dua baris ini Material 3 menintai
+      // AppBar dengan surface tint saat konten bergeser ke bawahnya
+      // (scrolled-under) — bilah judul halaman turunan "menyala" lebih
+      // terang saat di-scroll. Tint dimatikan + elevasi gulir nol di
+      // SATU titik tema ini menyembuhkan semua sub-halaman sekaligus.
+      surfaceTintColor: Colors.transparent,
+      scrolledUnderElevation: 0,
+      // Ronde 8089 (Bagian C): judul AppBar baku DI TENGAH di satu titik
+      // tema ini untuk semua AppBar standar (pola kepala baku layar
+      // dorong; lihat claiPushedAppBar di widgets.dart).
+      centerTitle: true,
+      // Bilah sistem: ikon terang + bilah navigasi sistem dasar di
+      // semua layar (lihat claiSystemUiOverlayStyle). Warna strip
+      // status bar sendiri fleksibel mengikuti halaman (DS v5.3
+      // §13.1, ronde 8082) — dilukis di akar cangkang, bukan di sini.
+      systemOverlayStyle: claiSystemUiOverlayStyle,
+      // DS Bab 3: judul layar = type/title (Inter Tight 20/26 700).
       // Satu ketetapan tema untuk SEMUA AppBar — Antrian, Pengaturan +
       // halaman kelompoknya, konten/playlist/radio/unduhan/Spotify,
       // Diagnostik, Log — menggantikan Inter bawaan tema teks.
@@ -252,6 +286,26 @@ ThemeData buildClaiTheme() {
       contentTextStyle: TextStyle(color: ClaiColors.inkSecondary, fontSize: 14),
     ),
     dividerTheme: const DividerThemeData(color: ClaiColors.divider),
+    // Kedip hitam Beranda (Ronde 8085, Opsi 1 laporan bedah
+    // builds/bukti-kedip-beranda/LAPORAN.md): tanpa tema transisi,
+    // FadeForwards bawaan membungkus rute bawah dengan ColoredBox
+    // ColorScheme.surface (#121218) selama pop 450 mdtk, menutupi
+    // wash ambient cangkang; di akhir transisi wash menyala snap.
+    // Obatnya SATU titik di sini: fallbackColor transparan pada
+    // PredictiveBack — SDK meneruskannya ke FadeForwards
+    // (backgroundColor) untuk pop non-gestur, dan rute tujuan pada
+    // pop gestur prediktif pun lewat cabang fallback yang sama,
+    // jadi ColoredBox delegasi transparan di kedua jalur dan wash
+    // menembus selama transisi. Platform lain tidak diubah: peta
+    // bawaan kerangka disebar apa adanya, hanya Android ditimpa.
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: <TargetPlatform, PageTransitionsBuilder>{
+        ...const PageTransitionsTheme().builders,
+        TargetPlatform.android: const PredictiveBackPageTransitionsBuilder(
+          fallbackColor: Colors.transparent,
+        ),
+      },
+    ),
     // Kelas kontrol baku DS (Ronde Sapuan Part Kecil Total 8045): SATU
     // resep tema untuk sakelar, geser, centang, menu popup, dan tombol
     // isi/tepi — permukaan yang tidak menyebut gayanya sendiri (baris
@@ -271,19 +325,19 @@ ThemeData buildClaiTheme() {
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     ),
     sliderTheme: const SliderThemeData(
-      activeTrackColor: ClaiColors.accent,
+      activeTrackColor: ClaiColors.signal,
       inactiveTrackColor: ClaiColors.surface3,
-      thumbColor: ClaiColors.accent,
-      overlayColor: Color(0x29B8F135),
+      thumbColor: ClaiColors.signal,
+      overlayColor: Color(0x29F4F6F1),
       trackHeight: 3,
     ),
     checkboxTheme: CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith(
         (s) => s.contains(WidgetState.selected)
-            ? ClaiColors.accent
+            ? ClaiColors.signal
             : Colors.transparent,
       ),
-      checkColor: WidgetStateProperty.all(ClaiColors.onAccent),
+      checkColor: WidgetStateProperty.all(ClaiColors.onSignal),
       side: const BorderSide(color: ClaiColors.inkFaint, width: 1.5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(5)),
@@ -315,28 +369,46 @@ ThemeData buildClaiTheme() {
   );
 }
 
-/// Family font tampilan (DS Bab 3; keputusan pemilik 2026-11-10,
-/// staging 8049): **Clash Display** terbundel — menggantikan Space
-/// Grotesk yang sebelumnya dimuat GoogleFonts. SATU nama untuk semua
+/// Family font tampilan (DS Bab 3; keputusan pemilik 2026-11-25,
+/// ronde 8089): **Inter Tight** terbundel (Google Fonts, OFL-1.1) —
+/// menggantikan Clash Display (keputusan 2026-11-10, staging 8049),
+/// yang sebelumnya menggantikan Space Grotesk. SATU nama untuk semua
 /// gaya tampilan agar tak ada rujukan font lama yang tertinggal.
-const String kDisplayFontFamily = 'Clash Display';
+const String kDisplayFontFamily = 'Inter Tight';
 
-/// Judul display Clash Display (DS Bab 3).
+/// Judul display Inter Tight (DS Bab 3). Bobot peran utama 700 sejak
+/// ronde 8089 (wajah spesimen & maket pemilik).
 TextStyle displayStyle(double size) => TextStyle(
   fontFamily: kDisplayFontFamily,
   fontSize: size,
-  fontWeight: FontWeight.w600,
+  fontWeight: FontWeight.w700,
   color: ClaiColors.ink,
   height: 1.18,
 );
 
-/// Tingkat pahlawan `type/hero` (DS v4.0 §3-P4): Clash Display 34–40
+/// Ukuran judul BARIS UTILITAS terkunci (DS §14.6) — SATU angka untuk
+/// semua kelas baris utilitas (pintu hub, baris turunan, kendali Selera,
+/// pintu laci, ubin dropdown, blok geser). Ronde 8089 memasang 17.
+/// Ronde 8090 menyusutkannya ke 14 lewat metode rasio-maket (kotak
+/// teks bangku pada 17 = 4,54–4,91% lebar layar vs maket 3,7–3,8%).
+/// Vonis HP pemilik 25 Nov 2026 19:14: 14 terlalu kecil di perangkat
+/// nyata — metode rasio dinyatakan gugur oleh vonis perangkat, dan
+/// ronde 8091 memulihkan angka kontrak 8089: **17**.
+const double kRowTitleSize = 17;
+
+/// Gaya judul baris utilitas bersama (Inter Tight 700, [kRowTitleSize]).
+/// Situs yang semula memakai konstanta lokal tanpa `height` (panel
+/// Pengaturan, EQ, Pembaruan, OCR, Brankas, Berkendara) mempertahankan
+/// bentuk konstantanya tetapi menunjuk angka yang sama ini.
+TextStyle rowTitleStyle() => displayStyle(kRowTitleSize);
+
+/// Tingkat pahlawan `type/hero` (DS v4.0 §3-P4): Inter Tight 34–40
 /// HANYA untuk momen pahlawan — sapaan Beranda, angka waktu Player,
 /// kelak angka Statistik. Angka tabular agar waktu tidak berjoget.
 TextStyle heroStyle(double size) => TextStyle(
   fontFamily: kDisplayFontFamily,
   fontSize: size,
-  fontWeight: FontWeight.w600,
+  fontWeight: FontWeight.w700,
   color: ClaiColors.ink,
   height: 1.1,
   fontFeatures: const [FontFeature.tabularFigures()],
@@ -621,6 +693,81 @@ final GlobalKey<NavigatorState> claiRootNavigatorKey =
 /// diabaikan sentuhnya (Opacity + IgnorePointer) selama bendera naik.
 final ValueNotifier<bool> claiChromeSuppressed = ValueNotifier<bool>(false);
 
+/// Ronde 8082 (DS v5.3 §13.1): lembar Player sedang terbuka di atas
+/// cangkang. Dinaikkan oleh `openPlayerSheet` (player_sheet.dart) dan
+/// diturunkan saat future lembarnya selesai. Strip inset atas membaca
+/// bendera ini: Player adalah halaman ambient, jadi selama ia terbuka
+/// strip mengikuti sampul — bukan dasar.
+final ValueNotifier<bool> claiPlayerSheetOpen = ValueNotifier<bool>(false);
+
+/// Keputusan strip inset atas (DS v5.3 §13.1 — murni, diuji unit):
+/// strip adalah KELANJUTAN permukaan atas halaman yang sedang dibuka.
+///
+/// - Player terbuka → ambient (panggungnya sendiri ambient; strip di
+///   atas lembarnya meneruskan sampul).
+/// - Ada rute di atas navigator akar (lembar/dialog/layar penuh lain)
+///   → dasar: permukaan yang menutupi cangkang bertop solid.
+/// - Ada rute terdorong di navigator cangkang (Pengaturan, Selera
+///   kamu, sub-halaman, halaman konten) → dasar #0A0A0E, persis
+///   perbaikan akar 8080/8081.
+/// - Akar tab → ambient untuk KETIGA tab: terbukti di bangku (ronde
+///   8082) bahwa baris pertama Cari & Koleksi — sama seperti Beranda —
+///   adalah sapuan AmbientWashLayer yang berganti mengikuti sampul
+///   (dosis tugas 40%), bukan permukaan solid. Tema Dinamis mati →
+///   wash tidak melukis apa pun, jadi mode ambient di sana membaca
+///   sebagai dasar itu sendiri.
+bool claiStripFollowsAmbient({
+  required int tab,
+  required bool shellRoutePushed,
+  required bool rootRouteCovered,
+  required bool playerSheetOpen,
+}) {
+  if (playerSheetOpen) return true;
+  if (rootRouteCovered) return false;
+  if (shellRoutePushed) return false;
+  return tab >= 0 && tab <= 2;
+}
+
+/// Pengamat navigator untuk strip fleksibel 8082: menandai apakah ada
+/// rute DI ATAS rute pertama (akar) navigator yang diamati. Himpunan
+/// rute dipakai (bukan penghitung) agar pop/remove/replace ganda tidak
+/// menggeser keadaan.
+class AboveRootRouteObserver extends NavigatorObserver {
+  AboveRootRouteObserver(this.covered);
+
+  /// true selama ada rute di atas rute akar.
+  final ValueNotifier<bool> covered;
+  final Set<Route<dynamic>> _above = <Route<dynamic>>{};
+
+  void _sync() => covered.value = _above.isNotEmpty;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (previousRoute != null) {
+      _above.add(route);
+      _sync();
+    }
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_above.remove(route)) _sync();
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_above.remove(route)) _sync();
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (oldRoute != null && _above.remove(oldRoute)) {
+      if (newRoute != null) _above.add(newRoute);
+      _sync();
+    }
+  }
+}
+
 /// Konteks di dalam overlay navigator aplikasi (MaterialApp ClaiApp) —
 /// tuan rumah untuk SEMUA lembar modal dan rute yang wajib menutupi
 /// seluruh cangkang (Player, Antrean, lembar-lembar).
@@ -664,31 +811,15 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   /// bergantung pada pembangunan ulang pohon navigator.
   final ValueNotifier<int> _tabNotifier = ValueNotifier<int>(0);
 
-  /// Audit UX 2017: petunjuk geser mini player satu-kali (pref
-  /// `ui.miniSwipeHintSeen`). Default true = tersembunyi sampai pref
-  /// terbaca di initState, supaya tidak berkedip bagi pengguna yang
-  /// sudah pernah menutupnya.
-  bool _miniSwipeHintSeen = true;
-
-  Future<void> _loadMiniSwipeHint() async {
-    final seen =
-        await ref.read(appDbProvider).pref<bool>('ui.miniSwipeHintSeen') ??
-        false;
-    if (mounted && seen != _miniSwipeHintSeen) {
-      setState(() => _miniSwipeHintSeen = seen);
-    }
-  }
-
-  /// Mengubur petunjuk geser untuk selamanya: tombol tutup ATAU geser
-  /// pertama yang berhasil (keduanya membuktikan petunjuk tak lagi perlu).
-  void _dismissMiniSwipeHint() {
-    if (_miniSwipeHintSeen) return;
-    setState(() => _miniSwipeHintSeen = true);
-    ref
-        .read(appDbProvider)
-        .setPref('ui.miniSwipeHintSeen', true)
-        .catchError((_) {});
-  }
+  /// Strip fleksibel 8082: keadaan "ada rute di atas akar" untuk kedua
+  /// navigator, digerakkan AboveRootRouteObserver masing-masing.
+  final ValueNotifier<bool> _shellRoutePushed = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _rootRouteCovered = ValueNotifier<bool>(false);
+  late final AboveRootRouteObserver _shellRouteObserver =
+      AboveRootRouteObserver(_shellRoutePushed);
+  late final AboveRootRouteObserver _rootRouteObserver = AboveRootRouteObserver(
+    _rootRouteCovered,
+  );
 
   /// Ganti tab ala cangkang: tumpukan rute dalam selalu dipulangkan ke
   /// akar dulu (mengetuk tab dari halaman yang didorong menampilkan tab
@@ -740,14 +871,21 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _tabNotifier.dispose();
+    _shellRoutePushed.dispose();
+    _rootRouteCovered.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _loadMiniSwipeHint();
     final handler = ref.read(audioHandlerProvider);
+    // Ronde 8074: gerbang Mode Samaran disambungkan ke handler —
+    // pemeriksa membaca keadaan TasteService yang hidup, jadi saklar
+    // di Player/Pengaturan berlaku seketika untuk trek yang sedang
+    // berjalan maupun berikutnya.
+    handler.samaranCheck = () => ref.read(tasteServiceProvider).samaranOn;
+    ref.read(tasteServiceProvider).load();
     // Cacat A (2008): izin notifikasi diminta pada MOMEN YANG BENAR —
     // pemutaran aktif pertama (sekali per pemasangan). Tanpa izin
     // POST_NOTIFICATIONS (Android 13+), notifikasi media tidak tampil
@@ -787,7 +925,13 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
     // Pengaturan membaca keadaan yang sebenarnya, bukan tebakan.
     ref.read(ocrModelControllerProvider).refresh();
     final upd = ref.read(updateControllerProvider);
-    upd.loadPrefs().then((_) => upd.maybeAutoCheck());
+    // Ronde 8079: nilai pengumuman sesudah pasang DULU (bisa memicu
+    // satu pemeriksaan umpan untuk menyumber catatan versi terpasang),
+    // baru pemeriksaan otomatis berkala seperti biasa.
+    upd.loadPrefs().then((_) async {
+      await upd.evaluateAnnouncement();
+      await upd.maybeAutoCheck();
+    });
     // F2 Batch 2: unduhan — satu instans layanan (provider) disambungkan ke
     // handler: peta path untuk sumber berkas lokal + sumber isi ulang offline.
     final dl = ref.read(downloadServiceProvider);
@@ -1008,8 +1152,7 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
         unawaited(handler.setWaveformVisWanted(false));
         return;
       }
-      final wants =
-          waveformWantsVisualizer(waveformRecorder.dataFor(cur.key));
+      final wants = waveformWantsVisualizer(waveformRecorder.dataFor(cur.key));
       unawaited(handler.setWaveformVisWanted(wants));
       unawaited(ensureMicForVisualizer(wants));
     }
@@ -1045,6 +1188,9 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
       debugShowCheckedModeBanner: false,
       theme: buildClaiTheme(),
       navigatorKey: _navKey,
+      // Strip fleksibel 8082: pengamat rute akar (lembar/dialog/layar
+      // penuh di atas cangkang → strip dasar; lihat §13.1 DS v5.3).
+      navigatorObservers: [_rootRouteObserver],
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -1106,11 +1252,53 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
+                  // Strip inset atas (DS Bab 13.1). Riwayat: wash di
+                  // atas berjangkar di y=0 dengan warna terkuatnya
+                  // tepat di strip inset atas, sementara konten
+                  // cangkang hidup di dalam SafeArea di bawah inset —
+                  // ronde 8080/8081 mengecat strip itu dasar secara
+                  // global. Vonis HP pemilik atas 8081 (23 Nov 01:51):
+                  // di Beranda, strip hitam itu MENABRAK bagian atas
+                  // halaman yang memang sapuan ambient sampul — garis
+                  // potong keras. Koreksi 8082 (DS v5.3): strip
+                  // FLEKSIBEL, kelanjutan permukaan atas halaman yang
+                  // dibuka — keputusan murni di claiStripFollowsAmbient:
+                  // halaman ambient (akar tab, Player terbuka) → strip
+                  // TIDAK dicat, wash menerus sampai tepi atas tanpa
+                  // garis potong; halaman solid (rute terdorong
+                  // cangkang, lembar/dialog di navigator akar) → strip
+                  // dicat dasar persis seperti 8080/8081. Tinggi strip
+                  // = inset atas perangkat ini; nol pada perangkat
+                  // tanpa inset atas.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: MediaQuery.paddingOf(context).top,
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _tabNotifier,
+                        _shellRoutePushed,
+                        _rootRouteCovered,
+                        claiPlayerSheetOpen,
+                      ]),
+                      builder: (context, _) =>
+                          claiStripFollowsAmbient(
+                            tab: _tabNotifier.value,
+                            shellRoutePushed: _shellRoutePushed.value,
+                            rootRouteCovered: _rootRouteCovered.value,
+                            playerSheetOpen: claiPlayerSheetOpen.value,
+                          )
+                          ? const SizedBox.expand()
+                          : const ColoredBox(color: ClaiColors.base),
+                    ),
+                  ),
                   Positioned.fill(
                     child: SafeArea(
                       bottom: false,
                       child: Navigator(
                         key: _shellNavKey,
+                        observers: [_shellRouteObserver],
                         onGenerateRoute: (settings) => MaterialPageRoute(
                           settings: settings,
                           builder: (_) => ValueListenableBuilder<int>(
@@ -1226,9 +1414,7 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
     final handler = ref.read(audioHandlerProvider);
     // Tema Dinamis menyala → chrome bersih tanpa lukisan latar
     // (ronde 8046); mati → lukisan warisan persis di bawah.
-    final ambOn = ref.watch(
-      ambientControllerProvider.select((s) => s.enabled),
-    );
+    final ambOn = ref.watch(ambientControllerProvider.select((s) => s.enabled));
     return StreamBuilder<MediaItem?>(
       stream: handler.mediaItem.stream,
       initialData: handler.mediaItem.valueOrNull,
@@ -1356,62 +1542,7 @@ class _ClaiAppState extends ConsumerState<ClaiApp> with WidgetsBindingObserver {
                       );
                     },
                   ),
-                  // Audit UX 2017: petunjuk geser mini player SATU
-                  // KALI — gestur geser tidak terlihat sama sekali
-                  // bagi pengguna baru. Bilah ramping pola bilah
-                  // offline, tepat di atas kartu; geometri chrome
-                  // yang dikunci tak berubah (tinggi nol saat tiada).
-                  StreamBuilder(
-                    stream: ref.read(audioHandlerProvider).mediaItem.stream,
-                    initialData: ref
-                        .read(audioHandlerProvider)
-                        .mediaItem
-                        .valueOrNull,
-                    builder: (context, snap) {
-                      if (snap.data == null || _miniSwipeHintSeen) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-                          decoration: BoxDecoration(
-                            color: ClaiColors.surface2,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              ClaiIcon(
-                                ClaiIcons.next,
-                                size: 18,
-                                color: ClaiColors.accent,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  context.l10n.miniSwipeHint,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: ClaiColors.inkSecondary,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: ClaiIcon(
-                                  ClaiIcons.close,
-                                  size: 18,
-                                  color: ClaiColors.inkSecondary,
-                                ),
-                                tooltip: context.l10n.a11yClose,
-                                onPressed: _dismissMiniSwipeHint,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  MiniPlayer(onSwipeCommitted: _dismissMiniSwipeHint),
+                  const MiniPlayer(),
                   _navBar(context),
                   SizedBox(height: bottomInset),
                 ],

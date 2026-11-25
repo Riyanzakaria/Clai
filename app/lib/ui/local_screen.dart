@@ -109,7 +109,7 @@ class _LocalFilesBodyState extends ConsumerState<LocalFilesBody> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                tonalIconBox(ClaiIcons.folder, size: 44, iconSize: 22),
+                rowLeadIcon(ClaiIcons.folder, size: 44, iconSize: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -122,12 +122,6 @@ class _LocalFilesBodyState extends ConsumerState<LocalFilesBody> {
                   ),
                 ),
               ]),
-              const SizedBox(height: 10),
-              Text(
-                l.localSub,
-                style: const TextStyle(
-                    color: ClaiColors.inkSecondary, fontSize: 13, height: 1.45),
-              ),
               const SizedBox(height: 16),
               Opacity(
                 opacity: _loading ? 0.6 : 1,

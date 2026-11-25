@@ -10,7 +10,12 @@ import 'similarity.dart';
 /// persis dari masukannya. Penyuntikan lagu baru tetap wilayah eksklusif
 /// Putar Otomatis yang berlabel AUTO. Yang diatur di sini hanya URUTAN:
 ///  - artis utama yang sama disebar (tidak berdempetan bila memungkinkan),
-///  - trek yang disukai / sering diputar mendapat dorongan ke depan,
+///  - trek yang disukai mendapat dorongan ke depan,
+///  - di antara yang setara, trek yang PALING JARANG DIPUTAR didahulukan
+///    (Ronde 8075: redaksi terkunci Acak Cerdas di BEDAH-F3 keputusan 1 —
+///    "sebar artis & prioritaskan yang jarang diputar". Dorongan lama
+///    "sering diputar +1" DICABUT: ia bertabrakan langsung dengan
+///    prioritas jarang-diputar dan membuat lagu yang sama menang terus),
 ///  - urutan akhir deterministik untuk [seed] yang sama (dapat diuji & diulang).
 ///
 /// Dipakai untuk seksi Lanjutan & Putar Otomatis (Ronde 8066: cakupan
@@ -26,12 +31,20 @@ List<Track> smartShuffleOrder(
   if (input.length <= 1) return List<Track>.of(input);
   final rng = seed == null ? Random() : Random(seed);
 
-  int boost(Track t) =>
-      (likedKeys.contains(t.key) ? 2 : 0) + ((playCounts[t.key] ?? 0) > 2 ? 1 : 0);
+  int boost(Track t) => likedKeys.contains(t.key) ? 2 : 0;
+  int plays(Track t) => playCounts[t.key] ?? 0;
+
+  // Urutan prioritas di dalam grup & antar-kepala-grup: dorongan suka
+  // dulu, lalu jumlah putar MENAIK (paling jarang paling depan).
+  int byPriority(Track a, Track b) {
+    final byBoost = boost(b).compareTo(boost(a));
+    if (byBoost != 0) return byBoost;
+    return plays(a).compareTo(plays(b));
+  }
 
   // Konstruksi grup (masalah rearrange-string): kelompokkan per artis utama,
   // lalu selalu ambil dari grup terbesar yang BUKAN artis pilihan terakhir
-  // (seri: dorongan tertinggi dulu). Ini MENJAMIN tanpa dempetan bila
+  // (seri: kepala berprioritas tertinggi dulu). Ini MENJAMIN tanpa dempetan bila
   // memungkinkan secara matematis (grup terbesar ≤ (n+1)/2); bila kolam
   // memaksa (satu artis mendominasi), dempetan hanya muncul di titik yang
   // tak terhindarkan — dan tidak ada trek yang dibuang.
@@ -41,25 +54,27 @@ List<Track> smartShuffleOrder(
     groups.putIfAbsent(AutoplayGate.primaryArtistKey(t.artistNames), () => []).add(t);
   }
   for (final g in groups.values) {
-    g.sort((a, b) => boost(b).compareTo(boost(a)));
+    g.sort(byPriority);
   }
   final out = <Track>[];
   String? lastArtist;
   while (out.length < input.length) {
     String? pickGroup;
     var pickSize = -1;
-    var pickBoost = -1;
+    Track? pickHead;
     for (final e in groups.entries) {
       if (e.value.isEmpty) continue;
       if (e.key == lastArtist && groups.values.any((g) => g.isNotEmpty && g != e.value)) {
         continue; // ada alternatif: jangan dempetkan
       }
-      final headBoost = boost(e.value.first);
+      final head = e.value.first;
       if (e.value.length > pickSize ||
-          (e.value.length == pickSize && headBoost > pickBoost)) {
+          (e.value.length == pickSize &&
+              pickHead != null &&
+              byPriority(head, pickHead) < 0)) {
         pickGroup = e.key;
         pickSize = e.value.length;
-        pickBoost = headBoost;
+        pickHead = head;
       }
     }
     // pickGroup tak mungkin null selama masih ada sisa (fallback: grup terakhir).

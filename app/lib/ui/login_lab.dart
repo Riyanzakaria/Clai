@@ -397,8 +397,8 @@ class _LoginLabScreenState extends State<LoginLabScreen> {
             child: Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton(
                 style: FilledButton.styleFrom(
-                    backgroundColor: ClaiColors.accent,
-                    foregroundColor: ClaiColors.onAccent),
+                    backgroundColor: ClaiColors.signal,
+                    foregroundColor: ClaiColors.onSignal),
                 onPressed: _harvesting ? null : harvest,
                 child: const Text('Panen Sesi'),
               ),

@@ -40,15 +40,29 @@ void main() {
     // sedang/kecil bergantian (total 4420 dp; viewport 800 dp →
     // extent eksak 3620 dp).
     const heights = <double>[
-      1500, 96, 340, 260, 96, 420, 96, 300, 96, 380, 96, 240, 500,
+      1500,
+      96,
+      340,
+      260,
+      96,
+      420,
+      96,
+      300,
+      96,
+      380,
+      96,
+      240,
+      500,
     ];
     const exactExtent = 4420.0 - 800.0;
 
     List<Widget> anak() => [
-          for (final h in heights)
-            SizedBox(
-                height: h, child: const ColoredBox(color: Color(0xFF222233))),
-        ];
+      for (final h in heights)
+        SizedBox(
+          height: h,
+          child: const ColoredBox(color: Color(0xFF222233)),
+        ),
+    ];
 
     Future<List<({double px, double max})>> seretLambat(
       WidgetTester tester,
@@ -73,56 +87,87 @@ void main() {
     void cekMonoton(List<({double px, double max})> s, double arah) {
       for (var i = 1; i < s.length; i++) {
         final d = (s[i].px - s[i - 1].px) * arah;
-        expect(d, greaterThanOrEqualTo(-2.0),
-            reason: 'pembalikan ${-d} px pada sampel $i melampaui '
-                'toleransi 2 px (px ${s[i - 1].px} → ${s[i].px})');
+        expect(
+          d,
+          greaterThanOrEqualTo(-2.0),
+          reason:
+              'pembalikan ${-d} px pada sampel $i melampaui '
+              'toleransi 2 px (px ${s[i - 1].px} → ${s[i].px})',
+        );
       }
     }
 
-    testWidgets('FiniteScrollPage: extent eksak-konstan, seretan monoton',
-        (tester) async {
+    testWidgets('FiniteScrollPage: extent eksak-konstan, seretan monoton', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
       final ctrl = ScrollController();
       addTearDown(ctrl.dispose);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: FiniteScrollPage(controller: ctrl, children: anak()),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FiniteScrollPage(controller: ctrl, children: anak()),
+          ),
         ),
-      ));
+      );
       // Extent eksak sejak bingkai PERTAMA — bukan perkiraan.
-      expect(ctrl.position.maxScrollExtent, closeTo(exactExtent, 0.5),
-          reason: 'extent harus geometri nyata, bukan rata-rata perkiraan');
-      final turun = await seretLambat(tester, ctrl.position,
-          total: 1400, arah: 1);
+      expect(
+        ctrl.position.maxScrollExtent,
+        closeTo(exactExtent, 0.5),
+        reason: 'extent harus geometri nyata, bukan rata-rata perkiraan',
+      );
+      final turun = await seretLambat(
+        tester,
+        ctrl.position,
+        total: 1400,
+        arah: 1,
+      );
       cekMonoton(turun, 1);
       for (final s in turun) {
-        expect(s.max, closeTo(exactExtent, 0.5),
-            reason: 'extent berubah di tengah seretan: ${s.max}');
+        expect(
+          s.max,
+          closeTo(exactExtent, 0.5),
+          reason: 'extent berubah di tengah seretan: ${s.max}',
+        );
       }
-      final naik = await seretLambat(tester, ctrl.position,
-          total: 500, arah: -1);
+      final naik = await seretLambat(
+        tester,
+        ctrl.position,
+        total: 500,
+        arah: -1,
+      );
       cekMonoton(naik, -1);
     });
 
-    testWidgets('kontrol: ListView(children:) extent-nya TIDAK stabil',
-        (tester) async {
+    testWidgets('kontrol: ListView(children:) extent-nya TIDAK stabil', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
       final ctrl = ScrollController();
       addTearDown(ctrl.dispose);
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: ListView(controller: ctrl, children: anak())),
-      ));
-      final sampel = await seretLambat(tester, ctrl.position,
-          total: 1400, arah: 1);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(controller: ctrl, children: anak()),
+          ),
+        ),
+      );
+      final sampel = await seretLambat(
+        tester,
+        ctrl.position,
+        total: 1400,
+        arah: 1,
+      );
       final nilaiMax = sampel.map((s) => s.max).toSet();
       expect(
         nilaiMax.length > 1 || (nilaiMax.single - exactExtent).abs() > 1,
         isTrue,
-        reason: 'kontrol ListView seharusnya menunjukkan extent '
+        reason:
+            'kontrol ListView seharusnya menunjukkan extent '
             'perkiraan yang berubah/tidak eksak (kelas cacat 8052); '
             'terbaca: $nilaiMax',
       );
@@ -142,20 +187,30 @@ void main() {
       while (e != null) {
         final s = e.toString();
         // Notis satuan, ATAU agregat "Multiple exceptions (N)" berisi
-        // N ≤ 12 notis yang sama (12 baris grup hub) yang menumpuk
-        // sebelum sempat diserap — agregat disamarkan isinya oleh
-        // kerangka tes, jadi jumlahnya yang dijaga di sini.
+        // N ≤ 13 notis yang sama (13 baris grup hub — 12 warisan +
+        // Kepemilikan sejak ronde 8070) yang menumpuk sebelum sempat
+        // diserap — agregat disamarkan isinya oleh kerangka tes, jadi
+        // jumlahnya yang dijaga di sini. Batas ini MENGIKUTI jumlah
+        // baris grup hub; menambah grup baru wajib menaikkannya di sini.
         final agregat = RegExp(r'Multiple exceptions \((\d+)\)').firstMatch(s);
-        final ok = s.contains('ListTile background color or ink splashes') ||
-            (agregat != null && int.parse(agregat.group(1)!) <= 12);
+        final ok =
+            s.contains('ListTile background color or ink splashes') ||
+            (agregat != null && int.parse(agregat.group(1)!) <= 13);
         expect(ok, isTrue, reason: 'eksepsi tak terduga di hub: $e');
         e = tester.takeException();
       }
     }
 
-    testWidgets('seretan lambat monoton + extent konstan (metrik pemilik)',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
+    testWidgets('seretan lambat monoton + extent konstan (metrik pemilik)', (
+      tester,
+    ) async {
+      // Pemeliharaan ronde 8083: hub kini DATAR (R1 — 7 pintu × 68)
+      // sehingga pada metrik pemilik penuh 360×800 seluruh hub MUAT
+      // tanpa gulir (extent 0 — justru bukti R1 berhasil). Uji
+      // monoton+extent-konstan tetap dijalankan pada hub ASLI yang
+      // sama, dengan viewport dipendekkan ke 360×400 agar rentang
+      // gulirnya nyata lagi; invarian yang diuji tidak berubah.
+      tester.view.physicalSize = const Size(1080, 1200);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(
@@ -171,14 +226,28 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 100));
       serapNotisListTile(tester);
-      final pos =
-          tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+      // Ronde 8076 (pemeliharaan tes): pil "Cari pengaturan" menambah
+      // Scrollable internal milik TextField di puncak hub — posisi yang
+      // diuji tetap posisi hub, kini dipilih tegas lewat FiniteScrollPage.
+      final pos = tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: find.byType(FiniteScrollPage),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position;
       final maxAwal = pos.maxScrollExtent;
-      expect(maxAwal, greaterThan(500),
-          reason: 'hub harus punya isi gulir yang panjang');
+      // Ambang 250 dipertahankan dari ronde 8079; pada viewport
+      // 360×400 extent hub datar 8083 terukur ±300dp.
+      expect(
+        maxAwal,
+        greaterThan(250),
+        reason: 'hub harus punya isi gulir yang panjang',
+      );
 
       Future<void> seret(double total, double arah) async {
-        final gesture = await tester.startGesture(const Offset(180, 500));
+        final gesture = await tester.startGesture(const Offset(180, 280));
         var jalan = 0.0;
         var pxSebelumnya = pos.pixels;
         while (jalan < total) {
@@ -186,22 +255,36 @@ void main() {
           await tester.pump(const Duration(milliseconds: 16));
           jalan += 6;
           final d = (pos.pixels - pxSebelumnya) * arah;
-          expect(d, greaterThanOrEqualTo(-2.0),
-              reason: 'offset hub berbalik ${-d} px melawan seretan '
-                  'pada px=${pos.pixels}');
-          expect(pos.maxScrollExtent, closeTo(maxAwal, 0.5),
-              reason: 'extent hub berubah di tengah seretan');
+          expect(
+            d,
+            greaterThanOrEqualTo(-2.0),
+            reason:
+                'offset hub berbalik ${-d} px melawan seretan '
+                'pada px=${pos.pixels}',
+          );
+          expect(
+            pos.maxScrollExtent,
+            closeTo(maxAwal, 0.5),
+            reason: 'extent hub berubah di tengah seretan',
+          );
           pxSebelumnya = pos.pixels;
         }
         await gesture.up();
         await tester.pump(const Duration(milliseconds: 300));
       }
 
-      await seret(1000, 1);
+      // Jarak seret disesuaikan ronde 8079: extent hub kini ±351dp
+      // (tujuh pintu) — seretan 320dp tetap melintasi hampir seluruh
+      // rentang gulir dalam langkah 6px yang sama; invarian yang diuji
+      // (monoton + extent konstan) tidak berubah.
+      await seret(320, 1);
       serapNotisListTile(tester);
-      expect(pos.pixels, greaterThan(600),
-          reason: 'seretan harus benar-benar menggerakkan hub');
-      await seret(400, -1);
+      expect(
+        pos.pixels,
+        greaterThan(250),
+        reason: 'seretan harus benar-benar menggerakkan hub',
+      );
+      await seret(200, -1);
       serapNotisListTile(tester);
       // Lepas seluruh pohon agar provider (timer ambien 300 md) dibuang
       // bersih sebelum tes berakhir.
@@ -226,19 +309,29 @@ void main() {
       'lib/ui/mood_screen.dart',
       'lib/ui/lyrics_sheet.dart',
     ];
-    test('halaman finite memakai FiniteScrollPage, bukan ListView(children:)',
-        () {
-      final polaListViewFinite = RegExp(
-          r'(^|[^A-Za-z])ListView\(\s*(padding:[^)]*,\s*)?children:');
-      for (final path in berkas) {
-        final isi = File(path).readAsStringSync();
-        expect(isi, contains('FiniteScrollPage('),
-            reason: '$path harus memakai FiniteScrollPage');
-        expect(polaListViewFinite.hasMatch(isi), isFalse,
-            reason: '$path kembali ke ListView(children:) — kelas cacat '
-                'glitch gulir 8052 (extent perkiraan melawan seretan)');
-      }
-    });
+    test(
+      'halaman finite memakai FiniteScrollPage, bukan ListView(children:)',
+      () {
+        final polaListViewFinite = RegExp(
+          r'(^|[^A-Za-z])ListView\(\s*(padding:[^)]*,\s*)?children:',
+        );
+        for (final path in berkas) {
+          final isi = File(path).readAsStringSync();
+          expect(
+            isi,
+            contains('FiniteScrollPage('),
+            reason: '$path harus memakai FiniteScrollPage',
+          );
+          expect(
+            polaListViewFinite.hasMatch(isi),
+            isFalse,
+            reason:
+                '$path kembali ke ListView(children:) — kelas cacat '
+                'glitch gulir 8052 (extent perkiraan melawan seretan)',
+          );
+        }
+      },
+    );
   });
 }
 

@@ -23,7 +23,8 @@ class _DrivingSectionState extends ConsumerState<DrivingSection> {
 
   Future<void> _loadBonded() async {
     final driving = ref.read(drivingServiceProvider);
-    final granted = await Permission.bluetoothConnect.isGranted ||
+    final granted =
+        await Permission.bluetoothConnect.isGranted ||
         await Permission.bluetoothConnect.request().isGranted;
     if (!granted) {
       if (mounted) setState(() => _bonded = []);
@@ -43,173 +44,240 @@ class _DrivingSectionState extends ConsumerState<DrivingSection> {
     // lebar-penuh (dulu terjepit 160 dp di trailing). Perilaku semua
     // kendali (izin lokasi, buka layar Menyetir, tanda kendaraan)
     // tidak berubah.
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _section(s.drvMode, [
-        SwitchListTile(
-          secondary: tonalIconBox(ClaiIcons.radio, size: 40, iconSize: 20),
-          title: Text(s.drvMode, style: const TextStyle(color: ClaiColors.ink)),
-          subtitle: Text(s.drvModeSub,
-              style: const TextStyle(color: ClaiColors.inkSecondary)),
-          value: driving.on,
-          onChanged: (v) async {
-            await driving.setOn(v);
-            if (v && context.mounted) {
-              // Audit 8047 (#16): layar Menyetir tetap didorong pada
-              // navigator CANGKANG — navigator akar berada di LUAR
-              // ProviderScope aplikasi (log insiden membuktikan
-              // "No ProviderScope found" saat dicoba). Chrome cangkang
-              // ditekan dari dalam app.dart lewat bendera
-              // claiChromeSuppressed (Opacity + IgnorePointer).
-              Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const DrivingScreen()));
-            }
-          },
-        ),
-        DropdownTile<String>(
-          title: s.drvScheme,
-          leading: tonalIconBox(ClaiIcons.settings, size: 40, iconSize: 20),
-          subtitle: s.drvSchemeSub,
-          value: driving.scheme,
-          items: [
-            DropdownMenuItem(value: 'buttons', child: Text(s.drvSchemeButtons)),
-            DropdownMenuItem(value: 'patterns', child: Text(s.drvSchemePatterns)),
-            DropdownMenuItem(value: 'voice', child: Text(s.drvSchemeVoice)),
-          ],
-          onChanged: (v) async {
-            if (v == null) return;
-            await driving.setScheme(v);
-          },
-        ),
-        SwitchListTile(
-          secondary: tonalIconBox(ClaiIcons.mic, size: 40, iconSize: 20),
-          title: Text(s.drvAnnounce, style: const TextStyle(color: ClaiColors.ink)),
-          subtitle: Text(s.drvAnnounceSub,
-              style: const TextStyle(color: ClaiColors.inkSecondary)),
-          value: driving.announceOn,
-          onChanged: (v) => driving.setAnnounce(v),
-        ),
-        SwitchListTile(
-          secondary: tonalIconBox(ClaiIcons.gauge, size: 40, iconSize: 20),
-          title: Text(s.drvSpeedVolume, style: const TextStyle(color: ClaiColors.ink)),
-          subtitle: Text(s.drvSpeedVolumeSub,
-              style: const TextStyle(color: ClaiColors.inkSecondary)),
-          value: driving.speedVolumeOn,
-          onChanged: (v) async {
-            if (v) {
-              final granted = await Permission.location.isGranted ||
-                  await Permission.location.request().isGranted;
-              if (!granted) return;
-            }
-            await driving.setSpeedVolume(v);
-          },
-        ),
-      ]),
-      if (driving.speedVolumeOn)
-        _section(s.drvSpeedVolume, [
-          SettingsSliderBlock(
-            title: s.drvVolStop,
-            subtitle: s.drvVolPct((driving.stopVolume * 100).round()),
-            value: driving.stopVolume,
-            min: 0.1,
-            max: 1.0,
-            onChanged: (v) => driving.setCalibration(
-                stop: v, fast: driving.fastVolume, anchor: driving.anchorKmh),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _section(s.drvMode, [
+          // Ronde 8084: baris-baris seksi ini terkunci 60 / label
+          // 15/600 / state 13 satu baris, glyph ikon 24.
+          SwitchListTile(
+            minTileHeight: 60,
+            secondary: rowLeadIcon(ClaiIcons.radio, size: 40, iconSize: 24),
+            title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 
+              s.drvMode,
+              style: rowTitleStyle(),
+            ),
+            value: driving.on,
+            onChanged: (v) async {
+              await driving.setOn(v);
+              if (v && context.mounted) {
+                // Audit 8047 (#16): layar Menyetir tetap didorong pada
+                // navigator CANGKANG — navigator akar berada di LUAR
+                // ProviderScope aplikasi (log insiden membuktikan
+                // "No ProviderScope found" saat dicoba). Chrome cangkang
+                // ditekan dari dalam app.dart lewat bendera
+                // claiChromeSuppressed (Opacity + IgnorePointer).
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DrivingScreen()),
+                );
+              }
+            },
           ),
-          SettingsSliderBlock(
-            title: s.drvVolFast,
-            subtitle: s.drvVolFastSub((driving.fastVolume * 100).round()),
-            value: driving.fastVolume,
-            min: 0.1,
-            max: 1.0,
-            onChanged: (v) => driving.setCalibration(
-                stop: driving.stopVolume, fast: v, anchor: driving.anchorKmh),
+          DropdownTile<String>(
+            // Ronde 8084 (dari W5): flush — padding horizontal internal
+            // 0 agar sejajar panel klon _section di berkas ini.
+            flush: true,
+            title: s.drvScheme,
+            leading: rowLeadIcon(ClaiIcons.settings, size: 40, iconSize: 24),
+            value: driving.scheme,
+            items: [
+              DropdownMenuItem(
+                value: 'buttons',
+                child: Text(s.drvSchemeButtons),
+              ),
+              DropdownMenuItem(
+                value: 'patterns',
+                child: Text(s.drvSchemePatterns),
+              ),
+              DropdownMenuItem(value: 'voice', child: Text(s.drvSchemeVoice)),
+            ],
+            onChanged: (v) async {
+              if (v == null) return;
+              await driving.setScheme(v);
+            },
           ),
-          SettingsSliderBlock(
-            title: s.drvAnchor,
-            subtitle: s.drvAnchorSub(driving.anchorKmh.round()),
-            value: driving.anchorKmh,
-            min: 40,
-            max: 120,
-            divisions: 16,
-            onChanged: (v) => driving.setCalibration(
-                stop: driving.stopVolume,
-                fast: driving.fastVolume,
-                anchor: v),
+          SwitchListTile(
+            minTileHeight: 60,
+            secondary: rowLeadIcon(ClaiIcons.mic, size: 40, iconSize: 24),
+            title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 
+              s.drvAnnounce,
+              style: rowTitleStyle(),
+            ),
+            value: driving.announceOn,
+            onChanged: (v) => driving.setAnnounce(v),
+          ),
+          SwitchListTile(
+            minTileHeight: 60,
+            secondary: rowLeadIcon(ClaiIcons.gauge, size: 40, iconSize: 24),
+            title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 
+              s.drvSpeedVolume,
+              style: rowTitleStyle(),
+            ),
+            value: driving.speedVolumeOn,
+            onChanged: (v) async {
+              if (v) {
+                final granted =
+                    await Permission.location.isGranted ||
+                    await Permission.location.request().isGranted;
+                if (!granted) return;
+              }
+              await driving.setSpeedVolume(v);
+            },
           ),
         ]),
-      _section(s.drvVehicles, [
-        ListTile(
-          leading: tonalIconBox(ClaiIcons.phone, size: 40, iconSize: 20, color: ClaiColors.inkSecondary),
-          title: Text(s.drvVehicles,
-              style: const TextStyle(color: ClaiColors.ink)),
-          subtitle: Text(
-              _bonded == null
-                  ? s.drvVehiclesHint
-                  : _bonded!.isEmpty
-                      ? s.drvVehiclesNone
-                      : s.drvVehiclesCount(_bonded!.length),
-              style: const TextStyle(color: ClaiColors.inkSecondary)),
-          trailing: ClaiIcon(ClaiIcons.chevronRight, color: ClaiColors.inkFaint),
-          onTap: _loadBonded,
-        ),
-        if (_bonded != null)
-          for (final name in _bonded!)
-            CheckboxListTile(
-              title: Text(name, style: const TextStyle(color: ClaiColors.ink)),
-              subtitle: Text(s.drvMarkVehicle,
-                  style: const TextStyle(color: ClaiColors.inkSecondary)),
-              value: driving.vehicles.contains(name),
-              activeColor: ClaiColors.accent,
-              onChanged: (v) async {
-                if (v == true) {
-                  await driving.markVehicle(name);
-                } else {
-                  await driving.unmarkVehicle(name);
-                }
-              },
+        if (driving.speedVolumeOn)
+          _section(s.drvSpeedVolume, [
+            SettingsSliderBlock(
+              title: s.drvVolStop,
+              subtitle: s.drvVolPct((driving.stopVolume * 100).round()),
+              value: driving.stopVolume,
+              min: 0.1,
+              max: 1.0,
+              onChanged: (v) => driving.setCalibration(
+                stop: v,
+                fast: driving.fastVolume,
+                anchor: driving.anchorKmh,
+              ),
             ),
-      ]),
-    ]);
+            SettingsSliderBlock(
+              title: s.drvVolFast,
+              subtitle: s.drvVolFastSub((driving.fastVolume * 100).round()),
+              value: driving.fastVolume,
+              min: 0.1,
+              max: 1.0,
+              onChanged: (v) => driving.setCalibration(
+                stop: driving.stopVolume,
+                fast: v,
+                anchor: driving.anchorKmh,
+              ),
+            ),
+            SettingsSliderBlock(
+              title: s.drvAnchor,
+              subtitle: s.drvAnchorSub(driving.anchorKmh.round()),
+              value: driving.anchorKmh,
+              min: 40,
+              max: 120,
+              divisions: 16,
+              onChanged: (v) => driving.setCalibration(
+                stop: driving.stopVolume,
+                fast: driving.fastVolume,
+                anchor: v,
+              ),
+            ),
+          ]),
+        _section(s.drvVehicles, [
+          ListTile(
+            minTileHeight: 60,
+            titleTextStyle: const TextStyle(
+              fontFamily: kDisplayFontFamily,
+              fontSize: kRowTitleSize,
+              fontWeight: FontWeight.w700,
+              color: ClaiColors.ink,
+            ),
+            subtitleTextStyle: const TextStyle(
+              fontSize: 13,
+              color: ClaiColors.inkSecondary,
+            ),
+            leading: rowLeadIcon(
+              ClaiIcons.phone,
+              size: 40,
+              iconSize: 24,
+              color: ClaiColors.inkSecondary,
+            ),
+            title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 
+              s.drvVehicles,
+              style: rowTitleStyle(),
+            ),
+            // Keadaan belum dimuat: tanpa subjudul (petunjuk ketuk dibuang
+            // oleh sapuan tegas 8081); none/count adalah keadaan, tetap.
+            subtitle: _bonded == null
+                ? null
+                : Text(
+                    _bonded!.isEmpty
+                        ? s.drvVehiclesNone
+                        : s.drvVehiclesCount(_bonded!.length),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: ClaiColors.inkSecondary,
+                    ),
+                  ),
+            trailing: ClaiIcon(
+              ClaiIcons.chevronRight,
+              color: ClaiColors.inkFaint,
+            ),
+            onTap: _loadBonded,
+          ),
+          if (_bonded != null)
+            for (final name in _bonded!)
+              // Ronde 8084: subjudul instruksi drvMarkVehicle DIBUANG
+              // (§13.2) — label kendaraan + checkbox tetap persis.
+              CheckboxListTile(
+                minTileHeight: 60,
+                title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: ClaiColors.ink,
+                  ),
+                ),
+                value: driving.vehicles.contains(name),
+                activeColor: ClaiColors.signal,
+                onChanged: (v) async {
+                  if (v == true) {
+                    await driving.markVehicle(name);
+                  } else {
+                    await driving.unmarkVehicle(name);
+                  }
+                },
+              ),
+        ]),
+      ],
+    );
   }
 
-  /// Seksi berkicker + panel, gaya yang sama seperti settingsSection
-  /// di settings_screen (disalin kecil di sini agar seksi ini tetap
-  /// mandiri — settings_screen mengimpor berkas ini, bukan sebaliknya).
+  /// Seksi berlabel + baris, gaya Pola Pengaturan baru (Ronde 8083)
+  /// yang sama seperti settingsSection di settings_screen (disalin
+  /// kecil di sini agar seksi ini tetap mandiri — settings_screen
+  /// mengimpor berkas ini, bukan sebaliknya): label sentence-case
+  /// 13 w600 inkSecondary (padding atas 18, jarak ke baris 4), baris
+  /// langsung di atas latar halaman padding horizontal 20, hairline
+  /// antar baris inset 72 sejajar awal teks baris. Wadah kartu tonal
+  /// surface-1 radius 20 yang dulu dibangun berkas ini sendiri pensiun.
   Widget _section(String kicker, List<Widget> rows) {
     final children = <Widget>[];
     for (var i = 0; i < rows.length; i++) {
       if (i > 0) {
-        children.add(const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Divider(height: 1, color: ClaiColors.divider),
-        ));
+        children.add(
+          const Padding(
+            padding: EdgeInsets.only(left: 72),
+            child: Divider(height: 1, color: ClaiColors.divider),
+          ),
+        );
       }
       children.add(rows[i]);
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-        child: Text(
-          kicker.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.8,
-            color: ClaiColors.inkSecondary,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          child: Text(
+            kicker,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: ClaiColors.inkSecondary,
+            ),
           ),
         ),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: ClaiColors.surface1,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          clipBehavior: Clip.antiAlias,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
           child: Column(children: children),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 }

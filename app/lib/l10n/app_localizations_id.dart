@@ -24,9 +24,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get offlineBarText => 'Mode offline — hanya unduhan & file lokal';
 
   @override
-  String get miniSwipeHint => 'Geser kartu pemutar untuk ganti lagu';
-
-  @override
   String get eqTitle => 'Equalizer';
 
   @override
@@ -37,12 +34,7 @@ class AppLocalizationsId extends AppLocalizations {
       'Equalizer tidak tersedia di perangkat ini — efek Equalizer Android menolak dibuat pada sesi pemain yang sedang hidup. Detail teknisnya tercatat di Log insiden (Pengaturan → Diagnosis Lokal).';
 
   @override
-  String get eqSubtitle =>
-      'Membentuk frekuensi audio Clai saja (menempel ke sesi pemain, bukan audio sistem).';
-
-  @override
-  String get eqWaitingSession =>
-      'Mulai putar lagu agar EQ dapat diterapkan ke sesi audio; setelan tersimpan dan diterapkan otomatis saat lagu mulai.';
+  String get eqWaitingSession => 'Mulai putar lagu agar EQ dapat diterapkan.';
 
   @override
   String get eqPreset => 'Preset';
@@ -60,7 +52,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String ocrModelInstalled(Object size, Object versionPart) {
-    return 'Terpasang · $size$versionPart — membaca gambar bekerja offline.';
+    return 'Terpasang · $size$versionPart';
   }
 
   @override
@@ -77,8 +69,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get ocrModelVerifying => 'Memeriksa keutuhan berkas (checksum)…';
 
   @override
-  String get ocrModelNotDownloaded =>
-      'Belum diunduh. Diunduh sekali dari GitHub Releases (±4 MB), tersimpan di perangkat, lalu Tangkap gambar bekerja offline. Tangkap lewat tautan tidak membutuhkannya.';
+  String get ocrModelNotDownloaded => 'Belum diunduh · unduhan sekali ±4 MB.';
 
   @override
   String get ocrModelDeleteTitle => 'Hapus model pembaca teks?';
@@ -109,9 +100,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get updateInstalling => 'Menyerahkan ke pemasang sistem…';
 
   @override
-  String get updateTapToCheck => 'Ketuk untuk memeriksa rilis terbaru.';
-
-  @override
   String updateInstalledLabel(Object label, Object status) {
     return 'Terpasang: $label · $status';
   }
@@ -122,43 +110,19 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get updateDownloadSub =>
-      'APK diunduh di dalam aplikasi, lalu dipasang lewat konfirmasi sistem Android.';
-
-  @override
   String get updateInstall => 'Pasang pembaruan';
-
-  @override
-  String get updateInstallSub =>
-      'Berkas sudah terunduh. Pemasangan menampilkan konfirmasi sistem — itu batas Android, bukan pilihan Clai.';
 
   @override
   String get updateAutoCheck => 'Periksa otomatis';
 
   @override
-  String get updateAutoCheckSub =>
-      'Paling sering sekali sehari, hanya permintaan publik ke GitHub — tanpa data pengguna.';
-
-  @override
   String get updateAutoDownload => 'Perbarui otomatis (unduh di latar)';
-
-  @override
-  String get updateAutoDownloadSub =>
-      'Rilis baru diunduh sendiri; pemasangannya tetap lewat konfirmasi sistem Android.';
 
   @override
   String get updateWifiOnly => 'Unduh hanya via Wi-Fi';
 
   @override
-  String get updateWifiOnlySub =>
-      'Unduhan otomatis menunggu Wi-Fi; unduhan manual tetap bisa memakai data seluler.';
-
-  @override
   String get updateInstallPermTitle => 'Izin pasang belum diberikan';
-
-  @override
-  String get updateInstallPermSub =>
-      'Android mewajibkan izin \"pasang aplikasi tak dikenal\" sebelum Clai bisa memasang pembaruannya sendiri.';
 
   @override
   String updateBannerTitle(Object version) {
@@ -174,6 +138,19 @@ class AppLocalizationsId extends AppLocalizations {
       'Unduh di dalam aplikasi, pasang lewat konfirmasi sistem.';
 
   @override
+  String get updateWhatsNewBtn => 'Yang baru';
+
+  @override
+  String updateWhatsNewTitle(Object version) {
+    return 'Yang baru di $version';
+  }
+
+  @override
+  String updateBuildLabel(int build) {
+    return 'Bangun $build';
+  }
+
+  @override
   String get commonInstall => 'Pasang';
 
   @override
@@ -187,7 +164,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get groupPlaybackSum =>
-      'Kualitas, Putar Otomatis, Acak Cerdas, transisi';
+      'Kualitas, Putar Otomatis, Acak & Acak Cerdas, transisi';
 
   @override
   String get groupAudio => 'Audio';
@@ -205,7 +182,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get groupAppearance => 'Tampilan';
 
   @override
-  String get groupAppearanceSum => 'Aksen warna dari sampul lagu';
+  String get groupAppearanceSum => 'Tema sampul, nama sapaan & bahasa';
 
   @override
   String get groupDriving => 'Berkendara';
@@ -254,6 +231,26 @@ class AppLocalizationsId extends AppLocalizations {
   String get groupAboutSum => 'Versi, lisensi, dan cara Clai bekerja';
 
   @override
+  String get groupExtras => 'Fitur Tambahan';
+
+  @override
+  String get groupExtrasSum => 'Berkendara, tangkap & ListenBrainz';
+
+  @override
+  String get groupSystem => 'Sistem';
+
+  @override
+  String get groupSystemSum => 'Jalan di latar, data, pembaruan & diagnosis';
+
+  @override
+  String get settingsSearchHint => 'Cari pengaturan';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'Tidak ada pengaturan untuk \"$query\"';
+  }
+
+  @override
   String get setQuality => 'Kualitas streaming';
 
   @override
@@ -269,26 +266,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get setAutoplay => 'Putar Otomatis';
 
   @override
-  String get setAutoplaySub => 'Menyambung lagu terkait saat antrean habis.';
-
-  @override
   String get setSmartShuffle => 'Acak Cerdas (Smart Shuffle)';
-
-  @override
-  String get setSmartShuffleSub =>
-      'Mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didahulukan). Tidak menambah lagu baru.';
 
   @override
   String get setAutoResume => 'Lanjut otomatis setelah interupsi';
 
   @override
-  String get setAutoResumeSub => 'Mis. sesudah panggilan telepon selesai.';
-
-  @override
   String get setTransition => 'Mode transisi';
-
-  @override
-  String get setTransitionSub => 'Berlaku mulai batas lagu berikutnya.';
 
   @override
   String get transitionSnack => 'Mode baru berlaku di lagu berikutnya.';
@@ -298,71 +282,33 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String crossfadeDurVal(Object secs) {
-    return '$secs detik — rentang 1–12 detik.';
+    return '$secs detik';
   }
 
   @override
-  String get playbackFootnote =>
-      'Gapless menyambung lagu tanpa jeda. Crossfade memudarkan ujung lagu sambil awal lagu berikut masuk (equal-power, tanpa jeda sunyi). Alih mode tidak pernah memotong lagu yang sedang berbunyi (ADR-002).';
-
-  @override
   String get setNormalization => 'Normalisasi kenyaringan';
-
-  @override
-  String get setNormalizationSub =>
-      'Samakan keras lagu dari pengukuran putar nyata.';
 
   @override
   String get normMicSnack =>
       'Tanpa izin mikrofon, Visualizer Android tidak boleh mengukur — gain semua lagu tetap netral. Izinnya hanya untuk mengukur level, tidak merekam.';
 
   @override
-  String get audioFootnote =>
-      'Keras lagu diukur dari pemutaran nyata (Visualizer), disimpan per lagu, dan dipakai mulai putaran berikutnya — lagu yang belum pernah terukur memakai gain netral.';
-
-  @override
   String get setOfflineMode => 'Mode offline';
-
-  @override
-  String get setOfflineModeSub =>
-      'Hanya lagu terunduh & file lokal yang diputar.';
 
   @override
   String get setManageDownloads => 'Kelola unduhan';
 
   @override
-  String get setManageDownloadsSub =>
-      'Daftar, progres, putar, dan hapus lagu terunduh.';
-
-  @override
-  String get downloadsFootnote =>
-      'Menyalakan mode offline menyaring antrean berjalan tanpa memotong lagu yang sedang berbunyi; sambungan Putar Otomatis menjadi \"terbatas — offline\".';
-
-  @override
   String get setDynamicAccent => 'Aksen cover dinamis';
 
   @override
-  String get setDynamicAccentSub =>
-      'Warna sampul mewarnai latar Player & kartu Beranda.';
-
-  @override
-  String get appearanceFootnote =>
-      'Nuansa diambil dari warna khas sampul yang sedang tampil dan tetap gelap; tombol putar & indikator status selalu Volt.';
-
-  @override
   String get languageTitle => 'Bahasa';
-
-  @override
-  String get languageSub => 'Bawaan sistem atau pilihan manual.';
 
   @override
   String get languageSystem => 'Sistem';
 
   @override
   String get captureLinkTitle => 'Tangkap tautan/teks';
-
-  @override
-  String get captureLinkSub => 'Tempel tautan playlist/lagu atau kata kunci.';
 
   @override
   String get captureHint => 'Tempel tautan atau ketik kata kunci…';
@@ -372,10 +318,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get searchCaptureTitle => 'Tangkap daftar lagu';
-
-  @override
-  String get searchCaptureSub =>
-      'Tempel tautan/teks (termasuk playlist Spotify) atau pilih gambar — lagunya dicocokkan untukmu.';
 
   @override
   String get capturePickImage => 'Pilih gambar dari galeri';
@@ -404,9 +346,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get setAllow => 'Izinkan';
 
   @override
-  String get setAllowSub => 'Minta kedua izin lewat dialog sistem.';
-
-  @override
   String get setXiaomi => 'Khusus Xiaomi / HyperOS';
 
   @override
@@ -421,15 +360,7 @@ class AppLocalizationsId extends AppLocalizations {
       'Samsung: jangan masukkan Clai ke \"Aplikasi tidur\".';
 
   @override
-  String get backgroundFootnote =>
-      'Bila putar latar masih dibunuh sistem walau sudah diizinkan di Xiaomi/HyperOS: buka Info aplikasi Clai, aktifkan \"Mulai otomatis\" dan setel Baterai ke \"Tanpa batasan\" — dua sakelar itu hanya ada di halaman sistem, Android tidak mengizinkan aplikasi mengubahnya untukmu. Oppo/Vivo: izinkan aktivitas latar di pengelola baterai merek.';
-
-  @override
   String get setClearCache => 'Hapus cache aliran';
-
-  @override
-  String get setClearCacheSub =>
-      'URL aliran dibuang; diambil ulang saat diputar.';
 
   @override
   String get cacheClearedSnack => 'Cache aliran dihapus.';
@@ -438,34 +369,23 @@ class AppLocalizationsId extends AppLocalizations {
   String get setClearHistory => 'Hapus riwayat putar';
 
   @override
-  String get setClearHistorySub =>
-      'Riwayat hanya hidup di perangkat ini dan milikmu.';
-
-  @override
   String get historyClearedSnack => 'Riwayat putar dihapus.';
 
   @override
   String get setDiagTitle => 'Diagnostik Putar';
 
   @override
-  String get setDiagSub => 'Uji rantai putar dan salin laporannya.';
-
-  @override
   String get setLogTitle => 'Log insiden (di perangkat)';
 
   @override
   String setLogCount(int count) {
-    return '$count catatan — tidak dikirim ke mana pun.';
+    return '$count catatan';
   }
 
   @override
   String aboutVersion(String version) {
     return 'Clai $version';
   }
-
-  @override
-  String get aboutBody =>
-      'Pemutar musik sumber terbuka (GPL-3.0) yang dibangun clean-room: tanpa kode atau aset dari layanan lain. Katalog dan lagu berasal dari layanan musik pihak ketiga lewat API tidak resmi — dinyatakan terbuka di README repo; arsitektur provider memungkinkan sumber lain ditambahkan tanpa menyentuh player. Kamu juga bisa menempel tautan playlist publik dari aplikasi musik lain: daftar lagunya dibaca, lalu dicocokkan ke katalog di sini — tanpa akun. Lirik dari LRCLIB; pengayaan sampul dari MusicBrainz/Cover Art Archive; scrobble opsional ke ListenBrainz dengan token milikmu sendiri. Semua data pribadimu — koleksi, riwayat, unduhan — hanya tersimpan di HP-mu.';
 
   @override
   String get logTitle => 'Log insiden';
@@ -480,15 +400,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get drvMode => 'Mode Berkendara';
 
   @override
-  String get drvModeSub =>
-      'Permukaan sentuh raksasa + kendali audio. Menyalakan membuka layarnya.';
-
-  @override
   String get drvScheme => 'Skema kendali';
-
-  @override
-  String get drvSchemeSub =>
-      'Tombol media standar (bawaan) / pola tekan satu tombol (1× putar-jeda, 2× berikutnya, 3× sebelumnya) / perintah suara.';
 
   @override
   String get drvSchemeButtons => 'Tombol media';
@@ -503,15 +415,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get drvAnnounce => 'Pengumuman suara';
 
   @override
-  String get drvAnnounceSub =>
-      'Judul lagu berikutnya dibacakan TTS sebelum diputar (bawaan mati).';
-
-  @override
   String get drvSpeedVolume => 'Volume ikut kecepatan';
-
-  @override
-  String get drvSpeedVolumeSub =>
-      'Perlu izin lokasi. Volume hanya bergerak di antara dua titik di bawah; GPS buruk = volume membeku.';
 
   @override
   String get drvVolStop => 'Volume saat berhenti';
@@ -521,7 +425,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String drvVolFastSub(int pct) {
-    return '$pct% — plafon, tidak pernah dilampaui.';
+    return '$pct%';
   }
 
   @override
@@ -534,15 +438,11 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String drvAnchorSub(int kmh) {
-    return '$kmh km/jam — pada kecepatan ini volume mencapai titik tercepat.';
+    return '$kmh km/jam';
   }
 
   @override
   String get drvVehicles => 'Perangkat kendaraan (Bluetooth)';
-
-  @override
-  String get drvVehiclesHint =>
-      'Ketuk untuk memuat perangkat terpasang — yang ditandai memicu Mode Berkendara otomatis saat tersambung.';
 
   @override
   String get drvVehiclesNone =>
@@ -554,14 +454,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get drvMarkVehicle => 'Tandai sebagai kendaraan';
-
-  @override
   String get lbTitle => 'Kirim riwayat dengar ke ListenBrainz';
-
-  @override
-  String get lbSub =>
-      'Opsional dan mati secara default. Yang dikirim: judul, artis, album, dan waktu dengar — ke akun ListenBrainz milikmu sendiri.';
 
   @override
   String get lbTokenLabel => 'Token pengguna ListenBrainz';
@@ -579,13 +472,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get lbSaveCheck => 'Simpan & periksa token';
 
   @override
-  String get lbSafeTitle => 'Kegagalan kirim tidak mengganggu putar';
-
-  @override
-  String get lbSafeSub =>
-      'Scrobble dikirim di latar sesudah lagu selesai didengar (≥30 detik). Token hanya tersimpan di perangkat ini.';
-
-  @override
   String get greetMorning => 'Selamat pagi';
 
   @override
@@ -601,18 +487,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get homeBgCardTitle => 'Agar musik tidak dibunuh sistem';
 
   @override
-  String get homeBgCardSub =>
-      'Izin jalan di latar belum lengkap. Tanpa itu, sebagian ponsel menghentikan putar saat layar mati.';
-
-  @override
   String get homeSetupNow => 'Atur sekarang';
 
   @override
   String get homeEmptyTitle => 'Mau dengar apa hari ini?';
 
   @override
-  String get homeEmptySub =>
-      'Cari lagu pertamamu — sesudahnya biar Putar Otomatis yang menyambung.';
+  String get homeEmptySub => 'Cari lagu pertamamu.';
 
   @override
   String get homeSearchSong => 'Cari lagu';
@@ -648,7 +529,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get homeTopWeekEmpty =>
-      'Belum ada lagu yang sering diputar minggu ini — yang kamu putar akan terhitung di sini.';
+      'Belum ada lagu yang sering diputar minggu ini.';
 
   @override
   String homePlayCount(int count) {
@@ -733,18 +614,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get playerVoice => 'Suara';
-
-  @override
-  String get playerAutoplayCard =>
-      'Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.';
-
-  @override
-  String get playerAutoplayStrip =>
-      'Putar Otomatis aktif — menyambung lagu terkait';
-
-  @override
-  String get queueSmartShuffleNote =>
-      'Acak Cerdas — mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didorong). Tidak menambah lagu baru.';
 
   @override
   String get queueEmpty => 'Antrean kosong. Putar sebuah lagu untuk memulai.';
@@ -964,12 +833,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get searchSpotifyCardTitle => 'Buka playlist Spotify';
 
   @override
-  String get searchSpotifyCardSub =>
-      'Tempel tautan playlist publik Spotify di bidang cari di atas — tanpa akun, lagu dicocokkan ke katalog.';
-
-  @override
-  String get searchEmpty =>
-      'Ketik untuk mencari di katalog.\nHasil muncul sambil kamu mengetik.';
+  String get searchEmpty => 'Ketik untuk mencari di katalog.';
 
   @override
   String get searchRecent => 'Terakhir dicari';
@@ -981,8 +845,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get searchClearQuery => 'Hapus kata kunci';
 
   @override
-  String get searchNoResults =>
-      'Tidak ditemukan. Coba kata kunci lain — ini bukan gagal jaringan, memang tidak ada hasilnya.';
+  String get searchNoResults => 'Tidak ditemukan. Coba kata kunci lain.';
 
   @override
   String get searchResultsLabel => 'Hasil cari';
@@ -1167,10 +1030,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get localRescan => 'Pindai ulang';
 
   @override
-  String get localSub =>
-      'Pindai folder musik perangkatmu. File lokal setara dengan lagu streaming di antrean & playlist.';
-
-  @override
   String get localDenied =>
       'Izin audio ditolak. File lokal tidak dapat dipindai tanpa izin itu.';
 
@@ -1188,7 +1047,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get dlEmpty =>
-      'Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun — lagu terunduh bisa diputar tanpa jaringan.';
+      'Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun.';
 
   @override
   String get dlFailed => 'Unduhan gagal.';
@@ -1205,10 +1064,6 @@ class AppLocalizationsId extends AppLocalizations {
   String dlProgressDone(Object done) {
     return '$done diunduh…';
   }
-
-  @override
-  String get dlFootnote =>
-      'Berkas tinggal di penyimpanan privat aplikasi. Unduhan bisa dijeda dan dilanjutkan dari byte terakhir; pembatalan penuh menghapus berkas sebagian.';
 
   @override
   String get capGateTitle => 'Model pembaca teks belum diunduh';
@@ -1289,10 +1144,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get sleepTitle => 'Timer tidur';
 
   @override
-  String get sleepSubOff =>
-      'Musik berhenti sendiri — lalu bisa dilanjutkan besok dari posisi yang sama.';
-
-  @override
   String sleepSubMinutes(Object remaining) {
     return 'Timer aktif — $remaining. Volume memudar halus di bentang akhir, lalu musik jeda.';
   }
@@ -1332,7 +1183,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get voiceExamples =>
-      'Coba: \"putar [judul lagu]\", \"tambah [judul] setelah ini\", \"lewati\", \"jeda\", \"lanjut\".';
+      'Coba: \"putar [judul]\", \"lewati\", \"jeda\", \"lanjut\".';
 
   @override
   String get voiceInputHint => 'Ketik perintah (simulasi suara)…';
@@ -1350,19 +1201,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get drvExit => 'Keluar';
 
   @override
-  String get drvSwipeHint =>
-      'Usap kiri/kanan di mana saja untuk berikutnya/sebelumnya.';
-
-  @override
   String get drvNoSong => 'Tidak ada lagu';
-
-  @override
-  String get drvAnnounceSubShort =>
-      'Judul lagu berikutnya dibacakan sebelum diputar.';
-
-  @override
-  String get drvSpeedVolumeNote =>
-      'Volume bergerak hanya di antara dua titik yang kamu kalibrasi di Pengaturan.';
 
   @override
   String get vcDisconnected =>
@@ -1442,10 +1281,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get diagTitle => 'Diagnostik Putar';
-
-  @override
-  String get diagIntro =>
-      'Menguji rantai putar per mata rantai (resolusi → unduh → ExoPlayer polos → +header → muxed → jalur aplikasi → pipa lokal) untuk lagu Song & item Video, lengkap dengan galat natif dari logcat proses. Hasilnya satu laporan teks — salin & kirim ke pengembang bila lagu tidak bunyi.';
 
   @override
   String get diagRun => 'Jalankan Diagnostik';
@@ -1850,10 +1685,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get setDataSaver => 'Mode hemat data';
 
   @override
-  String get setDataSaverSub =>
-      'Streaming selalu kualitas Rendah saat aktif; kualitas Tinggi dicegah di jaringan seluler.';
-
-  @override
   String get setDataSaverCellularBlock =>
       'Kualitas Tinggi dicegah: mode hemat data aktif dan perangkat memakai jaringan seluler.';
 
@@ -1994,10 +1825,6 @@ class AppLocalizationsId extends AppLocalizations {
       'Pengaturan → Baterai → Peluncuran aplikasi → Clai → kelola manual: aktifkan mulai-otomatis, peluncuran sekunder, dan jalan di latar.';
 
   @override
-  String get bgAutostartNote =>
-      'Status mulai-otomatis (autostart) tidak dapat dideteksi aplikasi secara otomatis di Android — periksa manual sesuai merek perangkatmu di bawah.';
-
-  @override
   String get noticeRegionUnavailable =>
       'Konten ini tidak tersedia di wilayahmu.';
 
@@ -2075,10 +1902,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get setThemeDynamic => 'Tema Dinamis';
 
   @override
-  String get setThemeDynamicSub =>
-      'Warna suasana mengikuti sampul lagu yang diputar; kaca dan cahaya ambien ikut menyala. Mati = tampilan klasik.';
-
-  @override
   String get setAmbientStrength => 'Kekuatan Ambien';
 
   @override
@@ -2091,29 +1914,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get setAmbientBreathing => 'Ambien Bernapas';
 
   @override
-  String get setAmbientBreathingSub =>
-      'Cahaya di Player berdenyut sangat halus mengikuti kerasnya musik. Mati saat lagu dijeda.';
-
-  @override
   String get setReduceEffects => 'Kurangi Efek';
-
-  @override
-  String get setReduceEffectsSub =>
-      'Matikan napas ambien, peralihan warna, dan getaran sentuh.';
 
   @override
   String get setGreetingName => 'Nama sapaan';
 
   @override
-  String get setGreetingNameSub =>
-      'Nama yang menyapa kamu di Beranda. Kosongkan untuk sapaan tanpa nama.';
-
-  @override
   String get greetingNameHint => 'Nama kamu';
-
-  @override
-  String get setAmbientStrengthSub =>
-      'Seberapa pekat warna lagu mewarnai layar';
 
   @override
   String get searchChartsKicker => 'Charts · Minggu Ini';
@@ -2251,4 +2058,564 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get lyrCreditShort => 'Sumber lirik: LRCLIB (lrclib.net)';
+
+  @override
+  String get commonClose => 'Tutup';
+
+  @override
+  String get groupOwnership => 'Kepemilikan';
+
+  @override
+  String get ownSectionData => 'Data kamu';
+
+  @override
+  String get ownSectionShare => 'Bagikan & terima';
+
+  @override
+  String get ownExportTitle => 'Ekspor data';
+
+  @override
+  String get ownExportSub =>
+      'Simpan playlist, lagu disukai & riwayat ke satu berkas';
+
+  @override
+  String get ownImportTitle => 'Impor data';
+
+  @override
+  String get ownImportSub => 'Pulihkan dari berkas ekspor Clai';
+
+  @override
+  String get ownShareTitle => 'Bagikan playlist';
+
+  @override
+  String get ownShareSub => 'Kirim satu playlist lewat kode QR atau berkas';
+
+  @override
+  String get ownReceiveTitle => 'Terima playlist';
+
+  @override
+  String get ownReceiveSub => 'Pindai kode QR dari Clai temanmu';
+
+  @override
+  String get ownSectionSessions => 'Sesi tersimpan';
+
+  @override
+  String get ownVaultSub =>
+      'Sesi putar tersimpan yang bisa dipulihkan kapan saja';
+
+  @override
+  String ownPlaylistsCount(int count) {
+    return '$count playlist';
+  }
+
+  @override
+  String ownLikedCount(int count) {
+    return '$count lagu disukai';
+  }
+
+  @override
+  String ownHistoryCount(int count) {
+    return '$count riwayat putar';
+  }
+
+  @override
+  String get exportIncludeHistory => 'Sertakan riwayat putar';
+
+  @override
+  String get exportAction => 'Ekspor & bagikan';
+
+  @override
+  String get exportM3uSection => 'Playlist sebagai M3U';
+
+  @override
+  String get exportEmpty => 'Belum ada data untuk diekspor';
+
+  @override
+  String get exportFailed => 'Ekspor gagal. Coba lagi.';
+
+  @override
+  String importFromFile(Object name) {
+    return 'Berkas: $name';
+  }
+
+  @override
+  String get importModeMerge => 'Gabungkan';
+
+  @override
+  String get importModeReplace => 'Ganti semua';
+
+  @override
+  String importSumNewPlaylists(int count) {
+    return '$count playlist baru ditambahkan';
+  }
+
+  @override
+  String importSumMergedPlaylists(int count) {
+    return '$count playlist digabungkan ke yang sudah ada';
+  }
+
+  @override
+  String importSumTracksAdded(int count) {
+    return '$count lagu ditambahkan ke playlist';
+  }
+
+  @override
+  String importSumLikedAdded(int count) {
+    return '$count lagu disukai ditambahkan';
+  }
+
+  @override
+  String importSumHistoryAdded(int count) {
+    return '$count riwayat putar ditambahkan';
+  }
+
+  @override
+  String get importApplyMerge => 'Gabungkan sekarang';
+
+  @override
+  String get importApplyReplace => 'Ganti semua…';
+
+  @override
+  String get importSuccess => 'Impor selesai';
+
+  @override
+  String get importNothingNew =>
+      'Tidak ada yang baru — semua isi berkas sudah ada di sini';
+
+  @override
+  String get importReplaceTitle => 'Ganti semua data?';
+
+  @override
+  String get importReplaceBody =>
+      'Playlist, lagu disukai, dan riwayat putar kamu sekarang akan dihapus lalu diganti isi berkas ini. Tindakan ini tidak bisa dibatalkan.';
+
+  @override
+  String get importFailTitle => 'Berkas tidak bisa diimpor';
+
+  @override
+  String get importFailNotJson =>
+      'Isi berkas ini bukan berkas ekspor Clai yang bisa dibaca.';
+
+  @override
+  String get importFailUnrecognized =>
+      'Berkas ini bukan ekspor Clai. Pilih berkas hasil Ekspor data dari Clai.';
+
+  @override
+  String importFailNewer(Object version) {
+    return 'Berkas ini dibuat oleh Clai yang lebih baru (format $version) dan tidak bisa dibaca versi ini. Perbarui Clai lalu coba lagi.';
+  }
+
+  @override
+  String get importFailCorrupt =>
+      'Berkas ekspor ini rusak atau tidak lengkap, jadi tidak ada yang diterapkan.';
+
+  @override
+  String get importFailTooBig =>
+      'Berkas ini terlalu besar untuk diimpor (maks 20 MB).';
+
+  @override
+  String get shareTooBigForQr =>
+      'Playlist ini terlalu besar untuk kode QR — bagikan sebagai berkas saja.';
+
+  @override
+  String get shareFileAction => 'Bagikan berkas';
+
+  @override
+  String get sharePickPlaylist => 'Pilih playlist';
+
+  @override
+  String get shareNoPlaylists => 'Belum ada playlist untuk dibagikan';
+
+  @override
+  String get scanTitle => 'Pindai kode QR';
+
+  @override
+  String get scanImportFile => 'Impor dari berkas';
+
+  @override
+  String scanFoundSub(int count) {
+    return '$count lagu · dari kode QR';
+  }
+
+  @override
+  String get scanImportAction => 'Impor playlist';
+
+  @override
+  String get scanAgain => 'Pindai lagi';
+
+  @override
+  String get scanNotClai => 'Kode ini bukan bagikan playlist Clai';
+
+  @override
+  String scanImported(Object name) {
+    return 'Playlist \"$name\" ditambahkan';
+  }
+
+  @override
+  String get scanPermDenied => 'Izin kamera diperlukan untuk memindai';
+
+  @override
+  String get scanPermDeniedSub =>
+      'Aktifkan izin kamera, atau terima playlist lewat berkas.';
+
+  @override
+  String get scanOpenSettings => 'Buka pengaturan aplikasi';
+
+  @override
+  String shareFoundFileSub(int count) {
+    return '$count lagu · dari berkas';
+  }
+
+  @override
+  String get scanUnavailable => 'Kamera tidak tersedia di perangkat ini';
+
+  @override
+  String get shareQrImageAction => 'Bagikan gambar QR';
+
+  @override
+  String get shareQrCardFooter => 'Pindai kode ini dari Clai';
+
+  @override
+  String get scanPickImage => 'Pilih gambar QR';
+
+  @override
+  String get scanImageNoQr => 'Tidak ada kode QR yang terbaca di gambar itu';
+
+  @override
+  String get scanImageUnreadable => 'Gambar itu tidak bisa dibaca';
+
+  @override
+  String shareLocalExcluded(int count) {
+    return '$count lagu lokal tidak ikut';
+  }
+
+  @override
+  String scanResolving(int done, int total) {
+    return 'Membangun ulang lagu dari katalog… $done dari $total';
+  }
+
+  @override
+  String get scanRefsNoneFound =>
+      'Tidak ada lagu yang ditemukan di katalog — periksa koneksimu, atau lagu-lagu ini sudah tidak tersedia.';
+
+  @override
+  String scanSkippedCount(int count) {
+    return '$count lagu tidak ditemukan di katalog dan dilewati';
+  }
+
+  @override
+  String scanImportedSkips(Object name, int count) {
+    return 'Playlist \"$name\" ditambahkan · $count lagu dilewati';
+  }
+
+  @override
+  String get vaultTitle => 'Brankas Sesi';
+
+  @override
+  String get vaultSaveAction => 'Simpan sesi';
+
+  @override
+  String get vaultSaveTitle => 'Simpan ke Brankas Sesi';
+
+  @override
+  String get vaultNameLabel => 'Nama sesi';
+
+  @override
+  String get vaultSavedSnack => 'Sesi tersimpan di Brankas';
+
+  @override
+  String get vaultEmptyTitle => 'Belum ada sesi tersimpan';
+
+  @override
+  String get vaultSaveCurrent => 'Simpan antrean saat ini';
+
+  @override
+  String get vaultRestore => 'Pulihkan sesi';
+
+  @override
+  String get vaultRestoreBody =>
+      'Antrean yang sekarang akan digantikan oleh sesi ini, dan sesi akan diputar dari titik berhentinya. Sesi tetap tersimpan di Brankas sesudah dipulihkan.';
+
+  @override
+  String get vaultRestoredSnack => 'Sesi dipulihkan';
+
+  @override
+  String get vaultRestoreFailed =>
+      'Sesi ini tidak bisa dipulihkan — lagunya sudah tidak ada di katalog lokal.';
+
+  @override
+  String get vaultDeleteTitle => 'Hapus sesi?';
+
+  @override
+  String vaultDeleteBody(Object name) {
+    return 'Sesi \"$name\" akan dihapus permanen dari Brankas.';
+  }
+
+  @override
+  String get vaultSeeAll => 'Lihat semua';
+
+  @override
+  String get vaultPlayedSection => 'Sudah diputar';
+
+  @override
+  String get vaultCurrentBadge => 'Berhenti di sini';
+
+  @override
+  String get groupTaste => 'Selera';
+
+  @override
+  String get groupTasteSum =>
+      'Cermin selera, mode samaran, keluarkan dari rekomendasi, dan reset selera';
+
+  @override
+  String get tasteBalanceLifetime => 'Seumur';
+
+  @override
+  String get tasteBalanceRecent => '30 hari terakhir';
+
+  @override
+  String get tasteBalanceTitle => 'Keseimbangan selera';
+
+  @override
+  String get tasteDayFri => 'Jum';
+
+  @override
+  String get tasteDayMon => 'Sen';
+
+  @override
+  String get tasteDaySat => 'Sab';
+
+  @override
+  String get tasteDaySun => 'Min';
+
+  @override
+  String get tasteDayThu => 'Kam';
+
+  @override
+  String get tasteDayTue => 'Sel';
+
+  @override
+  String get tasteDayWed => 'Rab';
+
+  @override
+  String get tasteDaypartDiniHari => 'dini hari';
+
+  @override
+  String get tasteDaypartMalam => 'malam';
+
+  @override
+  String get tasteDaypartPagi => 'pagi';
+
+  @override
+  String get tasteDaypartSiang => 'siang';
+
+  @override
+  String get tasteDaypartSore => 'sore';
+
+  @override
+  String get tasteExcludeAction => 'Keluarkan';
+
+  @override
+  String get tasteExcludeEmpty => 'Belum ada yang dikeluarkan.';
+
+  @override
+  String get tasteExcludeTitle => 'Keluarkan dari Rekomendasi';
+
+  @override
+  String tasteExcludedDone(Object name) {
+    return '$name dikeluarkan dari rekomendasi';
+  }
+
+  @override
+  String get tasteExportFirst => 'Ekspor dulu';
+
+  @override
+  String tasteGenreEstimate(Object tags) {
+    return 'Perkiraan genre · MusicBrainz: $tags';
+  }
+
+  @override
+  String get tasteKindArtist => 'Artis';
+
+  @override
+  String get tasteKindTrack => 'Lagu';
+
+  @override
+  String get tasteMirrorEmpty =>
+      'Selera kamu belum terbentuk. Dengarkan beberapa lagu dulu.';
+
+  @override
+  String get tasteMirrorTitle => 'Cermin Selera';
+
+  @override
+  String get tastePatternsTitle => 'Pola mendengar';
+
+  @override
+  String tastePeakDaypart(Object label) {
+    return 'Paling sering mendengar: $label';
+  }
+
+  @override
+  String get tastePickArtists => 'Dari artis teratasmu';
+
+  @override
+  String get tastePickTracks => 'Dari lagu yang sering diputar';
+
+  @override
+  String tastePlaysCount(int count) {
+    return '$count putar';
+  }
+
+  @override
+  String tasteResetBackup(Object date) {
+    return 'Cadangan terakhir: $date';
+  }
+
+  @override
+  String get tasteResetConfirm => 'Reset selera';
+
+  @override
+  String get tasteResetDone => 'Selera sudah direset';
+
+  @override
+  String get tasteResetNoBackup => 'Cadangan terakhir: belum ada';
+
+  @override
+  String get tasteResetSheetBody =>
+      'Riwayat putar, pengecualian rekomendasi, dan bobot rekomendasi akan dihapus permanen. Perpustakaan, playlist, unduhan, Brankas Sesi, dan lagu yang kamu sukai TIDAK ikut terhapus.';
+
+  @override
+  String get tasteResetSheetTitle => 'Reset selera kamu?';
+
+  @override
+  String get tasteResetTitle => 'Reset Selera';
+
+  @override
+  String get tasteSamaranPill => 'Samaran';
+
+  @override
+  String get tasteSamaranTitle => 'Mode Samaran';
+
+  @override
+  String get tasteTitle => 'Selera kamu';
+
+  @override
+  String get tasteTopArtists => 'Artis teratas';
+
+  @override
+  String get tasteUndo => 'Urungkan';
+
+  @override
+  String get tasteWeightLifetime => 'Seumur';
+
+  @override
+  String get tasteWeightRecent => 'Terkini';
+
+  @override
+  String get tasteWeightsTitle => 'Bobot rekomendasi';
+
+  @override
+  String get shufflePanelTitle => 'Acak';
+
+  @override
+  String get shufflePanelWhy =>
+      'Setiap lagu diputar sekali sebelum ada yang berulang. Urutan di bawah adalah urutan putar yang sebenarnya.';
+
+  @override
+  String get shuffleSmartSub => 'Sebar artis & utamakan yang jarang diputar';
+
+  @override
+  String shuffleCycleProgress(int done, int total) {
+    return '$done dari $total sudah diputar dalam siklus ini';
+  }
+
+  @override
+  String get shuffleReshuffle => 'Acak ulang';
+
+  @override
+  String get shuffleOrderTitle => 'Urutan putar berikutnya';
+
+  @override
+  String get shuffleCardOffSub => 'Mati — lagu mengikuti urutan aslinya';
+
+  @override
+  String get setShuffle => 'Acak';
+
+  @override
+  String get menuButtonLabel => 'Menu';
+
+  @override
+  String get menuTasteSub => 'Cermin selera, mode samaran & rekomendasi';
+
+  @override
+  String get menuVaultSub => 'Antrean yang kamu simpan untuk nanti';
+
+  @override
+  String get menuOwnershipSub => 'Ekspor, impor, bagikan & terima playlist';
+
+  @override
+  String get menuSettingsSub => 'Tampilan, pemutaran, audio & lainnya';
+
+  @override
+  String announceKicker(Object version) {
+    return 'BARU DI CLAI $version';
+  }
+
+  @override
+  String get announceTitle => 'Yang baru di Clai';
+
+  @override
+  String get announceStart => 'Mulai';
+
+  @override
+  String get announceCtaVault => 'Buka Brankas Sesi';
+
+  @override
+  String get announceCtaShare => 'Bagikan playlist';
+
+  @override
+  String get announceCtaTaste => 'Lihat Selera kamu';
+
+  @override
+  String get announceCtaShuffle => 'Buka Panel Acak';
+
+  @override
+  String announceMoreCount(int count) {
+    return 'dan $count hal baru lainnya';
+  }
+
+  @override
+  String patchInstalledTitle(Object version) {
+    return 'Clai $version sudah terpasang';
+  }
+
+  @override
+  String get patchInstalledSub => 'Perbaikan kecil di balik layar';
+
+  @override
+  String get patchInstalledSee => 'Lihat';
+
+  @override
+  String get samaranHowTitle => 'Cara kerja Mode Samaran';
+
+  @override
+  String get samaranHowRowHistory =>
+      'Yang kamu dengarkan tidak masuk Riwayat putar.';
+
+  @override
+  String get samaranHowRowTaste =>
+      'Tidak memengaruhi Cermin Selera & rekomendasi.';
+
+  @override
+  String get samaranHowRowListenBrainz => 'Tidak dikirim ke ListenBrainz.';
+
+  @override
+  String get samaranHowRowNoLimit =>
+      'Tetap aktif sampai kamu mematikannya sendiri — tidak ada batas waktu.';
+
+  @override
+  String get samaranHowDontShow => 'Jangan tampilkan lagi';
+
+  @override
+  String get samaranHowActivate => 'Aktifkan Samaran';
 }

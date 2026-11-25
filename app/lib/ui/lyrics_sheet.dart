@@ -22,7 +22,7 @@ import 'widgets.dart';
 /// lembar Varian A): pandangan lirik IMERSIF layar-penuh. Latar = sampul
 /// lagu aktif ter-blur pekat + digelapkan memenuhi layar (vinyet atas-bawah,
 /// pita tengah lebih jernih), warna ruangan mengikuti trek lewat Sampul
-/// Hidup. Baris aktif = Clash Display 30/700 putih primer (BUKAN Volt —
+/// Hidup. Baris aktif = Inter Tight 30/700 putih primer (BUKAN Volt —
 /// Volt di ruangan ini hanya pemutar memuat & teks "Coba lagi"), baris
 /// tetangga memudar + blur menurut jarak. Perilaku terkunci tidak berubah:
 /// lead 250 ms, gulir otomatis (jeda 4 dtk sesudah seret manual), ketuk
@@ -269,7 +269,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
                   child: switch (_state) {
                     LyricsViewState.loading => const Center(
                         child: CircularProgressIndicator(
-                            color: ClaiColors.accent)),
+                            color: ClaiColors.signal)),
                     LyricsViewState.noTrack =>
                       _message(ClaiIcons.lyrics, context.l10n.lyrNoTrack),
                     LyricsViewState.instrumental => _message(
@@ -538,7 +538,7 @@ class _LyricsScreenState extends ConsumerState<LyricsScreen> {
               TextButton(
                   onPressed: retry,
                   child: Text(context.l10n.commonRetry,
-                      style: const TextStyle(color: ClaiColors.accent))),
+                      style: const TextStyle(color: ClaiColors.signal))),
             ],
           ]),
         ),

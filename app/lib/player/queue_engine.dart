@@ -60,6 +60,69 @@ class QueueEngine {
   final Set<TrackKey> skippedKeys = {};
   final Set<TrackKey> completedKeys = {};
 
+  // ---------------- Siklus Acak Jujur (Ronde 8075) ----------------
+  // Fondasi panel Acak gabungan: SIKLUS TANPA-ULANG. Satu siklus =
+  // satu putaran penuh atas semesta antrean sesi ini (konteks + manual
+  // + isi ulang yang sudah mendarat). [_cyclePlayedKeys] = kunci yang
+  // SUDAH menjadi lagu berjalan sejak siklus mulai; [_cycleSeenKeys] =
+  // seluruh kunci yang pernah menjadi bagian semesta siklus (diputar +
+  // berjalan + mengantre). Keduanya memberi makan garis progres panel
+  // ("X dari Y sudah diputar") dan penjaga tahan-ulang pada pengurutan:
+  // trek yang sudah terputar di siklus berjalan ditahan di ekor seksi
+  // selama masih ada yang belum terputar — pengulangan hanya boleh
+  // datang sesudah siklus tuntas atau atas perintah pengguna sendiri
+  // (lompat/putar-ulang manual tidak pernah diblokir di sini).
+  // Siklus dimulai ulang oleh: konteks baru (playContext/playRadio),
+  // bungkus Repeat-Semua, resetSessionToCurrent, dan restore snapshot.
+  final Set<TrackKey> _cyclePlayedKeys = {};
+  final Set<TrackKey> _cycleSeenKeys = {};
+
+  int get cyclePlayedCount => _cyclePlayedKeys.length;
+  int get cycleTotalCount => _cycleSeenKeys.length;
+  bool cycleHasPlayed(TrackKey k) => _cyclePlayedKeys.contains(k);
+
+  /// Pintu pencatatan untuk jalur yang menetapkan [current] dari luar
+  /// mesin (handler: _syncEngineTo, mulai-dari-diam). Jalur internal
+  /// mesin mencatat lewat [_noteCycleCurrent] yang sama.
+  void noteCycleCurrent() => _noteCycleCurrent();
+
+  void _noteCycleCurrent() {
+    final c = current;
+    if (c == null) return;
+    _cyclePlayedKeys.add(c.key);
+    _cycleSeenKeys.add(c.key);
+  }
+
+  void _noteCycleSeen(Iterable<Track> tracks) {
+    for (final t in tracks) {
+      _cycleSeenKeys.add(t.key);
+    }
+  }
+
+  /// Mulai siklus baru: yang sudah terputar = lagu berjalan saja;
+  /// semesta = [universe] (bawaan: seluruh antrean penuh saat ini).
+  void _beginCycle([Iterable<Track>? universe]) {
+    _cyclePlayedKeys.clear();
+    _cycleSeenKeys.clear();
+    _noteCycleSeen(universe ?? fullQueue);
+    _noteCycleCurrent();
+  }
+
+  /// Tahan-ulang: pisahkan [ordered] menjadi yang belum terputar di
+  /// siklus ini (di depan, urutan relatif dipertahankan) dan yang sudah
+  /// terputar (di ekor). No-op bila salah satu sisi kosong — termasuk
+  /// saat semua sudah terputar (siklus tuntas: pengulangan sah).
+  List<Track> _holdCycleRepeats(List<Track> ordered) {
+    if (_cyclePlayedKeys.isEmpty || ordered.length <= 1) return ordered;
+    final fresh = <Track>[];
+    final repeats = <Track>[];
+    for (final t in ordered) {
+      (_cyclePlayedKeys.contains(t.key) ? repeats : fresh).add(t);
+    }
+    if (repeats.isEmpty || fresh.isEmpty) return ordered;
+    return [...fresh, ...repeats];
+  }
+
   final Random _rng = Random();
 
   bool get hasCurrent => current != null;
@@ -95,32 +158,48 @@ class QueueEngine {
     final preservedManual = List<Track>.of(manual);
     final ordered = List<Track>.of(ctx.tracks);
     final start = ordered.isEmpty ? 0 : startIndex.clamp(0, ordered.length - 1);
+    // Siklus Jujur (Ronde 8075) dimulai bersama konteks: semesta =
+    // trek konteks + manual yang dipertahankan; yang sudah terputar =
+    // trek awal (ditandai SEBELUM pengurutan cabang di bawah, agar
+    // duplikat trek awal di sisa daftar tertahan sebagai pengulangan).
+    _cyclePlayedKeys.clear();
+    _cycleSeenKeys.clear();
+    _noteCycleSeen(ordered);
+    _noteCycleSeen(preservedManual);
+    if (ordered.isNotEmpty) _cyclePlayedKeys.add(ordered[start].key);
     context = ctx;
     seeds = ordered.isEmpty
         ? []
         : [...ordered.sublist(start), ...ordered.sublist(0, start)];
     if (shuffle == ShuffleMode.pure && ordered.length > 1) {
-      final first = ordered[start];
-      final rest = List<Track>.of(ordered)..removeAt(start);
-      rest.shuffle(
-        _rng,
-      ); // Fisher–Yates via Random; posisi lagu berjalan tetap (PRD 5.4)
-      current = first;
-      continuation = rest;
-    } else if (shuffle == ShuffleMode.smart && ordered.length > 1) {
-      // Smart Shuffle (F2): Lanjutan diurut cerdas (sebar artis, dorong favorit);
-      // trek berjalan tetap yang diketuk, manual tak disentuh, isi tak berubah.
-      // Urutan alami (pra-cerdas) dicatat agar mematikan mode mengembalikan
-      // urutan konteks persis (Ronde 8066).
+      // Fondasi Jujur (Ronde 8075): Fisher–Yates atas sisa daftar;
+      // posisi lagu berjalan tetap (PRD 5.4). Potret urutan alami
+      // DITANAM seperti mode cerdas — mematikan Acak kini memulihkan
+      // urutan konteks persis untuk kedua mode (pure lama tidak
+      // memotret sama sekali, jadi OFF-nya tidak memulihkan apa pun).
       final first = ordered[start];
       final rest = List<Track>.of(ordered)..removeAt(start);
       current = first;
       _naturalContinuation = rest.map((t) => t.key).toList();
       _naturalAutoplay = const [];
-      continuation = smartShuffleOrder(
-        rest,
-        likedKeys: _smartLiked,
-        playCounts: _smartCounts,
+      continuation = _honestOrder(rest);
+    } else if (shuffle == ShuffleMode.smart && ordered.length > 1) {
+      // Smart Shuffle (F2): Lanjutan diurut cerdas (sebar artis, dorong
+      // yang jarang diputar); trek berjalan tetap yang diketuk, manual
+      // tak disentuh, isi tak berubah. Urutan alami (pra-cerdas) dicatat
+      // agar mematikan mode mengembalikan urutan konteks persis
+      // (Ronde 8066).
+      final first = ordered[start];
+      final rest = List<Track>.of(ordered)..removeAt(start);
+      current = first;
+      _naturalContinuation = rest.map((t) => t.key).toList();
+      _naturalAutoplay = const [];
+      continuation = _holdCycleRepeats(
+        smartShuffleOrder(
+          rest,
+          likedKeys: _smartLiked,
+          playCounts: _smartCounts,
+        ),
       );
     } else {
       // Konteks kosong (album/playlist tanpa trek yang bisa dimuat) TIDAK
@@ -164,6 +243,9 @@ class QueueEngine {
     played = [];
     skippedKeys.clear();
     completedKeys.clear();
+    // Siklus Jujur: semesta awal = benih + manual yang dipertahankan;
+    // isi ulang yang mendarat kemudian memperluas semesta (appendAutoplay).
+    _beginCycle([seed, ...preservedManual]);
     sessionId++;
     version++;
   }
@@ -202,6 +284,7 @@ class QueueEngine {
     played = [];
     skippedKeys.clear();
     completedKeys.clear();
+    _beginCycle([...all, ...preservedManual]);
     sessionId++;
     version++;
   }
@@ -221,17 +304,20 @@ class QueueEngine {
     played = played.sublist(0, playedIndex);
     continuation = [...after, if (current != null) current!, ...continuation];
     current = target;
+    _noteCycleCurrent();
     version++;
   }
 
   /// L-04: Putar Berikutnya menyisip di kepala Berikutnya; Tambah ke Antrian di ekornya.
   void enqueueNext(Track t) {
     manual.insert(0, t);
+    _noteCycleSeen([t]);
     version++;
   }
 
   void enqueueLater(Track t) {
     manual.add(t);
+    _noteCycleSeen([t]);
     version++;
   }
 
@@ -295,6 +381,7 @@ class QueueEngine {
   void enqueueAllLater(List<Track> tracks) {
     if (tracks.isEmpty) return;
     manual.addAll(tracks);
+    _noteCycleSeen(tracks);
     version++;
   }
 
@@ -349,22 +436,71 @@ class QueueEngine {
     _snapshotNaturalOrderIfNeeded();
     var changed = false;
     if (continuation.length > 1) {
-      continuation = smartShuffleOrder(
-        continuation,
-        likedKeys: _smartLiked,
-        playCounts: _smartCounts,
+      continuation = _holdCycleRepeats(
+        smartShuffleOrder(
+          continuation,
+          likedKeys: _smartLiked,
+          playCounts: _smartCounts,
+        ),
       );
       changed = true;
     }
     if (autoplay.length > 1) {
-      autoplay = smartShuffleOrder(
-        autoplay,
-        likedKeys: _smartLiked,
-        playCounts: _smartCounts,
+      autoplay = _holdCycleRepeats(
+        smartShuffleOrder(
+          autoplay,
+          likedKeys: _smartLiked,
+          playCounts: _smartCounts,
+        ),
       );
       changed = true;
     }
     if (changed) version++;
+  }
+
+  /// Urutan fondasi Jujur atas satu daftar: Fisher–Yates murni +
+  /// tahan-ulang siklus. Inilah satu-satunya perbedaan Jujur dari acak
+  /// biasa: urutannya permutasi acak, TETAPI trek yang sudah terputar
+  /// di siklus berjalan tidak pernah dijadwalkan ulang selama masih
+  /// ada yang belum terputar.
+  List<Track> _honestOrder(List<Track> input, {int? seed}) {
+    final out = List<Track>.of(input);
+    if (out.length > 1) out.shuffle(seed == null ? _rng : Random(seed));
+    return _holdCycleRepeats(out);
+  }
+
+  /// Terapkan fondasi Jujur ke antrean efektif yang akan datang
+  /// (sakelar Acak dinyalakan di tengah sesi, atau turun dari Cerdas):
+  /// Lanjutan DAN Putar Otomatis diacak Fisher–Yates di dalam seksinya
+  /// masing-masing. Potret urutan alami ditanam lebih dulu (bila belum
+  /// ada) agar OFF memulihkan urutan pra-acak persis — jaminan yang
+  /// sama seperti mode cerdas (Ronde 8075; pure lama tidak punya ini).
+  /// Manual tidak disentuh (L-03); lagu berjalan tidak berganti.
+  void applyHonestShuffle({int? seed}) {
+    _snapshotNaturalOrderIfNeeded();
+    var changed = false;
+    if (continuation.length > 1) {
+      continuation = _honestOrder(continuation, seed: seed);
+      changed = true;
+    }
+    if (autoplay.length > 1) {
+      autoplay = _honestOrder(autoplay, seed: seed);
+      changed = true;
+    }
+    if (changed) version++;
+  }
+
+  /// Acak-ulang sekali ketuk (panel Acak, Ronde 8075): urutkan ulang
+  /// SISA antrean menurut mode yang sedang aktif (Cerdas → cerdas,
+  /// Jujur → Fisher–Yates baru) tanpa mengganti lagu berjalan dan
+  /// tanpa membuang potret urutan alami — OFF sesudah acak-ulang tetap
+  /// memulihkan urutan asli sesi. No-op saat acak mati.
+  void reshuffleUpcoming({int? seed}) {
+    if (shuffle == ShuffleMode.smart) {
+      applySmartShuffle();
+    } else if (shuffle == ShuffleMode.pure) {
+      applyHonestShuffle(seed: seed);
+    }
   }
 
   /// Urutkan cerdas HANYA ekor Putar Otomatis mulai indeks [fromIndex]
@@ -376,11 +512,27 @@ class QueueEngine {
     if (autoplay.length - from <= 1) return;
     autoplay = [
       ...autoplay.sublist(0, from),
-      ...smartShuffleOrder(
-        autoplay.sublist(from),
-        likedKeys: _smartLiked,
-        playCounts: _smartCounts,
+      ..._holdCycleRepeats(
+        smartShuffleOrder(
+          autoplay.sublist(from),
+          likedKeys: _smartLiked,
+          playCounts: _smartCounts,
+        ),
       ),
+    ];
+    version++;
+  }
+
+  /// Ekor isi ulang diurutkan fondasi Jujur (mode pure menyala, Ronde
+  /// 8075): batch yang baru mendarat diacak Fisher–Yates di ekornya
+  /// saja + tahan-ulang siklus — pasangan [smartOrderAutoplayTail]
+  /// untuk mode cerdas. Trek yang sudah antre tidak digeser.
+  void honestOrderAutoplayTail(int fromIndex) {
+    final from = fromIndex.clamp(0, autoplay.length);
+    if (autoplay.length - from <= 1) return;
+    autoplay = [
+      ...autoplay.sublist(0, from),
+      ..._honestOrder(autoplay.sublist(from)),
     ];
     version++;
   }
@@ -438,6 +590,7 @@ class QueueEngine {
       final next = _takeNext();
       played.add(old);
       current = next;
+      _noteCycleCurrent();
       version++;
       return next;
     }
@@ -446,12 +599,63 @@ class QueueEngine {
         context!.tracks.length > 1) {
       final old = current!;
       played.add(old);
-      current = context!.tracks.first;
-      continuation = context!.tracks.sublist(1);
-      version++;
-      return current;
+      return _wrapCycle();
     }
     return null;
+  }
+
+  /// Bungkus Repeat-Semua = SIKLUS BARU (Ronde 8075). Acak mati:
+  /// perilaku warisan persis (konteks dari awal, urutan alami). Acak
+  /// menyala: urutan siklus baru DITANAM menurut mode aktif atas
+  /// seluruh trek konteks — versi lama membungkus ke urutan alami
+  /// konteks, yang berarti pengulangan terjadwal sekaligus acak yang
+  /// bocor di setiap bungkus. Potret alami ditanam ulang ke urutan
+  /// konteks siklus baru agar OFF memulihkan urutan siklus itu, dan
+  /// pencatatan siklus dimulai dari kepala siklus baru. Mengembalikan
+  /// trek kepala siklus baru; pemanggil bertanggung jawab atas
+  /// riwayat sesi (played) seperti sebelumnya.
+  Track _wrapCycle() {
+    final ctxTracks = context!.tracks;
+    if (shuffle == ShuffleMode.off) {
+      current = ctxTracks.first;
+      continuation = ctxTracks.sublist(1);
+      _beginCycle(ctxTracks);
+    } else {
+      final ordered = shuffle == ShuffleMode.smart
+          ? smartShuffleOrder(
+              List<Track>.of(ctxTracks),
+              likedKeys: _smartLiked,
+              playCounts: _smartCounts,
+            )
+          : _honestOrder(ctxTracks);
+      // Batas siklus tidak boleh berbunyi sebagai pengulangan: lagu
+      // yang BARU selesai (current saat ini) tidak boleh menjadi
+      // kepala siklus baru bila ada kunci lain — tukar dengan kunci
+      // berbeda pertama.
+      final finishedKey = current?.key;
+      if (finishedKey != null && ordered.length > 1 &&
+          ordered.first.key == finishedKey) {
+        final swapAt = ordered.indexWhere((t) => t.key != finishedKey);
+        if (swapAt > 0) {
+          final tmp = ordered[0];
+          ordered[0] = ordered[swapAt];
+          ordered[swapAt] = tmp;
+        }
+      }
+      current = ordered.first;
+      final natural = List<Track>.of(ctxTracks);
+      final at = natural.indexWhere((t) => t.key == current!.key);
+      if (at >= 0) natural.removeAt(at);
+      _naturalContinuation = natural.map((t) => t.key).toList();
+      _naturalAutoplay = const [];
+      _cyclePlayedKeys.clear();
+      _cycleSeenKeys.clear();
+      _noteCycleSeen(ctxTracks);
+      _noteCycleCurrent();
+      continuation = _holdCycleRepeats(ordered.sublist(1));
+    }
+    version++;
+    return current!;
   }
 
   /// Mode offline (F2): sisakan hanya trek yang bisa diputar tanpa jaringan
@@ -514,6 +718,8 @@ class QueueEngine {
     completedKeys.clear();
     autoplayPreparing = false;
     autoplayRefillFailed = false;
+    // Siklus Jujur ikut mulai bersih: semesta = trek berjalan saja.
+    _beginCycle();
     sessionId++;
     version++;
   }
@@ -521,6 +727,8 @@ class QueueEngine {
   /// Mengganti bagian Putar Otomatis (isi ulang L-05): 3 trek terdekat TIDAK pernah diganti.
   void appendAutoplay(List<Track> batch) {
     autoplay.addAll(batch);
+    // Isi ulang memperluas semesta siklus Jujur (Ronde 8075).
+    _noteCycleSeen(batch);
     version++;
   }
 
@@ -619,6 +827,7 @@ class QueueEngine {
 
   void setAutoplayBatch(List<Track> batch) {
     autoplay = List<Track>.of(batch);
+    _noteCycleSeen(batch);
     version++;
   }
 
@@ -634,6 +843,7 @@ class QueueEngine {
     if (upcoming.isNotEmpty) {
       final next = _takeNext();
       current = next;
+      _noteCycleCurrent();
       version++;
       return next;
     }
@@ -641,12 +851,8 @@ class QueueEngine {
     if (repeat == RepeatMode.all && context != null) {
       final ctxTracks = context!.tracks;
       if (ctxTracks.length > 1) {
-        // Repeat-Semua mengulang konteks dari awal (L-09).
-        final first = ctxTracks.first;
-        current = first;
-        continuation = ctxTracks.sublist(1);
-        version++;
-        return first;
+        // Repeat-Semua mengulang konteks = siklus baru (L-09, Ronde 8075).
+        return _wrapCycle();
       }
       // Konteks satu lagu + Repeat-Semua = Putar Otomatis (PRD 5.4).
       return null;
@@ -688,6 +894,7 @@ class QueueEngine {
           (played.isEmpty || played.last.key != outgoing.key)) {
         played.add(outgoing);
       }
+      _noteCycleCurrent();
       return current;
     }
     return null;
@@ -767,6 +974,12 @@ class QueueEngine {
       'naturalAutoplay': _naturalAutoplay!
           .map((k) => {'p': k.providerId, 'i': k.id})
           .toList(),
+    // Ronde 8075: kunci yang sudah terputar di siklus Jujur berjalan —
+    // tanpanya start dingin menghitung ulang siklus dari nol dan panel
+    // boleh menjadwalkan ulang lagu yang baru saja diputar sesi ini.
+    'cyclePlayed': _cyclePlayedKeys
+        .map((k) => {'p': k.providerId, 'i': k.id})
+        .toList(),
     'currentRef': current == null
         ? null
         : '${current!.providerId}|${current!.id}',
@@ -804,6 +1017,11 @@ class QueueEngine {
   }
 
   void restore(Map<String, Object?> snap, Map<TrackKey, Track> byKey) {
+    // Siklus Jujur dibangun ulang di ekor restore (Ronde 8075);
+    // kosongkan dulu agar cabang penerapan cerdas warisan di bawah
+    // tidak membaca sisa siklus sesi sebelumnya.
+    _cyclePlayedKeys.clear();
+    _cycleSeenKeys.clear();
     Track? find(TrackKey k) => byKey[k];
     seeds = _keysOf(snap['seeds']).map(find).whereType<Track>().toList();
     manual = _keysOf(snap['manual']).map(find).whereType<Track>().toList();
@@ -858,6 +1076,30 @@ class QueueEngine {
     }
     repeat = RepeatMode.values.asNameMap()[snap['repeat']] ?? RepeatMode.off;
     autoplayEnabled = snap['autoplayEnabled'] != false;
+    // Siklus Jujur (Ronde 8075): pulihkan himpunan terputar dari
+    // snapshot; snapshot warisan (tanpa kolom ini) dibangun ulang dari
+    // riwayat sesi + lagu berjalan — pendekatan terbaik yang tersedia
+    // untuk sesi yang ditinggalkan build lama. Semesta dibangun ulang
+    // dari seluruh isi snapshot.
+    final cycleRaw = _keysOf(snap['cyclePlayed']);
+    _cyclePlayedKeys
+      ..clear()
+      ..addAll(
+        cycleRaw.isNotEmpty
+            ? cycleRaw
+            : [
+                for (final t in played) t.key,
+                if (current != null) current!.key,
+              ],
+      );
+    _cycleSeenKeys
+      ..clear()
+      ..addAll(_cyclePlayedKeys)
+      ..addAll(seeds.map((t) => t.key))
+      ..addAll(manual.map((t) => t.key))
+      ..addAll(continuation.map((t) => t.key))
+      ..addAll(autoplay.map((t) => t.key))
+      ..addAll(played.map((t) => t.key));
     sessionId++;
     final sig = snap['signals'];
     // D-16: pulihkan sinyal MILIK snapshot ini saja — bersihkan dulu agar

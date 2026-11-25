@@ -52,6 +52,104 @@ ReleaseInfo? parseGithubReleaseJson(Map<String, dynamic> json) {
       notes: (json['body'] as String?) ?? '', assets: assets);
 }
 
+/// Ekstrak blok pengguna dari badan rilis (Ronde 8069): poin-poin di bawah
+/// judul `## Yang baru` SAJA — aturan terkunci pemilik 2026-11-21, aplikasi
+/// tidak pernah menampilkan lapis teknis catatan rilis. Pengumpulan
+/// berhenti di pemisah `---`, di blok `<details>`, atau di judul `## `
+/// berikutnya, mana pun yang lebih dulu. Badan tanpa blok itu (rilis
+/// warisan pra-format-dua-lapis) atau blok tanpa satu pun poin → daftar
+/// kosong, dan pemanggil menyembunyikan semua pintu masuk "Yang baru".
+/// Murni: tanpa keadaan, tanpa I/O.
+List<String> userFacingNotes(String body) {
+  final out = <String>[];
+  var inBlock = false;
+  for (final raw in body.split('\n')) {
+    final line = raw.trim(); // trim sekaligus membuang \r sisa CRLF
+    if (!inBlock) {
+      if (line.toLowerCase() == '## yang baru') inBlock = true;
+      continue;
+    }
+    if (line == '---' || line.startsWith('<details') || line.startsWith('## ')) {
+      break;
+    }
+    if (line.startsWith('- ')) {
+      final item = line.substring(2).trim();
+      if (item.isNotEmpty) out.add(item);
+    }
+  }
+  return out;
+}
+
+/// Tingkat pengumuman sesudah pasang (Ronde 8079, spec
+/// `desain-f3/pisah-pengaturan/BANNER-UPDATE.md`): rilis FITUR (major/
+/// minor berubah) → overlay B1 sekali per versi; rilis tambalan (patch/
+/// bangun saja) → spanduk konfirmasi B2 sekali; sama/turun → tidak ada.
+enum AnnouncementTier { none, feature, patch }
+
+/// Klasifikasi perubahan versi terpasang (murni). [fromBuild]/
+/// [toBuild] dalam domain bangun dasar (versionCode % 1000, domain
+/// yang sama dengan pemecah seri [isNewerRelease]).
+AnnouncementTier classifyVersionChange({
+  required String fromName,
+  required int fromBuild,
+  required String toName,
+  required int toBuild,
+}) {
+  if (compareVersionNames(toName, fromName) < 0) {
+    return AnnouncementTier.none; // turun versi: diam, basis digeser
+  }
+  List<int> parts(String v) => v
+      .split('.')
+      .map((s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
+      .toList();
+  final pf = parts(fromName), pt = parts(toName);
+  int at(List<int> p, int i) => i < p.length ? p[i] : 0;
+  if (at(pt, 0) != at(pf, 0) || at(pt, 1) != at(pf, 1)) {
+    return AnnouncementTier.feature;
+  }
+  if (toName == fromName && toBuild <= fromBuild) {
+    return AnnouncementTier.none; // identik / bangun mundur
+  }
+  return AnnouncementTier.patch;
+}
+
+/// Permukaan unggulan yang dikenal pengumuman B1 (CTA deep-link).
+enum AnnounceSurface { vault, share, taste, shuffle }
+
+/// Pemetaan kata kunci → permukaan untuk item "Yang baru" (terpelihara
+/// di sini, dijaga tes pengumuman_8079): urutan pemeriksaan adalah
+/// urutan kekhususan — brankas paling khas, acak paling umum.
+AnnounceSurface? announceSurfaceFor(String item) {
+  final t = item.toLowerCase();
+  if (t.contains('brankas')) return AnnounceSurface.vault;
+  if (t.contains('bagikan') || t.contains('berbagi') || t.contains('qr')) {
+    return AnnounceSurface.share;
+  }
+  if (t.contains('samaran') || t.contains('selera')) {
+    return AnnounceSurface.taste;
+  }
+  if (t.contains('acak') || t.contains('shuffle')) {
+    return AnnounceSurface.shuffle;
+  }
+  return null;
+}
+
+/// Pecah item "Yang baru" menjadi judul + subjudul untuk baris sorotan
+/// B1 (murni): item rilis nyata adalah kalimat utuh, jadi pemisahan
+/// hanya terjadi pada pola "Kepala: isi" dengan kepala pendek
+/// (≤ 28 karakter); selain itu seluruh item adalah judulnya.
+({String title, String? subtitle}) splitAnnounceItem(String item) {
+  final idx = item.indexOf(': ');
+  if (idx > 0 && idx <= 28) {
+    final head = item.substring(0, idx).trim();
+    final rest = item.substring(idx + 2).trim();
+    if (head.isNotEmpty && rest.isNotEmpty) {
+      return (title: head, subtitle: rest);
+    }
+  }
+  return (title: item, subtitle: null);
+}
+
 /// Banding versi semantik sederhana 'a.b.c' (bagian non-angka diabaikan).
 int compareVersionNames(String a, String b) {
   List<int> parts(String v) => v.split('.').map((s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0).toList();
@@ -195,6 +293,151 @@ class UpdateController extends ChangeNotifier {
   bool wifiOnly = true;
   bool _busy = false;
 
+  // ---------------- Pengumuman sesudah pasang (Ronde 8079, B1/B2) ----
+  //
+  // Mesin tampil-sekali per versi: pref `announce.seen*` adalah basis
+  // versi terakhir yang SUDAH diumumkan (atau dibasiskan diam-diam).
+  // Basis TIDAK dimajukan sebelum pengguna benar-benar menutup
+  // pengumuman — aplikasi mati dengan overlay belum terjawab berarti
+  // pengumuman tampil lagi pada buka dingin berikutnya (keputusan
+  // spec: belum pernah ditutup ≠ sudah diumumkan).
+  // Sumber catatan: simpanan `announce.pending*` (ditulis saat unduhan
+  // rilis ini siap pasang — jalur pembaruan dalam aplikasi) atau
+  // `announce.currentNotes*` (check() yang mendapati rilis terbaru di
+  // umpan ADALAH versi terpasang — jalur sideload/Drive).
+  AnnouncementTier announceTier = AnnouncementTier.none;
+  String announceVersionName = '';
+  List<String> announceNotes = const [];
+  bool get hasAnnouncement => announceTier != AnnouncementTier.none;
+
+  Future<void> _markAnnounceSeen(String name, int build) async {
+    await db.setPref('announce.seenVersionName', name);
+    await db.setPref('announce.seenBuild', build);
+  }
+
+  void _armAnnouncement(
+      AnnouncementTier tier, String versionName, List<String> notes) {
+    announceTier = tier;
+    announceVersionName = versionName;
+    announceNotes = notes;
+    notifyListeners();
+  }
+
+  /// Catatan "Yang baru" untuk versi TERPASANG: cache currentNotes
+  /// dulu; bila belum ada, satu putaran check() (yang mengisi cache itu
+  /// saat rilis umpan == versi terpasang). Null = sumber tidak ketemu.
+  Future<List<String>?> _notesForInstalledVersion(
+      String name, int build) async {
+    Future<List<String>?> fromCache() async {
+      final cn = await db.pref<String>('announce.currentNotesVersion');
+      if (cn != name) return null;
+      final body = await db.pref<String>('announce.currentNotesBody');
+      return body == null ? null : userFacingNotes(body);
+    }
+
+    final cached = await fromCache();
+    if (cached != null) return cached;
+    if (autoCheck) {
+      await check(manual: false);
+      return fromCache();
+    }
+    return null;
+  }
+
+  /// Nilai keadaan pengumuman untuk versi yang SEDANG terpasang.
+  /// Dipanggil sekali saat mulai (sesudah loadPrefs), sebelum
+  /// maybeAutoCheck. Tidak pernah melempar: mesin pengumuman tidak
+  /// boleh menggagalkan penyalaan aplikasi.
+  Future<void> evaluateAnnouncement() async {
+    try {
+      final v = await SysChannel.appVersion();
+      if (v == null) return;
+      final curName = v.name;
+      final curBuild = SysChannel.baseBuildOf(v.code);
+      final seenName = await db.pref<String>('announce.seenVersionName');
+      if (seenName == null) {
+        // Belum ada basis: instalasi segar ATAU debut mesin ini pada
+        // pemasangan lama (8079 pertama kali berjalan). Bedakan dari
+        // sinyal data lama: pernah memeriksa pembaruan atau pernah
+        // memutar lagu.
+        final lastCheck = await db.pref<int>('update.lastCheckMs') ?? 0;
+        final everPlayed =
+            await db.pref<bool>('playback.everPlayed') ?? false;
+        if (lastCheck == 0 && !everPlayed) {
+          await _markAnnounceSeen(curName, curBuild); // segar: diam
+          return;
+        }
+        // Debut pada basis lama: umumkan sebagai rilis fitur HANYA
+        // bila catatan versi terpasang bisa bersumber dari umpan.
+        final notes = await _notesForInstalledVersion(curName, curBuild);
+        if (notes != null && notes.isNotEmpty) {
+          _armAnnouncement(AnnouncementTier.feature, curName, notes);
+        } else {
+          await _markAnnounceSeen(curName, curBuild);
+        }
+        return;
+      }
+      final seenBuild = await db.pref<int>('announce.seenBuild') ?? 0;
+      if (seenName == curName && seenBuild == curBuild) return;
+      final tier = classifyVersionChange(
+          fromName: seenName,
+          fromBuild: seenBuild,
+          toName: curName,
+          toBuild: curBuild);
+      if (tier == AnnouncementTier.none) {
+        await _markAnnounceSeen(curName, curBuild);
+        return;
+      }
+      // Utamakan simpanan unduhan rilis ini; selain itu umpan.
+      List<String>? notes;
+      final pName = await db.pref<String>('announce.pendingVersionName');
+      final pBuild = await db.pref<int>('announce.pendingBuild') ?? -1;
+      if (pName == curName && pBuild % 1000 == curBuild) {
+        final body = await db.pref<String>('announce.pendingNotes');
+        if (body != null) notes = userFacingNotes(body);
+      }
+      notes ??= await _notesForInstalledVersion(curName, curBuild);
+      if (tier == AnnouncementTier.feature) {
+        if (notes != null && notes.isNotEmpty) {
+          _armAnnouncement(tier, curName, notes);
+        } else {
+          // Rilis fitur tanpa blok "Yang baru": tidak ada yang jujur
+          // untuk diumumkan — basis dimajukan diam-diam.
+          await _markAnnounceSeen(curName, curBuild);
+        }
+      } else {
+        // Tambalan: B2 tampil juga tanpa catatan ("Lihat" disembun-
+        // yikan UI bila kosong).
+        _armAnnouncement(tier, curName, notes ?? const []);
+      }
+    } catch (_) {
+      // Diam: pengumuman adalah lapisan pemberitahuan, bukan gerbang.
+    }
+  }
+
+  /// Pengguna menutup pengumuman (B1 lewat CTA/"Nanti saja", B2 lewat
+  /// ✕/"Lihat"): basis dimajukan ke versi terpasang, keadaan dibersih-
+  /// kan — tidak tampil lagi untuk versi ini, selamanya.
+  Future<void> dismissAnnouncement() async {
+    final v = await SysChannel.appVersion();
+    if (v != null) {
+      await _markAnnounceSeen(v.name, SysChannel.baseBuildOf(v.code));
+    }
+    announceTier = AnnouncementTier.none;
+    announceVersionName = '';
+    announceNotes = const [];
+    notifyListeners();
+  }
+
+  /// Simpan catatan rilis yang baru diunduh sebagai pengumuman
+  /// tertunda: sesudah pemasangan sistem selesai dan aplikasi menyala
+  /// pada versi itu, evaluateAnnouncement menemukannya di sini.
+  Future<void> _stashPendingAnnouncement(ReleaseInfo r) async {
+    await db.setPref('announce.pendingVersionName', r.versionName);
+    await db.setPref('announce.pendingBuild', r.build);
+    await db.setPref('announce.pendingNotes', r.notes);
+  }
+
   Future<void> loadPrefs() async {
     autoCheck = await db.pref<bool>('update.autoCheck') ?? true;
     autoDownload = await db.pref<bool>('update.autoDownload') ?? false;
@@ -267,6 +510,16 @@ class UpdateController extends ChangeNotifier {
             status = UpdateStatus.upToDate;
             release = null;
             message = l10n.updUpToDate;
+            // Ronde 8079: rilis terbaru di umpan ADALAH versi yang
+            // terpasang → catatannya disimpan sebagai catatan versi
+            // terpasang (sumber lembar "Yang baru" sesudah pasang dan
+            // spanduk B2 pada jalur pasang sideload/Drive, yang tidak
+            // melewati unduhan dalam aplikasi).
+            if (parsed.versionName == v.name) {
+              await db.setPref(
+                  'announce.currentNotesVersion', parsed.versionName);
+              await db.setPref('announce.currentNotesBody', parsed.notes);
+            }
           }
         }
       } else {
@@ -334,6 +587,7 @@ class UpdateController extends ChangeNotifier {
         downloadedPath = file.path;
         status = UpdateStatus.readyToInstall;
         message = l10n.updAlreadyDownloaded;
+        await _stashPendingAnnouncement(r);
         notifyListeners();
         return;
       }
@@ -344,6 +598,7 @@ class UpdateController extends ChangeNotifier {
       downloadedPath = file.path;
       status = UpdateStatus.readyToInstall;
       message = l10n.updDownloadDone;
+      await _stashPendingAnnouncement(r);
     } catch (e) {
       status = UpdateStatus.error;
       message = l10n.updDownloadFailed;

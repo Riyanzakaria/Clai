@@ -22,12 +22,18 @@ String formatBytes(int bytes) {
 ///
 /// Gelombang 2 (8048): komposisi papan — kartu penyimpanan (angka besar
 /// tabular + bilah Volt terhadap kuota bila kuota disetel + penjelasan
-/// penyimpanan privat), kartu unduhan-berjalan lebih dulu (garis
+/// penyimpanan privat), baris unduhan-berjalan lebih dulu (garis
 /// progres Volt 3 dp + status tabular + jeda/lanjut; batal & hapus
 /// HANYA lewat menu luapan — ikon sampah berdiri dibuang), lalu baris
-/// terunduh sebagai kartu baris SongRow (menu trek penuhnya tetap
-/// membawa "Hapus unduhan"). Layar mandiri berjudul display 34;
-/// sebagai badan Koleksi judul itu tidak digandakan (KG-9).
+/// terunduh sebagai SongRow (menu trek penuhnya tetap membawa "Hapus
+/// unduhan"). Ronde 8084: baris-baris itu kini DATAR ber-hairline
+/// (cangkang kartu per baris pensiun); kartu penyimpanan tetap.
+/// Ronde 8089 (Bagian C): layar mandiri ini layar DORONG — kepalanya
+/// kini pola kepala baku (chevron telanjang + judul TENGAH
+/// displayStyle(20) + penyeimbang 48), menggantikan judul display 34
+/// kiri tanpa tombol kembali. Sebagai badan tab Koleksi yang dipakai
+/// hanya [DownloadsBody] (judul tidak digandakan, KG-9) — DownloadsScreen
+/// hanya dipanggil sebagai layar dorong dari Pengaturan.
 class DownloadsScreen extends ConsumerWidget {
   const DownloadsScreen({super.key});
   @override
@@ -38,8 +44,22 @@ class DownloadsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-              child: Text(context.l10n.dlTitle, style: displayStyle(34)),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+              child: Row(
+                children: [
+                  const ClaiBackButton(),
+                  Expanded(
+                    child: Text(
+                      context.l10n.dlTitle,
+                      textAlign: TextAlign.center,
+                      style: displayStyle(20),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
             ),
             const Expanded(child: DownloadsBody()),
           ],
@@ -65,6 +85,14 @@ class DownloadsBody extends ConsumerWidget {
     final pending = items
         .where((i) => i.status != DownloadStatus.done)
         .toList();
+    // Audit Ronde 8084: baris-baris unduhan kini DATAR dipisah
+    // hairline (wadah kartu surface1 per baris pensiun — lihat
+    // _pendingCard/_doneCard); kartu ringkasan penyimpanan di atas
+    // tetap (pahlawan data papan 8048, bukan wadah baris).
+    final rows = <Widget>[
+      for (final item in pending) _pendingCard(context, ref, svc, item),
+      for (final item in done) _doneCard(context, ref, svc, item),
+    ];
     return FiniteScrollPage(children: [
       _storageCard(context, ref, svc, done.length),
       if (items.isEmpty)
@@ -82,8 +110,14 @@ class DownloadsBody extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
           child: DimKicker(l.dlSectionDownloaded),
         ),
-        for (final item in pending) _pendingCard(context, ref, svc, item),
-        for (final item in done) _doneCard(context, ref, svc, item),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Divider(height: 1, color: ClaiColors.divider),
+            ),
+          rows[i],
+        ],
       ],
       SizedBox(height: bottomChromeClearance(context)),
     ]);
@@ -135,17 +169,11 @@ class DownloadsBody extends ConsumerWidget {
                       minHeight: 6,
                       backgroundColor: ClaiColors.surface3,
                       valueColor: const AlwaysStoppedAnimation<Color>(
-                          ClaiColors.accent),
+                          ClaiColors.signal),
                     ),
                   ),
                 );
               },
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l.dlFootnote,
-              style: const TextStyle(
-                  color: ClaiColors.inkFaint, fontSize: 12, height: 1.45),
             ),
             if (anyActive || anyPaused)
               Row(
@@ -156,14 +184,14 @@ class DownloadsBody extends ConsumerWidget {
                       onPressed: () => svc.pauseAll(),
                       child: Text(l.dlPauseAll,
                           style:
-                              const TextStyle(color: ClaiColors.accent)),
+                              const TextStyle(color: ClaiColors.signal)),
                     ),
                   if (anyPaused)
                     TextButton(
                       onPressed: () => svc.resumeAll(),
                       child: Text(l.dlResumeAll,
                           style:
-                              const TextStyle(color: ClaiColors.accent)),
+                              const TextStyle(color: ClaiColors.signal)),
                     ),
                 ],
               ),
@@ -173,8 +201,8 @@ class DownloadsBody extends ConsumerWidget {
     );
   }
 
-  /// Kartu unduhan belum selesai (berjalan/antre/jeda/gagal/korup):
-  /// satu cangkang kartu untuk semua keadaan belum-putar.
+  /// Baris unduhan belum selesai (berjalan/antre/jeda/gagal/korup):
+  /// satu bentuk baris datar untuk semua keadaan belum-putar.
   Widget _pendingCard(BuildContext context, WidgetRef ref,
       DownloadService svc, DownloadItemState item) {
     final l = context.l10n;
@@ -206,19 +234,15 @@ class DownloadsBody extends ConsumerWidget {
       DownloadStatus.corrupt => (item.error ?? l.dlErrCorrupt, false),
       _ => (item.error ?? l.dlFailed, false),
     };
+    // Ronde 8084: cangkang kartu surface1 r16 DIBUANG — baris tampil
+    // datar di latar halaman (isi, progres, & aksi persis sama).
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: ClaiColors.surface1,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Row(
           children: [
             if (item.status == DownloadStatus.corrupt ||
                 item.status == DownloadStatus.failed)
-              tonalIconBox(
+              rowLeadIcon(
                 item.status == DownloadStatus.corrupt
                     ? ClaiIcons.warning
                     : ClaiIcons.cloudOff,
@@ -258,7 +282,7 @@ class DownloadsBody extends ConsumerWidget {
                         minHeight: 3,
                         backgroundColor: ClaiColors.surface3,
                         valueColor: const AlwaysStoppedAnimation<Color>(
-                            ClaiColors.accent),
+                            ClaiColors.signal),
                       ),
                     ),
                   ],
@@ -295,17 +319,23 @@ class DownloadsBody extends ConsumerWidget {
                     await svc.download(t, handler.effectiveQuality);
                   },
                   child: Text(l.dlRedownload,
-                      style: const TextStyle(color: ClaiColors.accent)),
+                      style: const TextStyle(color: ClaiColors.signal)),
                 ),
               DownloadStatus.failed => TextButton(
                   onPressed: () =>
                       svc.download(t, handler.effectiveQuality),
                   child: Text(l.dlRetry,
-                      style: const TextStyle(color: ClaiColors.accent)),
+                      style: const TextStyle(color: ClaiColors.signal)),
                 ),
               _ => const SizedBox(width: 8),
             },
             PopupMenuButton<String>(
+              // Ronde 8088: menu di navigator akar — pola cacat yang
+              // sama dengan dropdown Mode transisi (menu pada navigator
+              // tab jatuh di bawah chrome melayang; baris unduhan aktif
+              // terbawah bisa mengistirahatkan item kedua menunya di
+              // zona mini player).
+              useRootNavigator: true,
               icon: ClaiIcon(ClaiIcons.moreVert,
                   color: ClaiColors.inkSecondary),
               color: ClaiColors.surface2,
@@ -331,41 +361,31 @@ class DownloadsBody extends ConsumerWidget {
             ),
           ],
         ),
-      ),
     );
   }
 
-  /// Baris terunduh: SongRow di dalam cangkang kartu — putar, keadaan
-  /// sedang-diputar, dan menu trek penuh (termasuk Hapus unduhan)
-  /// dipertahankan; ukuran berkas tabular di kanan.
+  /// Baris terunduh: SongRow BAKU 60 langsung di latar halaman —
+  /// putar, keadaan sedang-diputar, dan menu trek penuh (termasuk
+  /// Hapus unduhan) dipertahankan; ukuran berkas tabular di kanan.
+  /// (Ronde 8084: cangkang kartu surface1 r16 pensiun.)
   Widget _doneCard(BuildContext context, WidgetRef ref, DownloadService svc,
       DownloadItemState item) {
     final handler = ref.read(audioHandlerProvider);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
-      child: Container(
-        decoration: BoxDecoration(
-          color: ClaiColors.surface1,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: SongRow(
-          track: item.track,
-          trailing: Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Text(
-              formatBytes(item.bytesTotal ?? item.bytesDone),
-              style: const TextStyle(
-                fontSize: 12,
-                color: ClaiColors.inkFaint,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
+    return SongRow(
+      track: item.track,
+      trailing: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: Text(
+          formatBytes(item.bytesTotal ?? item.bytesDone),
+          style: const TextStyle(
+            fontSize: 12,
+            color: ClaiColors.inkFaint,
+            fontFeatures: [FontFeature.tabularFigures()],
           ),
-          onTap: () => handler.playTracks([item.track], 0,
-              kind: 'download', label: context.l10n.dlTitle),
         ),
       ),
+      onTap: () => handler.playTracks([item.track], 0,
+          kind: 'download', label: context.l10n.dlTitle),
     );
   }
 }

@@ -25,6 +25,7 @@ import '../player/resolving_audio_source.dart';
 import '../player/test_tone.dart';
 import '../services/gate_metrics.dart';
 import 'login_lab.dart';
+import 'widgets.dart';
 import 'potoken_lab.dart';
 import 'watch_lab.dart';
 
@@ -3540,7 +3541,7 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
 
   /// Tombol alat Diagnostik (Ronde Sapuan 8045): pil tonal
   /// surface-3 — menggantikan OutlinedButton Material mentah;
-  /// tombol Jalankan utama tetap pil isi Volt.
+  /// tombol Jalankan utama tetap pil isi putih tinta (DS v5.0).
   Widget _toolButton({
     required Widget icon,
     required Widget label,
@@ -3562,7 +3563,7 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.diagTitle)),
+      appBar: claiPushedAppBar(context, context.l10n.diagTitle),
       // Audit 8047: SELURUH badan kini satu gulir dengan cadangan
       // chrome bawah — struktur Kolom-tetap lama menaruh baris alat
       // seksi DIRECT (dropdown sabotase, tombol-tombolnya) DI BALIK
@@ -3573,26 +3574,16 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
       body: SingleChildScrollView(
         padding: EdgeInsets.only(bottom: bottomChromeClearance(context)),
         child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text(
-            context.l10n.diagIntro,
-            style: const TextStyle(color: ClaiColors.inkSecondary, fontSize: 13, height: 1.4),
-          ),
-        ),
         // B-01 (Sapuan): angka gerbang Bab 3 dari pemakaian NYATA sesi ini —
         // sebelumnya layar ini hanya uji rantai manual tanpa statistik gerbang.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            // Wajah (Ronde Sapuan 8045): kartu statistik = tonal
-            // surface-1 radius 16 seperti kartu aplikasi lain. ISI
-            // tidak berubah seinci pun — kepadatan data Diagnostik
-            // adalah perilaku terkuncinya; baris Napas (U1) dan
-            // Waveform: di dalamnya tetap persis.
-            decoration: BoxDecoration(color: ClaiColors.surface1, borderRadius: BorderRadius.circular(16)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Ronde 8084: wadah kartu surface-1 radius 16 DIBUANG —
+          // statistik tampil datar di latar halaman. ISI tidak
+          // berubah seinci pun — kepadatan data Diagnostik adalah
+          // perilaku terkuncinya; baris Napas (U1) dan Waveform di
+          // dalamnya tetap persis.
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(context.l10n.diagGatesTitle,
                   style: const TextStyle(color: ClaiColors.ink, fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 6),
@@ -3670,7 +3661,6 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
                 );
               }),
             ]),
-          ),
         ),
         // Bagian DIRECT-1 (Tahap 3): kesehatan jalur produksi + kill-switch
         // + pementasan bukti penolakan. Di atas laboratorium di bawah.
@@ -3682,11 +3672,10 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
         // instans produksi dipasang terpisah oleh DirectEngineHost.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Container(
+          // Ronde 8084: wadah surface-1 r16 DIBUANG — lab WebView
+          // tampil datar setinggi sama persis (96).
+          child: SizedBox(
             height: 96,
-            decoration: BoxDecoration(
-                color: ClaiColors.surface1, borderRadius: BorderRadius.circular(16)),
-            clipBehavior: Clip.antiAlias,
             child: PoTokenLab(key: _poLabKey, onProgress: _poProgress),
           ),
         ),
@@ -3695,11 +3684,10 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
         // bisa berinisialisasi sebelum matriks dijalankan.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Container(
+          // Ronde 8084: wadah surface-1 r16 DIBUANG — lab WebView
+          // tampil datar setinggi sama persis (110).
+          child: SizedBox(
             height: 110,
-            decoration: BoxDecoration(
-                color: ClaiColors.surface1, borderRadius: BorderRadius.circular(16)),
-            clipBehavior: Clip.antiAlias,
             child: WatchLab(key: _watchLabKey),
           ),
         ),
@@ -3710,7 +3698,7 @@ class _PlaybackDiagnosticsScreenState extends ConsumerState<PlaybackDiagnosticsS
           // kedua turun ke baris berikutnya bila lebar tidak cukup.
           child: Wrap(spacing: 8, runSpacing: 8, children: [
             FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: ClaiColors.accent, foregroundColor: ClaiColors.onAccent),
+              style: FilledButton.styleFrom(backgroundColor: ClaiColors.signal, foregroundColor: ClaiColors.onSignal),
               onPressed: _running ? null : _run,
               icon: ClaiIcon(ClaiIcons.playCircle, size: 18),
               label: Text(_running ? context.l10n.diagRunning : context.l10n.diagRun),

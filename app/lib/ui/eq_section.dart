@@ -12,6 +12,17 @@ import '../l10n/l10n.dart';
 import '../services/observability.dart';
 import 'widgets.dart';
 
+/// Kunci baris Pola Pengaturan (Ronde 8089, Bagian D): judul font
+/// tampilan [kRowTitleSize]/700, state 13 satu baris — dipakai semua baris konten
+/// berkas ini + NormalizationTile.
+const _rowTitleStyle = TextStyle(
+  fontFamily: kDisplayFontFamily,
+  fontSize: kRowTitleSize,
+  fontWeight: FontWeight.w700,
+  color: ClaiColors.ink,
+);
+const _rowStateStyle = TextStyle(fontSize: 13, color: ClaiColors.inkSecondary);
+
 /// Seksi EQ di Pengaturan (F2 Batch 2): Equalizer Android per sesi pemain
 /// Clai. Perangkat tanpa efek → teks jujur, bukan sakelar pajangan.
 /// Setelan tersimpan di pref dan diterapkan otomatis saat sesi audio baru
@@ -189,32 +200,45 @@ class _EqSectionState extends ConsumerState<EqSection> {
     final s = context.l10n;
     if (_supported == null) {
       return ListTile(
-        title: Text(s.eqTitle, style: const TextStyle(color: ClaiColors.ink)),
+        minTileHeight: 60,
+        titleTextStyle: _rowTitleStyle,
+        subtitleTextStyle: _rowStateStyle,
+        title: Text(s.eqTitle, style: _rowTitleStyle),
         subtitle: Text(s.eqChecking,
-            style: const TextStyle(color: ClaiColors.inkSecondary)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _rowStateStyle),
       );
     }
     if (_supported == false) {
       return ListTile(
-        title: Text(s.eqTitle, style: const TextStyle(color: ClaiColors.ink)),
+        minTileHeight: 60,
+        titleTextStyle: _rowTitleStyle,
+        subtitleTextStyle: _rowStateStyle,
+        title: Text(s.eqTitle, style: _rowTitleStyle),
         subtitle: Text(s.eqUnavailable,
-            style: const TextStyle(color: ClaiColors.inkSecondary)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _rowStateStyle),
       );
     }
     final info = _info;
     return Column(children: [
       SwitchListTile(
-        secondary: tonalIconBox(ClaiIcons.musicNote, size: 40, iconSize: 20),
-        title: Text(s.eqTitle, style: const TextStyle(color: ClaiColors.ink)),
-        subtitle: Text(s.eqSubtitle,
-            style: const TextStyle(color: ClaiColors.inkSecondary)),
+        minTileHeight: 60,
+        secondary: rowLeadIcon(ClaiIcons.musicNote, size: 40, iconSize: 24),
+        title: Text(s.eqTitle, style: _rowTitleStyle),
         value: _enabled,
         onChanged: _setEnabled,
       ),
       if (info == null)
         ListTile(
+          minTileHeight: 60,
+          subtitleTextStyle: _rowStateStyle,
           subtitle: Text(s.eqWaitingSession,
-              style: const TextStyle(color: ClaiColors.inkSecondary)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _rowStateStyle),
         ),
       if (info != null && _enabled) ...[
         // D-29: preset bernama PRD (Datar/Bass/Vokal/Akustik) sebagai pola
@@ -235,9 +259,9 @@ class _EqSectionState extends ConsumerState<EqSection> {
                   label: Text(e.value),
                   selected: _namedPreset == e.key,
                   onSelected: (_) => _applyNamedPreset(e.key, info),
-                  selectedColor: ClaiColors.accent,
+                  selectedColor: ClaiColors.signal,
                   labelStyle: TextStyle(
-                      color: _namedPreset == e.key ? ClaiColors.onAccent : ClaiColors.ink,
+                      color: _namedPreset == e.key ? ClaiColors.onSignal : ClaiColors.ink,
                       fontSize: 13, fontWeight: FontWeight.w500),
                   backgroundColor: ClaiColors.surface2, side: BorderSide.none,
                 ),
@@ -246,7 +270,7 @@ class _EqSectionState extends ConsumerState<EqSection> {
         ),
         DropdownTile<int>(
           title: s.eqPreset,
-          leading: tonalIconBox(ClaiIcons.sort, size: 40, iconSize: 20),
+          leading: rowLeadIcon(ClaiIcons.sort, size: 40, iconSize: 24),
           value: _preset >= 0 && _preset < info.presets.length ? _preset : -1,
           items: [
             DropdownMenuItem(value: -1, child: Text(s.eqCustom)),
@@ -273,16 +297,18 @@ class _EqSectionState extends ConsumerState<EqSection> {
         ),
         for (var i = 0; i < info.bandCount; i++)
           ListTile(
-            title: Text(
+            minTileHeight: 60,
+            titleTextStyle: _rowTitleStyle,
+            title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, 
                 s.eqBandLabel(_freqLabel(info.centerFreqHz.length > i ? info.centerFreqHz[i] : 0), ((_bands.length > i ? _bands[i] : 0) / 100).toStringAsFixed(1)),
-                style: const TextStyle(color: ClaiColors.ink)),
+                style: _rowTitleStyle),
             subtitle: Slider(
               value: ((_bands.length > i ? _bands[i] : 0).toDouble())
                   .clamp(info.minLevel.toDouble(), info.maxLevel.toDouble()),
               min: info.minLevel.toDouble(),
               max: info.maxLevel.toDouble(),
               divisions: ((info.maxLevel - info.minLevel) ~/ 100).clamp(1, 100),
-              activeColor: ClaiColors.accent,
+              activeColor: ClaiColors.signal,
               onChanged: (v) {
                 setState(() {
                   if (_bands.length <= i) {
@@ -306,7 +332,8 @@ class _EqSectionState extends ConsumerState<EqSection> {
   // ---------------------------------------------------------- panggung
   /// Tata letak layar penuh (EqScreen): kepala judul + sakelar induk,
   /// keterangan sesi, baris preset bernama + kata keadaan Kustom,
-  /// panggung slider vertikal, panel preset perangkat, catatan kaki.
+  /// panggung slider vertikal, baris preset perangkat — semua datar
+  /// di latar halaman sejak Ronde 8084 (wadah kartu pensiun).
   /// Semua nilai dari EqInfo perangkat — jumlah pita & frekuensi
   /// tengah TIDAK dikunci ke contoh papan.
   Widget _buildStage(BuildContext context) {
@@ -339,26 +366,14 @@ class _EqSectionState extends ConsumerState<EqSection> {
             Switch(value: _enabled, onChanged: _setEnabled),
           ]),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 2, 20, 0),
-          child: Text(s.eqSubtitle,
-              style: const TextStyle(
-                  color: ClaiColors.inkSecondary, fontSize: 13, height: 1.45)),
-        ),
         if (info == null)
+          // Ronde 8084: wadah kartu surface1 r20 DIBUANG — keadaan
+          // menunggu tampil datar sebagai teks state di latar halaman.
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: ClaiColors.surface1,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(s.eqWaitingSession,
-                  style: const TextStyle(
-                      color: ClaiColors.inkSecondary, height: 1.5)),
-            ),
+            child: Text(s.eqWaitingSession,
+                style: const TextStyle(
+                    color: ClaiColors.inkSecondary, fontSize: 13, height: 1.5)),
           )
         else ...[
           Padding(
@@ -375,10 +390,10 @@ class _EqSectionState extends ConsumerState<EqSection> {
                   selected: _namedPreset == e.key,
                   onSelected:
                       _enabled ? (_) => _applyNamedPreset(e.key, info) : null,
-                  selectedColor: ClaiColors.accent,
+                  selectedColor: ClaiColors.signal,
                   labelStyle: TextStyle(
                       color: _namedPreset == e.key
-                          ? ClaiColors.onAccent
+                          ? ClaiColors.onSignal
                           : ClaiColors.ink,
                       fontSize: 13,
                       fontWeight: FontWeight.w500),
@@ -390,25 +405,25 @@ class _EqSectionState extends ConsumerState<EqSection> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
-                    border: Border.all(color: ClaiColors.accent, width: 1),
+                    border: Border.all(color: ClaiColors.signal, width: 1),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(s.eqCustom,
                       style: const TextStyle(
-                          color: ClaiColors.accent,
+                          color: ClaiColors.signal,
                           fontSize: 13,
                           fontWeight: FontWeight.w500)),
                 ),
             ]),
           ),
+          // Ronde 8084: wadah kartu surface1 r20 DIBUANG — panggung
+          // slider vertikal tampil datar di latar halaman; bantalan
+          // dalam (8,20,8,16) dipertahankan persis agar geometri rel
+          // & garis nol _BandStage tidak bergeser seinci pun.
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            child: Container(
+            child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 20, 8, 16),
-              decoration: BoxDecoration(
-                color: ClaiColors.surface1,
-                borderRadius: BorderRadius.circular(20),
-              ),
               child: Opacity(
                 opacity: _enabled ? 1 : 0.45,
                 child: _BandStage(
@@ -435,17 +450,13 @@ class _EqSectionState extends ConsumerState<EqSection> {
               ),
             ),
           ),
+          // Ronde 8084: wadah kartu surface1 r20 DIBUANG — baris
+          // preset perangkat tampil datar di latar halaman.
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: ClaiColors.surface1,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: DropdownTile<int>(
+            child: DropdownTile<int>(
                 title: s.eqPreset,
-                leading: tonalIconBox(ClaiIcons.sort, size: 40, iconSize: 20),
+                leading: rowLeadIcon(ClaiIcons.sort, size: 40, iconSize: 24),
                 value: _preset >= 0 && _preset < info.presets.length
                     ? _preset
                     : -1,
@@ -476,14 +487,11 @@ class _EqSectionState extends ConsumerState<EqSection> {
                         }
                       },
               ),
-            ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            child: Text(s.eqWaitingSession,
-                style: const TextStyle(
-                    color: ClaiColors.inkFaint, fontSize: 12, height: 1.5)),
-          ),
+          // Ronde 8084: catatan kaki eqWaitingSession yang TERULANG di
+          // sini DIBUANG — teks yang sama sudah tampil sebagai keadaan
+          // menunggu (formulir & panggung) saat sesi belum ada; saat
+          // sesi ada ia hanya pengulangan penjelas (§13.2).
         ],
       ],
     );
@@ -492,8 +500,9 @@ class _EqSectionState extends ConsumerState<EqSection> {
 
 
 /// Panggung pita vertikal: kolom sama lebar per pita perangkat —
-/// label dB tabular di atas (positif Volt), rel vertikal 220 dp dengan
-/// isian Volt dari garis nol kontinu ke ibu jari, label frekuensi di
+/// label dB tabular di atas (positif = putih tinta, DS v5.0), rel
+/// vertikal 220 dp dengan isian putih tinta dari garis nol kontinu
+/// ke ibu jari, label frekuensi di
 /// bawah. Nilai dibaca/ditulis dalam milibel persis seperti slider
 /// formulir (langkah 100 mB), simpan+terapkan di akhir seretan.
 class _BandStage extends StatelessWidget {
@@ -558,7 +567,7 @@ class _BandStage extends StatelessWidget {
                         fontSize: 13,
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: enabled && (bands.length > i ? bands[i] : 0) > 0
-                            ? ClaiColors.accent
+                            ? ClaiColors.signal
                             : ClaiColors.inkSecondary,
                       ),
                     ),
@@ -665,7 +674,7 @@ class _BandTrackPainter extends CustomPainter {
     // Keadaan mati: isian + ibu jari ABU (spek papan), bukan Volt
     // yang sekadar diredupkan panel.
     final signalColor =
-        enabled ? ClaiColors.accent : ClaiColors.inkSecondary;
+        enabled ? ClaiColors.signal : ClaiColors.inkSecondary;
     final fillPaint = Paint()..color = signalColor;
     final top = thumbY < zeroY ? thumbY : zeroY;
     final bottom = thumbY > zeroY ? thumbY : zeroY;
@@ -679,7 +688,7 @@ class _BandTrackPainter extends CustomPainter {
     }
     canvas.drawCircle(Offset(cx, thumbY), 13, Paint()..color = signalColor);
     canvas.drawCircle(Offset(cx, thumbY), 3,
-        Paint()..color = enabled ? ClaiColors.onAccent : ClaiColors.base);
+        Paint()..color = enabled ? ClaiColors.onSignal : ClaiColors.base);
   }
 
   @override
@@ -714,11 +723,9 @@ class _NormalizationTileState extends ConsumerState<NormalizationTile> {
   Widget build(BuildContext context) {
     final handler = ref.read(audioHandlerProvider);
     return SwitchListTile(
-      secondary: tonalIconBox(ClaiIcons.gauge, size: 40, iconSize: 20),
-      title: Text(context.l10n.setNormalization,
-          style: const TextStyle(color: ClaiColors.ink)),
-      subtitle: Text(context.l10n.setNormalizationSub,
-          style: const TextStyle(color: ClaiColors.inkSecondary)),
+      minTileHeight: 60,
+      secondary: rowLeadIcon(ClaiIcons.gauge, size: 40, iconSize: 24),
+      title: Text(maxLines: 1, overflow: TextOverflow.ellipsis, context.l10n.setNormalization, style: _rowTitleStyle),
       value: _norm,
       onChanged: (v) async {
         setState(() => _norm = v);

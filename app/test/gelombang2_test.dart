@@ -9,9 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// sampul arbitrer + gerbang keadaan lembar lirik (regresi noTrack).
 void main() {
   group('deepToneFromColor (§11.9 untuk sampul arbitrer)', () {
-    test('rona netral jatuh ke Volt — abu tidak dikarang jadi warna', () {
-      expect(deepToneFromColor(const Color(0xFF8A8A8A)), ClaiColorsVolt);
-      expect(deepToneFromColor(const Color(0xFF3C3C40)), ClaiColorsVolt);
+    test('rona netral jatuh ke putih tinta sinyal (DS v5.0) — abu tidak dikarang jadi warna', () {
+      expect(deepToneFromColor(const Color(0xFF8A8A8A)), ClaiColorsSignal);
+      expect(deepToneFromColor(const Color(0xFF3C3C40)), ClaiColorsSignal);
     });
 
     test('rona jenuh masuk pita lightness tegas 0,45–0,68', () {
@@ -39,8 +39,8 @@ void main() {
       expect(deepToneFromColor(c), deepToneFromColor(c));
     });
 
-    test('progressToneFor palet nonaktif tetap Volt', () {
-      expect(progressToneFor(AmbientPalette.inactive), ClaiColorsVolt);
+    test('progressToneFor palet nonaktif tetap putih tinta sinyal (DS v5.0)', () {
+      expect(progressToneFor(AmbientPalette.inactive), ClaiColorsSignal);
     });
   });
 
@@ -94,6 +94,6 @@ void main() {
   });
 }
 
-/// Volt baku DS (#B8F135) — dirujuk lewat token agar tes ikut berubah
-/// bila token resmi berubah.
-const ClaiColorsVolt = Color(0xFFB8F135);
+/// Putih tinta sinyal DS v5.0 (#F4F6F1) — cadangan penjaga nada
+/// progres sejak Sinyal Putih (dulu Volt #B8F135, staging ≤8072).
+const ClaiColorsSignal = Color(0xFFF4F6F1);

@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../app.dart';
+import '../core/artwork.dart';
 import '../core/clai_icons.dart';
 import '../core/display_text.dart';
 import '../core/tokens.dart';
 import '../domain/models.dart';
 import '../l10n/l10n.dart';
 import '../services/ambient_theme.dart';
+import '../services/waveform.dart';
+import 'announcement.dart';
 import 'cover_accent_glow.dart';
 import 'glass.dart';
 import 'haptics.dart';
@@ -16,6 +19,8 @@ import 'jelajah_section.dart';
 import 'personal_shelves_section.dart';
 import 'playlist_screen.dart';
 import 'sleep_resume_card.dart';
+import 'session_vault_screen.dart';
+import 'menu_drawer.dart';
 import 'player_sheet.dart';
 import 'queue_screen.dart';
 import 'update_section.dart';
@@ -47,15 +52,43 @@ DateTime weekStartMonday(DateTime now) {
 /// nama hari/bulan adalah data kalender, dinyatakan sebagai tabel
 /// per locale di sini dan diuji. MURNI.
 String homeDateKicker(DateTime d, String languageCode) {
-  const idDays = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+  const idDays = [
+    'SENIN',
+    'SELASA',
+    'RABU',
+    'KAMIS',
+    'JUMAT',
+    'SABTU',
+    'MINGGU',
+  ];
   const enDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const idMonths = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN',
-    'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES',
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MEI',
+    'JUN',
+    'JUL',
+    'AGU',
+    'SEP',
+    'OKT',
+    'NOV',
+    'DES',
   ];
   const enMonths = [
-    'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-    'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
   ];
   final id = languageCode == 'id';
   final day = (id ? idDays : enDays)[d.weekday - 1];
@@ -89,6 +122,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Pengaturan → Tampilan). Kosong = sapaan tanpa nama.
   String _greetingName = '';
 
+  /// Sampul lagu-lagu disukai (maks 4) untuk ubin mosaik "Lagu
+  /// Tersimpan" di strip Koleksi Kamu modern (Ronde 8083 butir 7).
+  List<String> _likedArtworkUrls = [];
+
   /// Pengendali gulir Beranda modern (dulu juga menggerakkan
   /// parallax panggung U7 — pensiun bersama Panggung Sampul).
   final ScrollController _scroll = ScrollController();
@@ -104,6 +141,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _scroll.dispose();
     super.dispose();
   }
+
   // Strip pengingat izin latar: tampil hanya bila pengguna sudah pernah
   // memutar lagu DAN izin latar belum lengkap; "Nanti saja" menyembunyikan
   // secara persisten (pref ui.bgReminderDismissed).
@@ -118,8 +156,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       weekStartMonday(DateTime.now()).millisecondsSinceEpoch,
       limit: 3,
     );
-    final greetingName =
-        ((await db.pref<String>('ui.greetingName')) ?? '').trim();
+    final likedTracks = await db.likedTracks();
+    final greetingName = ((await db.pref<String>('ui.greetingName')) ?? '')
+        .trim();
     final everPlayed = await db.pref<bool>('playback.everPlayed') ?? false;
     final dismissed = await db.pref<bool>('ui.bgReminderDismissed') ?? false;
     var showBg = false;
@@ -133,14 +172,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         batteryGranted: battery,
       );
     }
-    if (mounted)
+    if (mounted) {
       setState(() {
         _recent = recent;
         _frequent = frequent;
         _topWeek = topWeek;
+        _likedArtworkUrls = likedTracks
+            .map((t) => t.artworkUrl ?? '')
+            .where((u) => u.isNotEmpty)
+            .take(4)
+            .toList();
         _greetingName = greetingName;
         _showBgCard = showBg;
       });
+    }
   }
 
   String _greeting(BuildContext context) {
@@ -210,15 +255,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                     if (_bgExpanded) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        context.l10n.homeBgCardSub,
-                        style: const TextStyle(
-                          color: ClaiColors.inkSecondary,
-                          fontSize: 13,
-                          height: 1.35,
-                        ),
-                      ),
                       Row(
                         children: [
                           TextButton(
@@ -229,7 +265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             child: Text(
                               context.l10n.homeSetupNow,
-                              style: const TextStyle(color: ClaiColors.accent),
+                              style: const TextStyle(color: ClaiColors.signal),
                             ),
                           ),
                           TextButton(
@@ -306,8 +342,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SizedBox(height: 12),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: ClaiColors.accent,
-                foregroundColor: ClaiColors.onAccent,
+                backgroundColor: ClaiColors.signal,
+                foregroundColor: ClaiColors.onSignal,
               ),
               onPressed: widget.onGoSearch,
               icon: ClaiIcon(ClaiIcons.search, size: 18),
@@ -400,10 +436,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // DS v4.0 (Workstream E): Beranda "Panggung Sampul" (Varian A,
     // keputusan pemilik 2026-11-09 06:51) saat Tema Dinamis menyala;
     // tema mati → Beranda v3.1 persis (_buildLegacy).
-    final ambOn =
-        ref.watch(ambientControllerProvider.select((s) => s.enabled));
-    if (ambOn) return _buildModern(context);
-    return _buildLegacy(context);
+    final ambOn = ref.watch(ambientControllerProvider.select((s) => s.enabled));
+    // Ronde 8079: pemicu overlay pengumuman B1 tinggal di sini (kedua
+    // varian) — mengawasi controller, tampil sekali per sesi begitu
+    // evaluasi penyalaan mengangkat pengumuman tingkat fitur.
+    final page = ambOn ? _buildModern(context) : _buildLegacy(context);
+    return Stack(children: [page, const FeatureAnnouncementTrigger()]);
   }
 
   Widget _buildLegacy(BuildContext context) {
@@ -427,23 +465,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Expanded(
                   child: Text(_greeting(context), style: displayStyle(17)),
                 ),
-                IconButton(
-                  icon: ClaiIcon(
-                    ClaiIcons.settings,
-                    color: ClaiColors.inkSecondary,
-                  ),
-                  tooltip: context.l10n.a11ySettings,
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                // Ronde 8079: gir Pengaturan → tombol markah laci Menu.
+                Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: ClaiMarkButton(
+                    onPressed: () => showClaiMenuDrawer(context),
                   ),
                 ),
               ],
             ),
           ),
           const UpdateHomeBanner(),
+          const PatchInstalledBanner(),
           if (_showBgCard) _bgStrip(context),
           // F2 Batch 2: kartu resume tidur sebelum kartu sesi.
           const SleepResumeCard(),
+          const SessionShelf(),
           StreamBuilder<MediaItem?>(
             stream: handler.mediaItem.stream,
             initialData: handler.mediaItem.valueOrNull,
@@ -495,17 +532,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Rak personal artis teratas sebagai rel sampul (data lokal).
           const PersonalArtistRail(),
           // "Koleksi Kamu" (DS 7.1): ubin bisa diketuk menuju Koleksi.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 26, 16, 6),
-            child: Text(
-              context.l10n.homeYourCollection,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: ClaiColors.ink,
-              ),
-            ),
-          ),
+          // Ronde 8085: judul tangan warisan → SectionHeader bawaan.
+          SectionHeader(context.l10n.homeYourCollection),
           ListTile(
             leading: Container(
               width: 56,
@@ -588,32 +616,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 26, 16, 6),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            context.l10n.homeUpNext,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              color: ClaiColors.ink,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.of(claiRootContext(context)).push(
+                  // Ronde 8085: judul tangan warisan → SectionHeader
+                  // bawaan + trailing "buka antrian" apa adanya.
+                  SectionHeader(
+                    context.l10n.homeUpNext,
+                    trailing: TextButton(
+                      onPressed: () =>
+                          Navigator.of(claiRootContext(context)).push(
                             MaterialPageRoute(
                               builder: (_) => const QueueScreen(),
                             ),
                           ),
-                          child: Text(
-                            context.l10n.homeOpenQueue,
-                            style: const TextStyle(color: ClaiColors.accent),
-                          ),
-                        ),
-                      ],
+                      child: Text(
+                        context.l10n.homeOpenQueue,
+                        style: const TextStyle(color: ClaiColors.signal),
+                      ),
                     ),
                   ),
                   for (var i = 0; i < upcoming.length; i++)
@@ -630,6 +647,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
   // ------------------------------------------------------------ v4.0
   /// Beranda modern. Wujud awal v4.0 = "Panggung Sampul" (Varian A);
   /// Kampanye Rombak UI Total (putusan pemilik 2026-11-09 11:23)
@@ -640,7 +658,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// tunggal dan hero tidak tampil) → **Cepat putar** 2×2 dari riwayat
   /// nyata → **Paling sering minggu ini** dari playback_events →
   /// rel riwayat & putar-lagi → artis → Koleksi → rak personal →
-  /// Jelajah → Antrian Berikutnya. Kepala seksi tetap kicker Volt
+  /// Jelajah → Antrian Berikutnya. Kepala seksi tetap kicker (DS v5.0:
+  /// putih tinta)
   /// lewat SectionHeader (KD-6).
   Widget _buildModern(BuildContext context) {
     final handler = ref.watch(audioHandlerProvider);
@@ -657,6 +676,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           _greetingHeader(context),
           const UpdateHomeBanner(),
+          const PatchInstalledBanner(),
           if (_showBgCard) _bgStrip(context),
           const SleepResumeCard(),
           StreamBuilder<MediaItem?>(
@@ -680,95 +700,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
           ),
+          // Ronde 8083 butir 1 (Cacat A): Brankas Sesi TEPAT SESUDAH
+          // kartu Lanjutkan, sebelum Cepat Putar — dulu brankas tampil
+          // di atas kartu Lanjutkan.
+          const SessionShelf(),
           _quickPlaySection(context),
           _topWeekSection(context),
-          if (_recent.isNotEmpty)
-            CoverRail(
-              title: context.l10n.homeRecent,
-              tracks: _recent,
-              onPlay: (tracks, i) => handler.playTracks(
-                tracks,
-                i,
-                kind: 'search',
-                label: context.l10n.homeRecent,
-              ),
-            ),
-          if (_frequent.isNotEmpty)
-            CoverRail(
-              title: context.l10n.homePlayAgain,
-              tracks: _frequent,
-              onPlay: (tracks, i) => handler.playTracks(
-                tracks,
-                i,
-                kind: 'search',
-                label: context.l10n.homePlayAgain,
-              ),
-            ),
+          // Ronde 8083 butir 4: pita fitur artis naik ke sini, tepat
+          // sesudah Paling Sering Minggu Ini.
           const PersonalArtistRail(),
+          // Ronde 8083 butir 5: Terakhir Diputar = daftar baris sidik
+          // gelombang (maks 5), bukan lagi rel sampul.
+          if (_recent.isNotEmpty) _recentWaveList(context),
+          // Ronde 8083 butir 6: Putar Lagi tetap rel, sampul BESAR.
+          if (_frequent.isNotEmpty) _playAgainRail(context),
           SectionHeader(context.l10n.homeYourCollection),
-          ListTile(
-            leading: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: ClaiColors.surface2,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ClaiIcon(ClaiIcons.heartFill, color: ClaiColors.liked),
-            ),
-            title: Text(
-              context.l10n.homeSavedSongs,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: ClaiColors.ink,
-              ),
-            ),
-            subtitle: Text(
-              context.l10n.songCount(lib.likedKeys.length),
-              style: const TextStyle(color: ClaiColors.inkSecondary),
-            ),
-            trailing: ClaiIcon(
-              ClaiIcons.chevronRight,
-              color: ClaiColors.inkFaint,
-            ),
-            onTap: widget.onGoCollection,
-          ),
-          for (final pl in lib.playlists.take(3))
-            ListTile(
-              leading: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: ClaiColors.surface2,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClaiIcon(
-                  ClaiIcons.queue,
-                  color: ClaiColors.inkSecondary,
-                ),
-              ),
-              title: Text(
-                pl.name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: ClaiColors.ink,
-                ),
-              ),
-              subtitle: Text(
-                context.l10n.songCount(pl.count),
-                style: const TextStyle(color: ClaiColors.inkSecondary),
-              ),
-              trailing: ClaiIcon(
-                ClaiIcons.chevronRight,
-                color: ClaiColors.inkFaint,
-              ),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      PlaylistScreen(playlistId: pl.id, name: pl.name),
-                ),
-              ),
-            ),
+          // Ronde 8083 butir 7: Koleksi Kamu = strip ubin mosaik
+          // sampul nyata (bukan lagi ListTile berikon kotak).
+          _collectionMosaicStrip(context),
           const PersonalShelvesSection(),
           const JelajahSection(),
           _upNextModern(context),
@@ -780,8 +729,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Kepala Beranda modern (Kampanye Rombak UI, papan B): baris
   /// tanggal huruf-besar → sapaan display (bernama bila pref
   /// `ui.greetingName` terisi; tanpa nama karangan bila kosong) →
-  /// gir Pengaturan di kanan (dipertahankan dari baris wordmark lama;
-  /// avatar dekoratif papan B tidak diadopsi).
+  /// tombol markah Menu di kanan (Ronde 8079 menggantikan gir
+  /// Pengaturan warisan baris wordmark lama; avatar dekoratif papan B
+  /// tidak diadopsi).
   Widget _greetingHeader(BuildContext context) {
     final name = _greetingName;
     final greet = name.isEmpty
@@ -818,15 +768,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
           ),
-          IconButton(
-            icon: ClaiIcon(
-              ClaiIcons.settings,
-              color: ClaiColors.inkSecondary,
-            ),
-            tooltip: context.l10n.a11ySettings,
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
+          // Ronde 8079: gir Pengaturan → tombol markah laci Menu.
+          Padding(
+            padding: const EdgeInsets.all(4),
+            child: ClaiMarkButton(onPressed: () => showClaiMenuDrawer(context)),
           ),
         ],
       ),
@@ -858,10 +803,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         key: ValueKey('continue-card-${item.id}'),
         artworkUrl: item.artUri?.toString(),
         builder: (context, tonal) => Container(
-          decoration: _nowCardDecoration(tonal)
-              .copyWith(borderRadius: BorderRadius.circular(20)),
+          decoration: _nowCardDecoration(
+            tonal,
+          ).copyWith(borderRadius: BorderRadius.circular(20)),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            // Ronde 8083 butir 2 (R6): padding vertikal kartu dipangkas
+            // (16 → 12; isi, waveform & tombol putar tidak berubah).
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -892,8 +840,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 fontSize: 14,
                                 color: tonal == null
                                     ? ClaiColors.inkSecondary
-                                    : ClaiColors.ink
-                                        .withValues(alpha: 0.85),
+                                    : ClaiColors.ink.withValues(alpha: 0.85),
                               ),
                             ),
                           ],
@@ -924,9 +871,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         final dur = item.duration ?? Duration.zero;
                         final frac = dur.inMilliseconds == 0
                             ? 0.0
-                            : (position.inMilliseconds /
-                                    dur.inMilliseconds)
-                                .clamp(0.0, 1.0);
+                            : (position.inMilliseconds / dur.inMilliseconds)
+                                  .clamp(0.0, 1.0);
                         const timeStyle = TextStyle(
                           fontSize: 12,
                           color: ClaiColors.inkSecondary,
@@ -939,8 +885,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                Text(formatDuration(position),
-                                    style: timeStyle),
+                                Text(
+                                  formatDuration(position),
+                                  style: timeStyle,
+                                ),
                                 const Spacer(),
                                 Text(
                                   dur == Duration.zero
@@ -986,10 +934,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   child: Text(
                                     position > Duration.zero
                                         ? context.l10n.homeResumeFrom(
-                                            formatDuration(position))
+                                            formatDuration(position),
+                                          )
                                         : (dur == Duration.zero
-                                            ? ''
-                                            : formatDuration(dur)),
+                                              ? ''
+                                              : formatDuration(dur)),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -1023,13 +972,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     color: ClaiColors.inkSecondary,
                                   ),
                                   tooltip: context.l10n.queueTitle,
-                                  onPressed: () => Navigator.of(
-                                          claiRootContext(context))
-                                      .push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const QueueScreen(),
-                                    ),
-                                  ),
+                                  onPressed: () =>
+                                      Navigator.of(
+                                        claiRootContext(context),
+                                      ).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const QueueScreen(),
+                                        ),
+                                      ),
                                 ),
                               ],
                             ),
@@ -1113,7 +1063,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             height: 64,
             child: Row(
               children: [
-                CoverArt(url: t.artworkUrl, size: 64, label: t.title, radius: 0),
+                CoverArt(
+                  url: t.artworkUrl,
+                  size: 64,
+                  label: t.title,
+                  radius: 0,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -1170,10 +1125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          context.l10n.homeQuickPlay,
-          padding: const EdgeInsets.fromLTRB(16, 26, 16, 10),
-        ),
+        SectionHeader(context.l10n.homeQuickPlay),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(children: rows),
@@ -1195,10 +1147,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(
-          context.l10n.homeTopWeek,
-          padding: const EdgeInsets.fromLTRB(16, 26, 16, 10),
-        ),
+        SectionHeader(context.l10n.homeTopWeek),
         if (_topWeek.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
@@ -1295,9 +1244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: ClaiColors.inkSecondary,
-                                  fontFeatures: [
-                                    FontFeature.tabularFigures()
-                                  ],
+                                  fontFeatures: [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
@@ -1311,6 +1258,251 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  /// Seksi "Terakhir diputar" modern (Ronde 8083 butir 5): daftar
+  /// ringkas baris lagu (maks 5) dengan SIDIK GELOMBANG MINI di kanan
+  /// dari waveform TERUKUR trek itu — dibaca lewat jalur yang sama
+  /// dengan Player ([WaveformRecorder.dataFor], muat malas dari tabel
+  /// track_waveforms). Trek TANPA data waveform tersimpan tampil
+  /// TANPA sidik sama sekali (tidak ada batang karangan). Ketuk baris
+  /// = perilaku putar rel lama persis (konteks daftar riwayat penuh).
+  Widget _recentWaveList(BuildContext context) {
+    final handler = ref.read(audioHandlerProvider);
+    final recorder = ref.read(waveformRecorderProvider);
+    final tracks = _recent.take(5).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(context.l10n.homeRecent),
+        ListenableBuilder(
+          listenable: recorder,
+          builder: (context, _) => Column(
+            children: [
+              for (var i = 0; i < tracks.length; i++)
+                RecentWaveRow(
+                  track: tracks[i],
+                  waveform: recorder.dataFor(tracks[i].key),
+                  onTap: () => handler.playTracks(
+                    _recent,
+                    i,
+                    kind: 'search',
+                    label: context.l10n.homeRecent,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Seksi "Putar lagi" modern (Ronde 8083 butir 6): tetap rel sampul
+  /// horizontal, tetapi ubin BESAR (128) — pembeda visual dari daftar
+  /// sidik gelombang Terakhir Diputar. Perilaku putar sama persis.
+  Widget _playAgainRail(BuildContext context) {
+    final handler = ref.read(audioHandlerProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(context.l10n.homePlayAgain),
+        SizedBox(
+          height: 174,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(
+              horizontal: ClaiSpace.screenMargin,
+            ),
+            itemCount: _frequent.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, i) {
+              final t = _frequent[i];
+              final titleClean = cleanDisplayTitle(t.title);
+              final artistClean = cleanDisplayArtist(t.artistNames);
+              return SizedBox(
+                width: 128,
+                child: Semantics(
+                  button: true,
+                  label: artistClean.isEmpty
+                      ? titleClean
+                      : '$titleClean — $artistClean',
+                  child: PressableScale(
+                    child: GestureDetector(
+                      onTap: () => handler.playTracks(
+                        _frequent,
+                        i,
+                        kind: 'search',
+                        label: context.l10n.homePlayAgain,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CoverArt(
+                            url: t.artworkUrl,
+                            size: 128,
+                            label: t.title,
+                            radius: 12,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            titleClean,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: ClaiColors.ink,
+                            ),
+                          ),
+                          Text(
+                            artistClean,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: ClaiColors.inkSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Strip "Koleksi kamu" modern (Ronde 8083 butir 7): ubin mosaik
+  /// horizontal — Lagu Tersimpan (mosaik sampul lagu disukai; kosong →
+  /// ubin hati di surface-2) + maks 3 playlist (mosaik 2×2 sampul trek
+  /// pertamanya, pola yang sama seperti mosaik Koleksi). Nama +
+  /// hitungan lagu di bawah ubin; TANPA kotak ikon glif.
+  Widget _collectionMosaicStrip(BuildContext context) {
+    final lib = ref.watch(libraryProvider);
+    final tiles = <Widget>[
+      _mosaicTile(
+        context,
+        urls: _likedArtworkUrls,
+        name: context.l10n.homeSavedSongs,
+        count: lib.likedKeys.length,
+        heartFallback: true,
+        onTap: widget.onGoCollection,
+      ),
+      for (final pl in lib.playlists.take(3))
+        _mosaicTile(
+          context,
+          urls: pl.artworkUrls,
+          name: pl.name,
+          count: pl.count,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PlaylistScreen(playlistId: pl.id, name: pl.name),
+            ),
+          ),
+        ),
+    ];
+    return SizedBox(
+      height: 178,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: tiles.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, i) => tiles[i],
+      ),
+    );
+  }
+
+  Widget _mosaicTile(
+    BuildContext context, {
+    required List<String> urls,
+    required String name,
+    required int count,
+    bool heartFallback = false,
+    VoidCallback? onTap,
+  }) {
+    return SizedBox(
+      width: 128,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _coverMosaic(urls, size: 128, heartFallback: heartFallback),
+            const SizedBox(height: 8),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: ClaiColors.ink,
+              ),
+            ),
+            Text(
+              context.l10n.songCount(count),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: ClaiColors.inkSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Mosaik sampul 2×2 (pola CollectionRow di Koleksi): sampul nyata
+  /// diulang mengisi kisi; tanpa sampul sama sekali → permukaan
+  /// surface-2 polos (hati untuk Lagu Tersimpan, glif antrean redup
+  /// untuk playlist — bukan kotak ikon di dalam ubin berkotak).
+  Widget _coverMosaic(
+    List<String> urls, {
+    required double size,
+    bool heartFallback = false,
+  }) {
+    final filled = urls.where((u) => u.isNotEmpty).toList();
+    if (filled.isEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: ClaiColors.surface2,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: heartFallback
+            ? ClaiIcon(ClaiIcons.heartFill, color: ClaiColors.liked)
+            : ClaiIcon(ClaiIcons.queue, color: ClaiColors.inkFaint),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: GridView.count(
+          crossAxisCount: 2,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            for (var i = 0; i < 4; i++)
+              Image.network(
+                artworkUrlForSize(filled[i % filled.length], 200)!,
+                fit: BoxFit.cover,
+                cacheWidth: 128,
+                errorBuilder: (_, __, ___) =>
+                    Container(color: ClaiColors.surface3),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1334,13 +1526,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SectionHeader(
               context.l10n.homeUpNext,
               trailing: TextButton(
-                onPressed: () =>
-                    Navigator.of(claiRootContext(context)).push(
-                  MaterialPageRoute(builder: (_) => const QueueScreen()),
-                ),
+                onPressed: () => Navigator.of(
+                  claiRootContext(context),
+                ).push(MaterialPageRoute(builder: (_) => const QueueScreen())),
                 child: Text(
                   context.l10n.homeOpenQueue,
-                  style: const TextStyle(color: ClaiColors.accent),
+                  style: const TextStyle(color: ClaiColors.signal),
                 ),
               ),
             ),
@@ -1353,6 +1544,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+/// Baris lagu "Terakhir diputar" modern (Ronde 8083 butir 5): sampul
+/// 48 radius 8, judul 15/500, artis 13, tinggi baris 60 — dan di kanan
+/// SIDIK GELOMBANG MINI ([WaveformStrip]) HANYA bila [waveform] punya
+/// ember terukur. Data kosong/null → baris tampil tanpa sidik sama
+/// sekali: tidak ada batang karangan/dummy yang digambar.
+class RecentWaveRow extends StatelessWidget {
+  final Track track;
+  final WaveformData? waveform;
+  final VoidCallback onTap;
+
+  const RecentWaveRow({
+    super.key,
+    required this.track,
+    required this.waveform,
+    required this.onTap,
+  });
+
+  /// Gerbang sidik: hanya data waveform tersimpan yang benar-benar
+  /// terukur yang boleh menggambar painter gelombang.
+  bool get hasWaveform => waveform != null && waveform!.measuredCount > 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        height: 60,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              CoverArt(
+                url: track.artworkUrl,
+                size: 48,
+                label: track.title,
+                radius: 8,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cleanDisplayTitle(track.title),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: ClaiColors.ink,
+                      ),
+                    ),
+                    Text(
+                      cleanDisplayArtist(track.artistNames),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: ClaiColors.inkSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (hasWaveform) ...[
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 72,
+                  child: WaveformStrip(
+                    data: waveform!,
+                    fraction: 0,
+                    playedColor: ClaiColors.inkSecondary,
+                    unplayedColor: ClaiColors.inkSecondary,
+                    flatColor: ClaiColors.inkFaint,
+                    height: 24,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1448,7 +1726,7 @@ class SessionCardInfo extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: frac.clamp(0, 1),
                 minHeight: 3,
-                color: ClaiColors.accent,
+                color: ClaiColors.signal,
                 backgroundColor: ClaiColors.surface3,
               ),
             ),
@@ -1483,12 +1761,12 @@ class SessionCardInfo extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: const BoxDecoration(
-                      color: ClaiColors.accent,
+                      color: ClaiColors.signal,
                       shape: BoxShape.circle,
                     ),
                     child: ClaiIcon(
                       playing ? ClaiIcons.pause : ClaiIcons.play,
-                      color: ClaiColors.onAccent,
+                      color: ClaiColors.onSignal,
                       size: 22,
                     ),
                   ),

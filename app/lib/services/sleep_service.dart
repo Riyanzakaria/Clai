@@ -46,6 +46,12 @@ class SleepService extends ChangeNotifier {
   Duration _total = Duration.zero;
   bool _fadeBegun = false;
 
+  /// Ronde 8085: detik tampil ([remaining.inSeconds]) terakhir yang sudah
+  /// diberitahukan ke pendengar. _tick hanya memanggil notifyListeners()
+  /// bila nilai ini berubah, agar chip mini player & lembar timer hidup
+  /// tiap detik TANPA spam rebuild di luar perubahan detik.
+  int? _lastNotifiedRemSeconds;
+
   /// Dipasang bootstrap: aksi saat timer berbunyi (fade + jeda + simpan posisi).
   Future<void> Function()? onFire;
 
@@ -88,6 +94,7 @@ class SleepService extends ChangeNotifier {
     // berbasis jam dinding. Granularitas 1 detik cukup untuk timer tidur.
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     notifyListeners();
+    _lastNotifiedRemSeconds = _total.inSeconds;
   }
 
   void _tick() {
@@ -102,6 +109,14 @@ class SleepService extends ChangeNotifier {
       _fadeBegun = true;
       onFadeStart?.call(rem);
     }
+    // Ronde 8085: bangunkan pendengar (chip mini player, lembar timer)
+    // hanya saat detik tampil berubah — getter remaining berbasis jam
+    // dinding, jadi tanpa notify ini tampilannya membeku.
+    final remSeconds = rem.inSeconds;
+    if (remSeconds != _lastNotifiedRemSeconds) {
+      _lastNotifiedRemSeconds = remSeconds;
+      notifyListeners();
+    }
   }
 
   void startEndOfSong() {
@@ -109,6 +124,7 @@ class SleepService extends ChangeNotifier {
     _timer = null;
     onFadeCancel?.call(); // persenjataan baru: pulihkan peredupan basi
     _fadeBegun = false;
+    _lastNotifiedRemSeconds = null;
     active = const SleepTimerState(mode: 'endOfSong');
     notifyListeners();
   }
@@ -124,6 +140,7 @@ class SleepService extends ChangeNotifier {
     _timer?.cancel();
     _timer = null;
     _fadeBegun = false;
+    _lastNotifiedRemSeconds = null;
     lastFiredAt = DateTime.now();
     notifyListeners();
     final f = onFire;
@@ -135,6 +152,7 @@ class SleepService extends ChangeNotifier {
     _timer = null;
     active = null;
     _fadeBegun = false;
+    _lastNotifiedRemSeconds = null;
     // Selalu beri tahu handler: peredupan bisa sedang berjalan dari jalur
     // akhir-lagu (yang tidak melewati _fadeBegun layanan ini) — handler
     // yang menilai apakah ada yang perlu dipulihkan (no-op bila tidak).

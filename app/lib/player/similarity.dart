@@ -159,6 +159,15 @@ class SimilarityLadder {
   final Set<TrackKey> likedKeys;
   final Map<TrackKey, int> playCounts;
 
+  /// Pengecualian selera (Ruang Kendali Selera, Ronde 8074): trek dan
+  /// artis yang dikeluarkan pengguna TIDAK pernah menjadi kandidat isi
+  /// ulang — berlaku juga untuk putar yang sudah lewat (retroaktif)
+  /// karena saringannya membaca keadaan pengecualian saat ini.
+  /// [excludedArtistKeys] memakai kunci artis primer ternormalisasi
+  /// yang sama dengan pagar tangga ([AutoplayGate.primaryArtistKey]).
+  final Set<TrackKey> excludedKeys;
+  final Set<String> excludedArtistKeys;
+
   /// Batas waktu per panggilan sumber (v4.4.2): panggilan yang menggantung
   /// tidak boleh menyandera isi ulang selamanya — tangga itu gugur, tangga
   /// lain tetap berjalan. Tanpa batas ini satu panggilan macet memblokir
@@ -169,6 +178,8 @@ class SimilarityLadder {
     this.source, {
     this.likedKeys = const {},
     this.playCounts = const {},
+    this.excludedKeys = const {},
+    this.excludedArtistKeys = const {},
     this.sourceTimeout = const Duration(seconds: 15),
   });
 
@@ -183,7 +194,7 @@ class SimilarityLadder {
     int target = 15,
   }) async {
     if (seeds.isEmpty) return const [];
-    final excluded = {...alreadyQueued, ...sessionNegative};
+    final excluded = {...alreadyQueued, ...sessionNegative, ...excludedKeys};
     final byLadder = <int, List<Track>>{1: [], 2: [], 3: [], 4: []};
     final seen = <TrackKey>{};
     final seenVersions = <String>{};
@@ -194,6 +205,10 @@ class SimilarityLadder {
     void add(int ladder, Iterable<Track> tracks) {
       for (final t in tracks) {
         if (excluded.contains(t.key)) continue;
+        if (excludedArtistKeys.contains(
+            AutoplayGate.primaryArtistKey(t.artistNames))) {
+          continue;
+        }
         if (!seen.add(t.key)) continue;
         if (!AutoplayGate.passes(t, seedPrimaryKeys: seedPrimaryKeys)) continue;
         if (AutoplayGate.isSeedVersion(t, seeds)) continue;

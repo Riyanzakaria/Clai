@@ -29,8 +29,10 @@ class TintCrossfade extends StatefulWidget {
 
 class _TintCrossfadeState extends State<TintCrossfade>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController.unbounded(vsync: this, value: 1);
+  late final AnimationController _c = AnimationController.unbounded(
+    vsync: this,
+    value: 1,
+  );
   late Color _from = widget.target;
   late Color _to = widget.target;
 
@@ -48,9 +50,7 @@ class _TintCrossfadeState extends State<TintCrossfade>
     _c
       ..stop()
       ..value = 0
-      ..animateWith(
-        SpringSimulation(ClaiSprings.trackChange, 0, 1, 0),
-      );
+      ..animateWith(SpringSimulation(ClaiSprings.trackChange, 0, 1, 0));
   }
 
   @override
@@ -61,12 +61,12 @@ class _TintCrossfadeState extends State<TintCrossfade>
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _c,
-        builder: (context, _) => widget.builder(
-          context,
-          Color.lerp(_from, _to, _c.value.clamp(0, 1)) ?? _to,
-        ),
-      );
+    animation: _c,
+    builder: (context, _) => widget.builder(
+      context,
+      Color.lerp(_from, _to, _c.value.clamp(0, 1)) ?? _to,
+    ),
+  );
 }
 
 /// Permukaan KACA (DS v4.0 §3-P2): hanya untuk elemen yang MELAYANG di
@@ -115,8 +115,7 @@ class GlassSurface extends ConsumerWidget {
     // dibangun ulang oleh terbitan napas; disableAnimations beraspek
     // agar animasi inset keyboard tidak membangun ulang kaca per bingkai.
     final amb = ref.watch(ambientControllerProvider.select(ambientUiSlice));
-    final systemReduced =
-        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final systemReduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final glassOn = amb.enabled && !amb.reduceEffects && !systemReduced;
     if (!glassOn) {
       return DecoratedBox(
@@ -193,8 +192,7 @@ class AmbientWashLayer extends ConsumerWidget {
     if (!amb.enabled || !amb.palette.active) {
       return const SizedBox.shrink();
     }
-    final systemReduced =
-        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final systemReduced = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final h = MediaQuery.sizeOf(context).height * heightFraction;
     return IgnorePointer(
       child: SizedBox(
@@ -210,7 +208,8 @@ class AmbientWashLayer extends ConsumerWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   wash.withValues(
-                      alpha: breathModulatedAlpha(wash.a, alphaFactor)),
+                    alpha: breathModulatedAlpha(wash.a, alphaFactor),
+                  ),
                   wash.withValues(alpha: 0),
                 ],
                 stops: const [0, 1],
@@ -224,57 +223,54 @@ class AmbientWashLayer extends ConsumerWidget {
 }
 
 /// Kicker mikro (KD-6, DS v4.0 §3-P4): label seksi fungsional —
-/// huruf-besar berjarak, berwarna Volt, hanya di permukaan aplikasi.
+/// huruf-besar berjarak, berwarna putih tinta (DS v5.0; dulu Volt),
+/// hanya di permukaan aplikasi.
 class KickerLabel extends StatelessWidget {
   final String text;
   const KickerLabel(this.text, {super.key});
   @override
   Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.6,
-          color: ClaiColors.accent,
-        ),
-      );
+    text.toUpperCase(),
+    style: const TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 1.6,
+      color: ClaiColors.signal,
+    ),
+  );
 }
 
-/// Kepala seksi bersama (DS v4.0 §3-P4/P6): saat Tema Dinamis menyala,
-/// judul seksi menjadi kicker mikro Volt (KD-6); saat mati, judul klasik
-/// DS (17 w600) persis seperti v3.1. [padding] mengikuti pemanggil.
-class SectionHeader extends ConsumerWidget {
+/// Kepala seksi bersama (DS v4.0 §3-P4/P6; diubah Ronde 8083
+/// PETA-KULIT + R5): judul seksi kini SELALU Inter Tight 17
+/// sentence-case apa adanya — cabang kicker huruf-besar berjarak saat
+/// Tema Dinamis menyala pensiun; bahasa kepala seksi menyatu di semua
+/// keadaan tema.
+///
+/// Standar keseragaman judul seksi Ronde 8085: padding bawaan
+/// `fromLTRB(16, 24, 16, 12)` — atas 24 / bawah 12, keduanya kelipatan
+/// kisi 4dp, rasio 2:1 mengikuti DS §4 (ruang di atas judul lebih besar
+/// daripada di bawahnya). Standar hidup di nilai bawaan ini saja:
+/// pemanggil Beranda TIDAK lagi meneruskan padding eksplisit.
+/// [padding] eksplisit pemanggil (di luar Beranda) tetap menang.
+/// [trailing] (aksi opsional di kanan judul) dipertahankan apa adanya.
+class SectionHeader extends StatelessWidget {
   final String title;
   final EdgeInsets padding;
   final Widget? trailing;
   const SectionHeader(
     this.title, {
     super.key,
-    this.padding = const EdgeInsets.fromLTRB(16, 26, 16, 6),
+    this.padding = const EdgeInsets.fromLTRB(16, 24, 16, 12),
     this.trailing,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ambOn = ref.watch(
-      ambientControllerProvider.select((s) => s.enabled),
-    );
+  Widget build(BuildContext context) {
     return Padding(
       padding: padding,
       child: Row(
         children: [
-          Expanded(
-            child: ambOn
-                ? KickerLabel(title)
-                : Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: ClaiColors.ink,
-                    ),
-                  ),
-          ),
+          Expanded(child: Text(title, style: displayStyle(17))),
           if (trailing != null) trailing!,
         ],
       ),

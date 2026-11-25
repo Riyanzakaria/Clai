@@ -5,12 +5,10 @@
   "navSearch": "Cari",
   "navLibrary": "Koleksi",
   "offlineBarText": "Mode offline — hanya unduhan & file lokal",
-  "miniSwipeHint": "Geser kartu pemutar untuk ganti lagu",
   "eqTitle": "Equalizer",
   "eqChecking": "Memeriksa dukungan perangkat…",
   "eqUnavailable": "Equalizer tidak tersedia di perangkat ini — efek Equalizer Android menolak dibuat pada sesi pemain yang sedang hidup. Detail teknisnya tercatat di Log insiden (Pengaturan → Diagnosis Lokal).",
-  "eqSubtitle": "Membentuk frekuensi audio Clai saja (menempel ke sesi pemain, bukan audio sistem).",
-  "eqWaitingSession": "Mulai putar lagu agar EQ dapat diterapkan ke sesi audio; setelan tersimpan dan diterapkan otomatis saat lagu mulai.",
+  "eqWaitingSession": "Mulai putar lagu agar EQ dapat diterapkan.",
   "eqPreset": "Preset",
   "eqCustom": "Kustom",
   "eqBandLabel": "{freq} — {db} dB",
@@ -21,7 +19,7 @@
     }
   },
   "ocrModelTitle": "Model pembaca teks (Tangkap gambar)",
-  "ocrModelInstalled": "Terpasang · {size}{versionPart} — membaca gambar bekerja offline.",
+  "ocrModelInstalled": "Terpasang · {size}{versionPart}",
   "@ocrModelInstalled": {
     "placeholders": {
       "size": {},
@@ -43,7 +41,7 @@
     }
   },
   "ocrModelVerifying": "Memeriksa keutuhan berkas (checksum)…",
-  "ocrModelNotDownloaded": "Belum diunduh. Diunduh sekali dari GitHub Releases (±4 MB), tersimpan di perangkat, lalu Tangkap gambar bekerja offline. Tangkap lewat tautan tidak membutuhkannya.",
+  "ocrModelNotDownloaded": "Belum diunduh · unduhan sekali ±4 MB.",
   "ocrModelDeleteTitle": "Hapus model pembaca teks?",
   "ocrModelDeleteBody": "Tangkap gambar akan menawarkan unduhan lagi saat berikutnya dipakai. Lagu, antrean, dan unduhan lagu tidak terpengaruh.",
   "commonCancel": "Batal",
@@ -53,7 +51,6 @@
   "updateCheck": "Periksa pembaruan",
   "commonChecking": "Memeriksa…",
   "updateInstalling": "Menyerahkan ke pemasang sistem…",
-  "updateTapToCheck": "Ketuk untuk memeriksa rilis terbaru.",
   "updateInstalledLabel": "Terpasang: {label} · {status}",
   "@updateInstalledLabel": {
     "placeholders": {
@@ -67,17 +64,11 @@
       "tag": {}
     }
   },
-  "updateDownloadSub": "APK diunduh di dalam aplikasi, lalu dipasang lewat konfirmasi sistem Android.",
   "updateInstall": "Pasang pembaruan",
-  "updateInstallSub": "Berkas sudah terunduh. Pemasangan menampilkan konfirmasi sistem — itu batas Android, bukan pilihan Clai.",
   "updateAutoCheck": "Periksa otomatis",
-  "updateAutoCheckSub": "Paling sering sekali sehari, hanya permintaan publik ke GitHub — tanpa data pengguna.",
   "updateAutoDownload": "Perbarui otomatis (unduh di latar)",
-  "updateAutoDownloadSub": "Rilis baru diunduh sendiri; pemasangannya tetap lewat konfirmasi sistem Android.",
   "updateWifiOnly": "Unduh hanya via Wi-Fi",
-  "updateWifiOnlySub": "Unduhan otomatis menunggu Wi-Fi; unduhan manual tetap bisa memakai data seluler.",
   "updateInstallPermTitle": "Izin pasang belum diberikan",
-  "updateInstallPermSub": "Android mewajibkan izin \"pasang aplikasi tak dikenal\" sebelum Clai bisa memasang pembaruannya sendiri.",
   "updateBannerTitle": "Clai {version} tersedia",
   "@updateBannerTitle": {
     "placeholders": {
@@ -86,17 +77,32 @@
   },
   "updateBannerReady": "Sudah terunduh — tinggal dipasang lewat konfirmasi sistem.",
   "updateBannerDefault": "Unduh di dalam aplikasi, pasang lewat konfirmasi sistem.",
+  "updateWhatsNewBtn": "Yang baru",
+  "updateWhatsNewTitle": "Yang baru di {version}",
+  "@updateWhatsNewTitle": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "updateBuildLabel": "Bangun {build}",
+  "@updateBuildLabel": {
+    "placeholders": {
+      "build": {
+        "type": "int"
+      }
+    }
+  },
   "commonInstall": "Pasang",
   "commonLater": "Nanti saja",
   "settingsTitle": "Pengaturan",
   "groupPlayback": "Pemutaran",
-  "groupPlaybackSum": "Kualitas, Putar Otomatis, Acak Cerdas, transisi",
+  "groupPlaybackSum": "Kualitas, Putar Otomatis, Acak & Acak Cerdas, transisi",
   "groupAudio": "Audio",
   "groupAudioSum": "Equalizer & normalisasi kenyaringan",
   "groupDownloads": "Unduhan & Offline",
   "groupDownloadsSum": "Mode offline & lagu terunduh",
   "groupAppearance": "Tampilan",
-  "groupAppearanceSum": "Aksen warna dari sampul lagu",
+  "groupAppearanceSum": "Tema sampul, nama sapaan & bahasa",
   "groupDriving": "Berkendara",
   "groupDrivingSum": "Layar besar & kendali sederhana saat menyetir",
   "groupCapture": "Tangkap",
@@ -112,48 +118,46 @@
   "groupDiagnosticsSum": "Uji rantai putar & log insiden di perangkat",
   "groupAbout": "Tentang",
   "groupAboutSum": "Versi, lisensi, dan cara Clai bekerja",
+  "groupExtras": "Fitur Tambahan",
+  "groupExtrasSum": "Berkendara, tangkap & ListenBrainz",
+  "groupSystem": "Sistem",
+  "groupSystemSum": "Jalan di latar, data, pembaruan & diagnosis",
+  "settingsSearchHint": "Cari pengaturan",
+  "settingsSearchEmpty": "Tidak ada pengaturan untuk \"{query}\"",
+  "@settingsSearchEmpty": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
   "setQuality": "Kualitas streaming",
   "qualityLow": "Rendah · ≤70 kbps",
   "qualityNormal": "Normal · ≤160 kbps",
   "qualityHigh": "Tinggi · terbaik tersedia (sumber maks ±256 kbps)",
   "setAutoplay": "Putar Otomatis",
-  "setAutoplaySub": "Menyambung lagu terkait saat antrean habis.",
   "setSmartShuffle": "Acak Cerdas (Smart Shuffle)",
-  "setSmartShuffleSub": "Mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didahulukan). Tidak menambah lagu baru.",
   "setAutoResume": "Lanjut otomatis setelah interupsi",
-  "setAutoResumeSub": "Mis. sesudah panggilan telepon selesai.",
   "setTransition": "Mode transisi",
-  "setTransitionSub": "Berlaku mulai batas lagu berikutnya.",
   "transitionSnack": "Mode baru berlaku di lagu berikutnya.",
   "setCrossfadeDur": "Durasi crossfade",
-  "crossfadeDurVal": "{secs} detik — rentang 1–12 detik.",
+  "crossfadeDurVal": "{secs} detik",
   "@crossfadeDurVal": {
     "placeholders": {
       "secs": {}
     }
   },
-  "playbackFootnote": "Gapless menyambung lagu tanpa jeda. Crossfade memudarkan ujung lagu sambil awal lagu berikut masuk (equal-power, tanpa jeda sunyi). Alih mode tidak pernah memotong lagu yang sedang berbunyi (ADR-002).",
   "setNormalization": "Normalisasi kenyaringan",
-  "setNormalizationSub": "Samakan keras lagu dari pengukuran putar nyata.",
   "normMicSnack": "Tanpa izin mikrofon, Visualizer Android tidak boleh mengukur — gain semua lagu tetap netral. Izinnya hanya untuk mengukur level, tidak merekam.",
-  "audioFootnote": "Keras lagu diukur dari pemutaran nyata (Visualizer), disimpan per lagu, dan dipakai mulai putaran berikutnya — lagu yang belum pernah terukur memakai gain netral.",
   "setOfflineMode": "Mode offline",
-  "setOfflineModeSub": "Hanya lagu terunduh & file lokal yang diputar.",
   "setManageDownloads": "Kelola unduhan",
-  "setManageDownloadsSub": "Daftar, progres, putar, dan hapus lagu terunduh.",
-  "downloadsFootnote": "Menyalakan mode offline menyaring antrean berjalan tanpa memotong lagu yang sedang berbunyi; sambungan Putar Otomatis menjadi \"terbatas — offline\".",
   "setDynamicAccent": "Aksen cover dinamis",
-  "setDynamicAccentSub": "Warna sampul mewarnai latar Player & kartu Beranda.",
-  "appearanceFootnote": "Nuansa diambil dari warna khas sampul yang sedang tampil dan tetap gelap; tombol putar & indikator status selalu Volt.",
   "languageTitle": "Bahasa",
-  "languageSub": "Bawaan sistem atau pilihan manual.",
   "languageSystem": "Sistem",
   "captureLinkTitle": "Tangkap tautan/teks",
-  "captureLinkSub": "Tempel tautan playlist/lagu atau kata kunci.",
   "captureHint": "Tempel tautan atau ketik kata kunci…",
   "captureAction": "Tangkap",
   "searchCaptureTitle": "Tangkap daftar lagu",
-  "searchCaptureSub": "Tempel tautan/teks (termasuk playlist Spotify) atau pilih gambar — lagunya dicocokkan untukmu.",
   "capturePickImage": "Pilih gambar dari galeri",
   "setBgStatus": "Status izin latar",
   "bgStatusLine": "Notifikasi: {notif} · Baterai: {battery}",
@@ -168,22 +172,17 @@
   "bgBatteryExempt": "Diabaikan optimasi",
   "bgBatteryNotYet": "Belum diizinkan",
   "setAllow": "Izinkan",
-  "setAllowSub": "Minta kedua izin lewat dialog sistem.",
   "setXiaomi": "Khusus Xiaomi / HyperOS",
   "setXiaomiSub": "Aktifkan \"Mulai otomatis\", baterai \"Tanpa batasan\".",
   "setOtherBrands": "Merek lain",
   "setOtherBrandsSub": "Samsung: jangan masukkan Clai ke \"Aplikasi tidur\".",
-  "backgroundFootnote": "Bila putar latar masih dibunuh sistem walau sudah diizinkan di Xiaomi/HyperOS: buka Info aplikasi Clai, aktifkan \"Mulai otomatis\" dan setel Baterai ke \"Tanpa batasan\" — dua sakelar itu hanya ada di halaman sistem, Android tidak mengizinkan aplikasi mengubahnya untukmu. Oppo/Vivo: izinkan aktivitas latar di pengelola baterai merek.",
   "setClearCache": "Hapus cache aliran",
-  "setClearCacheSub": "URL aliran dibuang; diambil ulang saat diputar.",
   "cacheClearedSnack": "Cache aliran dihapus.",
   "setClearHistory": "Hapus riwayat putar",
-  "setClearHistorySub": "Riwayat hanya hidup di perangkat ini dan milikmu.",
   "historyClearedSnack": "Riwayat putar dihapus.",
   "setDiagTitle": "Diagnostik Putar",
-  "setDiagSub": "Uji rantai putar dan salin laporannya.",
   "setLogTitle": "Log insiden (di perangkat)",
-  "setLogCount": "{count} catatan — tidak dikirim ke mana pun.",
+  "setLogCount": "{count} catatan",
   "@setLogCount": {
     "placeholders": {
       "count": {
@@ -200,24 +199,19 @@
       }
     }
   },
-  "aboutBody": "Pemutar musik sumber terbuka (GPL-3.0) yang dibangun clean-room: tanpa kode atau aset dari layanan lain. Katalog dan lagu berasal dari layanan musik pihak ketiga lewat API tidak resmi — dinyatakan terbuka di README repo; arsitektur provider memungkinkan sumber lain ditambahkan tanpa menyentuh player. Kamu juga bisa menempel tautan playlist publik dari aplikasi musik lain: daftar lagunya dibaca, lalu dicocokkan ke katalog di sini — tanpa akun. Lirik dari LRCLIB; pengayaan sampul dari MusicBrainz/Cover Art Archive; scrobble opsional ke ListenBrainz dengan token milikmu sendiri. Semua data pribadimu — koleksi, riwayat, unduhan — hanya tersimpan di HP-mu.",
   "logTitle": "Log insiden",
   "logEmpty": "Belum ada insiden tercatat.",
   "groupListenBrainz": "ListenBrainz",
   "drvMode": "Mode Berkendara",
-  "drvModeSub": "Permukaan sentuh raksasa + kendali audio. Menyalakan membuka layarnya.",
   "drvScheme": "Skema kendali",
-  "drvSchemeSub": "Tombol media standar (bawaan) / pola tekan satu tombol (1× putar-jeda, 2× berikutnya, 3× sebelumnya) / perintah suara.",
   "drvSchemeButtons": "Tombol media",
   "drvSchemePatterns": "Pola tekan",
   "drvSchemeVoice": "Perintah suara",
   "drvAnnounce": "Pengumuman suara",
-  "drvAnnounceSub": "Judul lagu berikutnya dibacakan TTS sebelum diputar (bawaan mati).",
   "drvSpeedVolume": "Volume ikut kecepatan",
-  "drvSpeedVolumeSub": "Perlu izin lokasi. Volume hanya bergerak di antara dua titik di bawah; GPS buruk = volume membeku.",
   "drvVolStop": "Volume saat berhenti",
   "drvVolFast": "Volume tercepat",
-  "drvVolFastSub": "{pct}% — plafon, tidak pernah dilampaui.",
+  "drvVolFastSub": "{pct}%",
   "@drvVolFastSub": {
     "placeholders": {
       "pct": {
@@ -234,7 +228,7 @@
     }
   },
   "drvAnchor": "Kecepatan jangkar",
-  "drvAnchorSub": "{kmh} km/jam — pada kecepatan ini volume mencapai titik tercepat.",
+  "drvAnchorSub": "{kmh} km/jam",
   "@drvAnchorSub": {
     "placeholders": {
       "kmh": {
@@ -243,7 +237,6 @@
     }
   },
   "drvVehicles": "Perangkat kendaraan (Bluetooth)",
-  "drvVehiclesHint": "Ketuk untuk memuat perangkat terpasang — yang ditandai memicu Mode Berkendara otomatis saat tersambung.",
   "drvVehiclesNone": "Tidak ada perangkat Bluetooth terpasang di perangkat ini.",
   "drvVehiclesCount": "{count} perangkat terpasang.",
   "@drvVehiclesCount": {
@@ -253,25 +246,20 @@
       }
     }
   },
-  "drvMarkVehicle": "Tandai sebagai kendaraan",
   "lbTitle": "Kirim riwayat dengar ke ListenBrainz",
-  "lbSub": "Opsional dan mati secara default. Yang dikirim: judul, artis, album, dan waktu dengar — ke akun ListenBrainz milikmu sendiri.",
   "lbTokenLabel": "Token pengguna ListenBrainz",
   "lbTokenHint": "Dari listenbrainz.org → Settings → User Token",
   "lbTokenValid": "Token valid — tersimpan.",
   "lbTokenInvalid": "Token tidak valid atau jaringan bermasalah.",
   "lbSaveCheck": "Simpan & periksa token",
-  "lbSafeTitle": "Kegagalan kirim tidak mengganggu putar",
-  "lbSafeSub": "Scrobble dikirim di latar sesudah lagu selesai didengar (≥30 detik). Token hanya tersimpan di perangkat ini.",
   "greetMorning": "Selamat pagi",
   "greetAfternoon": "Selamat siang",
   "greetEvening": "Selamat sore",
   "greetNight": "Selamat malam",
   "homeBgCardTitle": "Agar musik tidak dibunuh sistem",
-  "homeBgCardSub": "Izin jalan di latar belum lengkap. Tanpa itu, sebagian ponsel menghentikan putar saat layar mati.",
   "homeSetupNow": "Atur sekarang",
   "homeEmptyTitle": "Mau dengar apa hari ini?",
-  "homeEmptySub": "Cari lagu pertamamu — sesudahnya biar Putar Otomatis yang menyambung.",
+  "homeEmptySub": "Cari lagu pertamamu.",
   "homeSearchSong": "Cari lagu",
   "homeUpNext": "Antrian Berikutnya",
   "homeOpenQueue": "Buka Antrian",
@@ -287,7 +275,7 @@
   },
   "homeQuickPlay": "Cepat putar",
   "homeTopWeek": "Paling sering minggu ini",
-  "homeTopWeekEmpty": "Belum ada lagu yang sering diputar minggu ini — yang kamu putar akan terhitung di sini.",
+  "homeTopWeekEmpty": "Belum ada lagu yang sering diputar minggu ini.",
   "homePlayCount": "{count}× diputar",
   "@homePlayCount": {
     "placeholders": {
@@ -348,9 +336,6 @@
   "queueTitle": "Antrian",
   "playerTimer": "Timer",
   "playerVoice": "Suara",
-  "playerAutoplayCard": "Putar Otomatis aktif — setelah konteks ini habis, Clai menyambung lagu terkait. Musik tidak berhenti di tengah jalan.",
-  "playerAutoplayStrip": "Putar Otomatis aktif — menyambung lagu terkait",
-  "queueSmartShuffleNote": "Acak Cerdas — mengurut ulang Lanjutan & Putar Otomatis (artis disebar, favorit didorong). Tidak menambah lagu baru.",
   "queueEmpty": "Antrean kosong. Putar sebuah lagu untuk memulai.",
   "queueNowPlaying": "Sedang Diputar",
   "queueUpNext": "Berikutnya",
@@ -482,12 +467,11 @@
   "searchSourceBroken": "Sumber sedang bermasalah — bentuk datanya berubah. Ini bukan salah koneksimu.",
   "searchNetworkError": "Tidak dapat menjangkau sumber. Periksa koneksimu.",
   "searchSpotifyCardTitle": "Buka playlist Spotify",
-  "searchSpotifyCardSub": "Tempel tautan playlist publik Spotify di bidang cari di atas — tanpa akun, lagu dicocokkan ke katalog.",
-  "searchEmpty": "Ketik untuk mencari di katalog.\nHasil muncul sambil kamu mengetik.",
+  "searchEmpty": "Ketik untuk mencari di katalog.",
   "searchRecent": "Terakhir dicari",
   "searchClearAll": "Hapus semua",
   "searchClearQuery": "Hapus kata kunci",
-  "searchNoResults": "Tidak ditemukan. Coba kata kunci lain — ini bukan gagal jaringan, memang tidak ada hasilnya.",
+  "searchNoResults": "Tidak ditemukan. Coba kata kunci lain.",
   "searchResultsLabel": "Hasil cari",
   "searchSongs": "Lagu",
   "searchAlbums": "Album",
@@ -605,7 +589,6 @@
   "localTitle": "File Lokal",
   "localScan": "Pindai file lokal",
   "localRescan": "Pindai ulang",
-  "localSub": "Pindai folder musik perangkatmu. File lokal setara dengan lagu streaming di antrean & playlist.",
   "localDenied": "Izin audio ditolak. File lokal tidak dapat dipindai tanpa izin itu.",
   "localNone": "Tidak ada berkas audio ≥ 30 detik ditemukan di perangkat.",
   "localCount": "{count} berkas audio di perangkat",
@@ -617,7 +600,7 @@
     }
   },
   "dlTitle": "Unduhan",
-  "dlEmpty": "Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun — lagu terunduh bisa diputar tanpa jaringan.",
+  "dlEmpty": "Belum ada unduhan. Unduh lagu dari menu ⋯ di baris lagu mana pun.",
   "dlFailed": "Unduhan gagal.",
   "dlRetry": "Ulangi",
   "dlProgressOf": "{done} / {tot}",
@@ -633,7 +616,6 @@
       "done": {}
     }
   },
-  "dlFootnote": "Berkas tinggal di penyimpanan privat aplikasi. Unduhan bisa dijeda dan dilanjutkan dari byte terakhir; pembatalan penuh menghapus berkas sebagian.",
   "capGateTitle": "Model pembaca teks belum diunduh",
   "capGateBody": "Tangkap dari gambar membaca daftar lagu dari tangkapan layar atau foto. Model pembacanya (±4 MB) sengaja tidak ikut di dalam APK agar aplikasi tetap ramping — unduh sekali dari GitHub Releases, sesudah itu membaca gambar bekerja offline penuh. Tangkap lewat tautan tidak membutuhkannya sama sekali.",
   "capVerifying": "Memeriksa keutuhan berkas…",
@@ -675,7 +657,6 @@
     }
   },
   "sleepTitle": "Timer tidur",
-  "sleepSubOff": "Musik berhenti sendiri — lalu bisa dilanjutkan besok dari posisi yang sama.",
   "sleepSubMinutes": "Timer aktif — {remaining}. Volume memudar halus di bentang akhir, lalu musik jeda.",
   "@sleepSubMinutes": {
     "placeholders": {
@@ -703,16 +684,13 @@
   "voiceHintIdle": "Ketuk mikrofon, atau ketik perintah di bawah.",
   "voiceListening": "Mendengarkan… ketuk mikrofon untuk berhenti.",
   "voiceMicDenied": "Izin mikrofon ditolak — ketik perintah di bawah.",
-  "voiceExamples": "Coba: \"putar [judul lagu]\", \"tambah [judul] setelah ini\", \"lewati\", \"jeda\", \"lanjut\".",
+  "voiceExamples": "Coba: \"putar [judul]\", \"lewati\", \"jeda\", \"lanjut\".",
   "voiceInputHint": "Ketik perintah (simulasi suara)…",
   "voiceSend": "Kirim",
   "voiceSearching": "Mencari…",
   "voiceWhichOne": "Yang mana maksudmu?",
   "drvExit": "Keluar",
-  "drvSwipeHint": "Usap kiri/kanan di mana saja untuk berikutnya/sebelumnya.",
   "drvNoSong": "Tidak ada lagu",
-  "drvAnnounceSubShort": "Judul lagu berikutnya dibacakan sebelum diputar.",
-  "drvSpeedVolumeNote": "Volume bergerak hanya di antara dua titik yang kamu kalibrasi di Pengaturan.",
   "vcDisconnected": "Pengenal suara terputus — ketik perintah di bawah.",
   "vcFailed": "Pengenal suara gagal ({error}) — ketik perintah di bawah.",
   "@vcFailed": {
@@ -774,7 +752,6 @@
   },
   "vcContextLabel": "Suara",
   "diagTitle": "Diagnostik Putar",
-  "diagIntro": "Menguji rantai putar per mata rantai (resolusi → unduh → ExoPlayer polos → +header → muxed → jalur aplikasi → pipa lokal) untuk lagu Song & item Video, lengkap dengan galat natif dari logcat proses. Hasilnya satu laporan teks — salin & kirim ke pengembang bila lagu tidak bunyi.",
   "diagRun": "Jalankan Diagnostik",
   "diagRunClients": "Uji Klien InnerTube",
   "diagPlayWinner": "Bukti Putar Klien",
@@ -1022,7 +999,6 @@
     }
   },
   "setDataSaver": "Mode hemat data",
-  "setDataSaverSub": "Streaming selalu kualitas Rendah saat aktif; kualitas Tinggi dicegah di jaringan seluler.",
   "setDataSaverCellularBlock": "Kualitas Tinggi dicegah: mode hemat data aktif dan perangkat memakai jaringan seluler.",
   "setFocusBehavior": "Saat aplikasi lain berbunyi sebentar",
   "focusDuck": "Turunkan volume (duck)",
@@ -1080,7 +1056,6 @@
   "setOppoSub": "Aktifkan mulai-otomatis (autostart) untuk Clai dan kunci aplikasi di layar terbaru (recents) agar tidak dibersihkan sistem.",
   "setHuawei": "Huawei / Honor",
   "setHuaweiSub": "Pengaturan → Baterai → Peluncuran aplikasi → Clai → kelola manual: aktifkan mulai-otomatis, peluncuran sekunder, dan jalan di latar.",
-  "bgAutostartNote": "Status mulai-otomatis (autostart) tidak dapat dideteksi aplikasi secara otomatis di Android — periksa manual sesuai merek perangkatmu di bawah.",
   "noticeRegionUnavailable": "Konten ini tidak tersedia di wilayahmu.",
   "diagGatesTitle": "Gerbang kualitas sesi ini (PRD Bab 3)",
   "diagGateCold": "Mulai dingin terakhir: {ms} ms",
@@ -1163,18 +1138,13 @@
   },
   "homeContinue": "Lanjutkan",
   "setThemeDynamic": "Tema Dinamis",
-  "setThemeDynamicSub": "Warna suasana mengikuti sampul lagu yang diputar; kaca dan cahaya ambien ikut menyala. Mati = tampilan klasik.",
   "setAmbientStrength": "Kekuatan Ambien",
   "ambientCalm": "Tenang",
   "ambientLively": "Hidup",
   "setAmbientBreathing": "Ambien Bernapas",
-  "setAmbientBreathingSub": "Cahaya di Player berdenyut sangat halus mengikuti kerasnya musik. Mati saat lagu dijeda.",
   "setReduceEffects": "Kurangi Efek",
-  "setReduceEffectsSub": "Matikan napas ambien, peralihan warna, dan getaran sentuh.",
   "setGreetingName": "Nama sapaan",
-  "setGreetingNameSub": "Nama yang menyapa kamu di Beranda. Kosongkan untuk sapaan tanpa nama.",
   "greetingNameHint": "Nama kamu",
-  "setAmbientStrengthSub": "Seberapa pekat warna lagu mewarnai layar",
   "searchChartsKicker": "Charts · Minggu Ini",
   "searchMoodGenreKicker": "Mood & Genre",
   "collectionStats": "{songs} lagu · {playlists} playlist · semua milikmu",
@@ -1301,5 +1271,343 @@
   "setSectionFlow": "Alur Putar",
   "setSectionDeviceGuides": "Panduan Perangkat",
   "a11yBack": "Kembali",
-  "lyrCreditShort": "Sumber lirik: LRCLIB (lrclib.net)"
+  "lyrCreditShort": "Sumber lirik: LRCLIB (lrclib.net)",
+  "commonClose": "Tutup",
+  "groupOwnership": "Kepemilikan",
+  "ownSectionData": "Data kamu",
+  "ownSectionShare": "Bagikan & terima",
+  "ownExportTitle": "Ekspor data",
+  "ownExportSub": "Simpan playlist, lagu disukai & riwayat ke satu berkas",
+  "ownImportTitle": "Impor data",
+  "ownImportSub": "Pulihkan dari berkas ekspor Clai",
+  "ownShareTitle": "Bagikan playlist",
+  "ownShareSub": "Kirim satu playlist lewat kode QR atau berkas",
+  "ownReceiveTitle": "Terima playlist",
+  "ownReceiveSub": "Pindai kode QR dari Clai temanmu",
+  "ownSectionSessions": "Sesi tersimpan",
+  "ownVaultSub": "Sesi putar tersimpan yang bisa dipulihkan kapan saja",
+  "ownPlaylistsCount": "{count} playlist",
+  "@ownPlaylistsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownLikedCount": "{count} lagu disukai",
+  "@ownLikedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownHistoryCount": "{count} riwayat putar",
+  "@ownHistoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exportIncludeHistory": "Sertakan riwayat putar",
+  "exportAction": "Ekspor & bagikan",
+  "exportM3uSection": "Playlist sebagai M3U",
+  "exportEmpty": "Belum ada data untuk diekspor",
+  "exportFailed": "Ekspor gagal. Coba lagi.",
+  "importFromFile": "Berkas: {name}",
+  "@importFromFile": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "importModeMerge": "Gabungkan",
+  "importModeReplace": "Ganti semua",
+  "importSumNewPlaylists": "{count} playlist baru ditambahkan",
+  "@importSumNewPlaylists": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importSumMergedPlaylists": "{count} playlist digabungkan ke yang sudah ada",
+  "@importSumMergedPlaylists": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importSumTracksAdded": "{count} lagu ditambahkan ke playlist",
+  "@importSumTracksAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importSumLikedAdded": "{count} lagu disukai ditambahkan",
+  "@importSumLikedAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importSumHistoryAdded": "{count} riwayat putar ditambahkan",
+  "@importSumHistoryAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importApplyMerge": "Gabungkan sekarang",
+  "importApplyReplace": "Ganti semua…",
+  "importSuccess": "Impor selesai",
+  "importNothingNew": "Tidak ada yang baru — semua isi berkas sudah ada di sini",
+  "importReplaceTitle": "Ganti semua data?",
+  "importReplaceBody": "Playlist, lagu disukai, dan riwayat putar kamu sekarang akan dihapus lalu diganti isi berkas ini. Tindakan ini tidak bisa dibatalkan.",
+  "importFailTitle": "Berkas tidak bisa diimpor",
+  "importFailNotJson": "Isi berkas ini bukan berkas ekspor Clai yang bisa dibaca.",
+  "importFailUnrecognized": "Berkas ini bukan ekspor Clai. Pilih berkas hasil Ekspor data dari Clai.",
+  "importFailNewer": "Berkas ini dibuat oleh Clai yang lebih baru (format {version}) dan tidak bisa dibaca versi ini. Perbarui Clai lalu coba lagi.",
+  "@importFailNewer": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "importFailCorrupt": "Berkas ekspor ini rusak atau tidak lengkap, jadi tidak ada yang diterapkan.",
+  "importFailTooBig": "Berkas ini terlalu besar untuk diimpor (maks 20 MB).",
+  "shareTooBigForQr": "Playlist ini terlalu besar untuk kode QR — bagikan sebagai berkas saja.",
+  "shareFileAction": "Bagikan berkas",
+  "sharePickPlaylist": "Pilih playlist",
+  "shareNoPlaylists": "Belum ada playlist untuk dibagikan",
+  "scanTitle": "Pindai kode QR",
+  "scanImportFile": "Impor dari berkas",
+  "scanFoundSub": "{count} lagu · dari kode QR",
+  "@scanFoundSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanImportAction": "Impor playlist",
+  "scanAgain": "Pindai lagi",
+  "scanNotClai": "Kode ini bukan bagikan playlist Clai",
+  "scanImported": "Playlist \"{name}\" ditambahkan",
+  "@scanImported": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "scanPermDenied": "Izin kamera diperlukan untuk memindai",
+  "scanPermDeniedSub": "Aktifkan izin kamera, atau terima playlist lewat berkas.",
+  "scanOpenSettings": "Buka pengaturan aplikasi",
+  "shareFoundFileSub": "{count} lagu · dari berkas",
+  "@shareFoundFileSub": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanUnavailable": "Kamera tidak tersedia di perangkat ini",
+  "shareQrImageAction": "Bagikan gambar QR",
+  "shareQrCardFooter": "Pindai kode ini dari Clai",
+  "scanPickImage": "Pilih gambar QR",
+  "scanImageNoQr": "Tidak ada kode QR yang terbaca di gambar itu",
+  "scanImageUnreadable": "Gambar itu tidak bisa dibaca",
+  "shareLocalExcluded": "{count} lagu lokal tidak ikut",
+  "@shareLocalExcluded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanResolving": "Membangun ulang lagu dari katalog… {done} dari {total}",
+  "@scanResolving": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "scanRefsNoneFound": "Tidak ada lagu yang ditemukan di katalog — periksa koneksimu, atau lagu-lagu ini sudah tidak tersedia.",
+  "scanSkippedCount": "{count} lagu tidak ditemukan di katalog dan dilewati",
+  "@scanSkippedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanImportedSkips": "Playlist \"{name}\" ditambahkan · {count} lagu dilewati",
+  "@scanImportedSkips": {
+    "placeholders": {
+      "name": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultTitle": "Brankas Sesi",
+  "vaultSaveAction": "Simpan sesi",
+  "vaultSaveTitle": "Simpan ke Brankas Sesi",
+  "vaultNameLabel": "Nama sesi",
+  "vaultSavedSnack": "Sesi tersimpan di Brankas",
+  "vaultEmptyTitle": "Belum ada sesi tersimpan",
+  "vaultSaveCurrent": "Simpan antrean saat ini",
+  "vaultRestore": "Pulihkan sesi",
+  "vaultRestoreBody": "Antrean yang sekarang akan digantikan oleh sesi ini, dan sesi akan diputar dari titik berhentinya. Sesi tetap tersimpan di Brankas sesudah dipulihkan.",
+  "vaultRestoredSnack": "Sesi dipulihkan",
+  "vaultRestoreFailed": "Sesi ini tidak bisa dipulihkan — lagunya sudah tidak ada di katalog lokal.",
+  "vaultDeleteTitle": "Hapus sesi?",
+  "vaultDeleteBody": "Sesi \"{name}\" akan dihapus permanen dari Brankas.",
+  "@vaultDeleteBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "vaultSeeAll": "Lihat semua",
+  "vaultPlayedSection": "Sudah diputar",
+  "vaultCurrentBadge": "Berhenti di sini",
+  "groupTaste": "Selera",
+  "groupTasteSum": "Cermin selera, mode samaran, keluarkan dari rekomendasi, dan reset selera",
+  "tasteBalanceLifetime": "Seumur",
+  "tasteBalanceRecent": "30 hari terakhir",
+  "tasteBalanceTitle": "Keseimbangan selera",
+  "tasteDayFri": "Jum",
+  "tasteDayMon": "Sen",
+  "tasteDaySat": "Sab",
+  "tasteDaySun": "Min",
+  "tasteDayThu": "Kam",
+  "tasteDayTue": "Sel",
+  "tasteDayWed": "Rab",
+  "tasteDaypartDiniHari": "dini hari",
+  "tasteDaypartMalam": "malam",
+  "tasteDaypartPagi": "pagi",
+  "tasteDaypartSiang": "siang",
+  "tasteDaypartSore": "sore",
+  "tasteExcludeAction": "Keluarkan",
+  "tasteExcludeEmpty": "Belum ada yang dikeluarkan.",
+  "tasteExcludeTitle": "Keluarkan dari Rekomendasi",
+  "tasteExcludedDone": "{name} dikeluarkan dari rekomendasi",
+  "@tasteExcludedDone": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "tasteExportFirst": "Ekspor dulu",
+  "tasteGenreEstimate": "Perkiraan genre · MusicBrainz: {tags}",
+  "@tasteGenreEstimate": {
+    "placeholders": {
+      "tags": {}
+    }
+  },
+  "tasteKindArtist": "Artis",
+  "tasteKindTrack": "Lagu",
+  "tasteMirrorEmpty": "Selera kamu belum terbentuk. Dengarkan beberapa lagu dulu.",
+  "tasteMirrorTitle": "Cermin Selera",
+  "tastePatternsTitle": "Pola mendengar",
+  "tastePeakDaypart": "Paling sering mendengar: {label}",
+  "@tastePeakDaypart": {
+    "placeholders": {
+      "label": {}
+    }
+  },
+  "tastePickArtists": "Dari artis teratasmu",
+  "tastePickTracks": "Dari lagu yang sering diputar",
+  "tastePlaysCount": "{count} putar",
+  "@tastePlaysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tasteResetBackup": "Cadangan terakhir: {date}",
+  "@tasteResetBackup": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "tasteResetConfirm": "Reset selera",
+  "tasteResetDone": "Selera sudah direset",
+  "tasteResetNoBackup": "Cadangan terakhir: belum ada",
+  "tasteResetSheetBody": "Riwayat putar, pengecualian rekomendasi, dan bobot rekomendasi akan dihapus permanen. Perpustakaan, playlist, unduhan, Brankas Sesi, dan lagu yang kamu sukai TIDAK ikut terhapus.",
+  "tasteResetSheetTitle": "Reset selera kamu?",
+  "tasteResetTitle": "Reset Selera",
+  "tasteSamaranPill": "Samaran",
+  "tasteSamaranTitle": "Mode Samaran",
+  "tasteTitle": "Selera kamu",
+  "tasteTopArtists": "Artis teratas",
+  "tasteUndo": "Urungkan",
+  "tasteWeightLifetime": "Seumur",
+  "tasteWeightRecent": "Terkini",
+  "tasteWeightsTitle": "Bobot rekomendasi",
+  "shufflePanelTitle": "Acak",
+  "shufflePanelWhy": "Setiap lagu diputar sekali sebelum ada yang berulang. Urutan di bawah adalah urutan putar yang sebenarnya.",
+  "shuffleSmartSub": "Sebar artis & utamakan yang jarang diputar",
+  "shuffleCycleProgress": "{done} dari {total} sudah diputar dalam siklus ini",
+  "@shuffleCycleProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "shuffleReshuffle": "Acak ulang",
+  "shuffleOrderTitle": "Urutan putar berikutnya",
+  "shuffleCardOffSub": "Mati — lagu mengikuti urutan aslinya",
+  "setShuffle": "Acak",
+  "menuButtonLabel": "Menu",
+  "menuTasteSub": "Cermin selera, mode samaran & rekomendasi",
+  "menuVaultSub": "Antrean yang kamu simpan untuk nanti",
+  "menuOwnershipSub": "Ekspor, impor, bagikan & terima playlist",
+  "menuSettingsSub": "Tampilan, pemutaran, audio & lainnya",
+  "announceKicker": "BARU DI CLAI {version}",
+  "@announceKicker": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "announceTitle": "Yang baru di Clai",
+  "announceStart": "Mulai",
+  "announceCtaVault": "Buka Brankas Sesi",
+  "announceCtaShare": "Bagikan playlist",
+  "announceCtaTaste": "Lihat Selera kamu",
+  "announceCtaShuffle": "Buka Panel Acak",
+  "announceMoreCount": "dan {count} hal baru lainnya",
+  "@announceMoreCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "patchInstalledTitle": "Clai {version} sudah terpasang",
+  "@patchInstalledTitle": {
+    "placeholders": {
+      "version": {}
+    }
+  },
+  "patchInstalledSub": "Perbaikan kecil di balik layar",
+  "patchInstalledSee": "Lihat",
+  "samaranHowTitle": "Cara kerja Mode Samaran",
+  "samaranHowRowHistory": "Yang kamu dengarkan tidak masuk Riwayat putar.",
+  "samaranHowRowTaste": "Tidak memengaruhi Cermin Selera & rekomendasi.",
+  "samaranHowRowListenBrainz": "Tidak dikirim ke ListenBrainz.",
+  "samaranHowRowNoLimit": "Tetap aktif sampai kamu mematikannya sendiri — tidak ada batas waktu.",
+  "samaranHowDontShow": "Jangan tampilkan lagi",
+  "samaranHowActivate": "Aktifkan Samaran"
 }

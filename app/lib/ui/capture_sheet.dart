@@ -117,7 +117,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
         return SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              ClaiIcon(ClaiIcons.lyrics, color: ClaiColors.accent),
+              ClaiIcon(ClaiIcons.lyrics, color: ClaiColors.signal),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(context.l10n.capGateTitle,
@@ -143,7 +143,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
                   value: ocr.status == OcrModelStatus.downloading
                       ? ocr.progress
                       : null,
-                  color: ClaiColors.accent,
+                  color: ClaiColors.signal,
                   backgroundColor: ClaiColors.surface3),
               const SizedBox(height: 6),
               Text(
@@ -156,11 +156,11 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             const SizedBox(height: 16),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                  backgroundColor: ClaiColors.accent,
-                  foregroundColor: ClaiColors.onAccent),
+                  backgroundColor: ClaiColors.signal,
+                  foregroundColor: ClaiColors.onSignal),
               onPressed: busy ? null : () => ocr.download(),
               icon: ClaiIcon(ClaiIcons.download,
-                  color: ClaiColors.onAccent, size: 18),
+                  color: ClaiColors.onSignal, size: 18),
               label: Text(ocr.status == OcrModelStatus.error
                   ? context.l10n.capRetryDownload
                   : ocr.status == OcrModelStatus.unavailable
@@ -203,7 +203,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
           Expanded(child: _modelGate())
         else ...[
         if (cap.working && cap.items.isEmpty)
-          const Center(child: CircularProgressIndicator(color: ClaiColors.accent)),
+          const Center(child: CircularProgressIndicator(color: ClaiColors.signal)),
         Expanded(
           child: ListView.builder(
             itemCount: cap.items.length,
@@ -212,6 +212,9 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
               final ok = item.track != null;
               // Baris hasil Tangkap (Ronde Sapuan 8045): cip status
               // tonal + tipografi keluarga baris DS, bukan ListTile.
+              // Audit Ronde 8084: geometri diselaraskan baris baku —
+              // slot ikon 40/20, judul 15/500 (keluarga SongRow),
+              // tinggi baris 60 (bantalan vertikal 10 + isi 40).
               return InkWell(
                 onTap: ok
                     ? () async {
@@ -221,13 +224,13 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
                       }
                     : null,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   child: Row(children: [
-                    tonalIconBox(
+                    rowLeadIcon(
                       ok ? ClaiIcons.checkCircle : ClaiIcons.musicOff,
-                      size: 38,
-                      iconSize: 19,
-                      color: ok ? ClaiColors.accent : ClaiColors.inkFaint,
+                      size: 40,
+                      iconSize: 20,
+                      color: ok ? ClaiColors.signal : ClaiColors.inkFaint,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -241,7 +244,9 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  color: ClaiColors.ink, fontSize: 15)),
+                                  color: ClaiColors.ink,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500)),
                           const SizedBox(height: 2),
                           Text(
                               ok
@@ -267,8 +272,8 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
             Expanded(
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                    backgroundColor: ClaiColors.accent,
-                    foregroundColor: ClaiColors.onAccent),
+                    backgroundColor: ClaiColors.signal,
+                    foregroundColor: ClaiColors.onSignal),
                 onPressed: () async {
                   await handler.playTracks(found, 0,
                       kind: 'search', label: context.l10n.capTitle);
