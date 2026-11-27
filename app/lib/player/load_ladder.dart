@@ -26,11 +26,36 @@ import 'resolving_audio_source.dart';
 /// anak itu (urutan percobaan = rotasi mulai dari pemenang, ketiga anak tetap dicoba
 /// sebelum satu lagu dinyatakan gagal). Setiap kegagalan anak dicatat pemanggil ke log
 /// insiden dengan rantai galat lengkap.
+///
+/// Ronde 8093 — MASA PERCOBAAN (memutus "tangga pemenang lengket", dossier
+/// REPRO 23 Nov 2026): kelengketan di atas pernah menjadi kebuntuan — sesudah
+/// SATU 403, pemenang pindah ke muxed dan anak adaptif tidak pernah dicoba
+/// lagi, sebab satu-satunya jalan pulih lama (onRecovered resolver DIRECT)
+/// mensyaratkan direct-ok untuk trek korban persis, yang mustahil terjadi
+/// selama tak ada pemuatan melewati resolveAdaptive. Kini tangga menghitung
+/// kemenangan di anak ter-demosi; sesudah [probeInitialThreshold] kemenangan
+/// beruntun, SATU pemuatan berikutnya menjadi masa percobaan: anak adaptif
+/// dicoba pertama (anak lain menyusul seperti biasa). Berhasil → lengket
+/// kembali ke adaptif penuh dan hitungan direset. Gagal → hitungan direset
+/// dan ambang percobaan DIGANDAKAN (5→10→20→40, dibatasi
+/// [probeMaxThreshold]) — sumber yang sungguh mati tidak dihajar, dan tidak
+/// ada loop: percobaan berikutnya menunggu ambang baru terpenuhi penuh.
+/// Backoff dipilih berbasis HITUNGAN muatan, bukan jam dinding: tangga ini
+/// murni digerakkan peristiwa run(), dan yang menyembuhkan 403 adalah
+/// resolusi yang dicoba lagi (sesi minter disegarkan resolver pada resolusi
+/// pertama sesudah ditandai basi), bukan waktu yang berlalu.
 class LoadLadder {
   static const int rungAdaptiveUri = 0;
   static const int rungMuxedUri = 1;
   static const int rungProxy = 2;
   static const int rungCount = 3;
+
+  /// Kemenangan beruntun di anak ter-demosi yang memicu masa percobaan
+  /// pertama (Ronde 8093).
+  static const int probeInitialThreshold = 5;
+
+  /// Batas atas ambang masa percobaan sesudah penggandaan beruntun.
+  static const int probeMaxThreshold = 40;
 
   /// Header pasangan aliran googlevideo: UA klien ANDROID penerbit URL + Referer asal.
   static const Map<String, String> streamHeaders = {
@@ -78,7 +103,33 @@ class LoadLadder {
   /// trek dari laporan ini.
   final void Function(Track track)? onAdaptiveRejected;
 
+  /// Ronde 8093: tangga ter-demosi — pemenang lengket berpindah dari anak
+  /// adaptif ke anak [toRung] lewat satu kemenangan [run]. (Demosi lewat
+  /// [advance] tidak lewat sini; situs panggilnya mencatat sendiri.)
+  final void Function(int toRung)? onDemoted;
+
+  /// Ronde 8093: satu [run] menjadi masa percobaan — anak adaptif akan
+  /// dicoba pertama sesudah [afterWins] kemenangan beruntun di anak
+  /// ter-demosi [demotedRung].
+  final void Function(int demotedRung, int afterWins)? onProbe;
+
+  /// Ronde 8093: pemenang lengket kembali ke anak adaptif dari anak
+  /// [fromRung] di dalam [run] (masa percobaan berhasil atau kemenangan
+  /// rotasi alami). Pemulihan lewat [resetSticky] eksternal tidak lewat
+  /// sini — jalurnya mencatat sendiri.
+  final void Function(int fromRung)? onRecoveredToAdaptive;
+
   int _sticky = rungAdaptiveUri;
+
+  /// Ronde 8093: kemenangan beruntun di pemenang lengket ter-demosi sejak
+  /// demosi / masa percobaan gagal terakhir.
+  int _probeWins = 0;
+
+  /// Ronde 8093: ambang masa percobaan berjalan (digandakan tiap
+  /// percobaan gagal, direset ke [probeInitialThreshold] tiap pulih).
+  int _probeThreshold = probeInitialThreshold;
+
+  bool _lastRunRecoveredToAdaptive = false;
 
   LoadLadder({
     required this.resolveAdaptive,
@@ -87,6 +138,9 @@ class LoadLadder {
     required this.isLocal,
     this.localFileFor,
     this.onAdaptiveRejected,
+    this.onDemoted,
+    this.onProbe,
+    this.onRecoveredToAdaptive,
   });
 
   /// Anak tangga pemenang sesi saat ini — titik mulai setiap pemuatan berikutnya.
@@ -96,9 +150,24 @@ class LoadLadder {
   List<int> orderForAttempt() =>
       [for (var i = 0; i < rungCount; i++) (_sticky + i) % rungCount];
 
+  /// Apakah [run] terakhir mengembalikan pemenang lengket ke anak adaptif
+  /// dari anak ter-demosi (Ronde 8093) — diatur ulang di awal tiap [run].
+  /// Dipakai situs preload crossfade: kemenangan masa percobaan BUKAN
+  /// degradasi (anak yang menang adalah anak terbaik).
+  bool get lastRunRecoveredToAdaptive => _lastRunRecoveredToAdaptive;
+
   /// Majukan pemenang lengket satu anak (dipakai jalur galat putar per trek).
   int advance() {
     _sticky = (_sticky + 1) % rungCount;
+    // Ronde 8093: pindah anak = hitungan masa percobaan mulai dari anak
+    // baru; kembali penuh ke adaptif = keadaan percobaan bersih. Ambang
+    // berjalan TIDAK direset oleh perpindahan antar anak bukan-adaptif —
+    // backoff yang sudah berjalan tidak hilang karena demosi bertambah.
+    if (_sticky == rungAdaptiveUri) {
+      _resetProbe();
+    } else {
+      _probeWins = 0;
+    }
     return _sticky;
   }
 
@@ -108,6 +177,46 @@ class LoadLadder {
   /// sesi proses, padahal resolver sudah sehat lagi.
   void resetSticky() {
     _sticky = rungAdaptiveUri;
+    _resetProbe();
+  }
+
+  void _resetProbe() {
+    _probeWins = 0;
+    _probeThreshold = probeInitialThreshold;
+  }
+
+  void _failProbe() {
+    _probeWins = 0;
+    final doubled = _probeThreshold * 2;
+    _probeThreshold =
+        doubled > probeMaxThreshold ? probeMaxThreshold : doubled;
+  }
+
+  /// Bookkeeping kelengketan sesudah satu kemenangan [run] di anak [to]
+  /// (pemenang sebelumnya [from]); [probing] = run ini masa percobaan.
+  void _afterWin(int from, int to, {required bool probing}) {
+    if (to == rungAdaptiveUri) {
+      if (from != rungAdaptiveUri) {
+        _lastRunRecoveredToAdaptive = true;
+        onRecoveredToAdaptive?.call(from);
+      }
+      _resetProbe();
+      return;
+    }
+    if (probing) {
+      // Masa percobaan gugur di anak adaptif dan anak cadangan yang
+      // menang: kembali ter-demosi dengan backoff berganda, tanpa loop.
+      _failProbe();
+      return;
+    }
+    if (to != from) {
+      // Pindah anak bukan-adaptif: hitungan mulai dari anak baru.
+      _probeWins = 0;
+      if (from == rungAdaptiveUri) onDemoted?.call(to);
+      return;
+    }
+    // Menang lagi di pemenang lengket ter-demosi yang sama.
+    _probeWins++;
   }
 
   /// Jalankan satu pemuatan menaiki tangga: [attempt] membangun & memasang sumber
@@ -126,15 +235,34 @@ class LoadLadder {
     void Function(int rung, Object error, StackTrace stackTrace)? onRungFailed,
     bool Function(Object error)? isAbortError,
   }) async {
+    _lastRunRecoveredToAdaptive = false;
+    // Ronde 8093: masa percobaan — tangga ter-demosi yang sudah menang
+    // _probeThreshold kali beruntun di anak lengketnya mencoba anak
+    // adaptif SEKALI di depan pada pemuatan ini; anak-anak lain menyusul
+    // dalam rotasi pemenang seperti biasa.
+    final probing =
+        _sticky != rungAdaptiveUri && _probeWins >= _probeThreshold;
+    final order = probing
+        ? [
+            rungAdaptiveUri,
+            ...orderForAttempt().where((r) => r != rungAdaptiveUri),
+          ]
+        : orderForAttempt();
+    if (probing) onProbe?.call(_sticky, _probeWins);
     Object? lastError;
     StackTrace? lastStack;
-    for (final rung in orderForAttempt()) {
+    for (final rung in order) {
       try {
         await attempt(rung);
+        final from = _sticky;
         _sticky = rung;
+        _afterWin(from, rung, probing: probing);
         return rung;
       } catch (e, st) {
         if (isAbortError?.call(e) ?? false) {
+          // Galat kelas BATAL bukan bukti kesehatan anak mana pun: masa
+          // percobaan TIDAK terhitung gagal — ia tetap bersenjata untuk
+          // pemuatan berikutnya yang sungguh berjalan.
           Error.throwWithStackTrace(e, st);
         }
         lastError = e;
@@ -142,6 +270,9 @@ class LoadLadder {
         onRungFailed?.call(rung, e, st);
       }
     }
+    // Semua anak gugur pada run masa percobaan: percobaan tetap terhitung
+    // gagal (anak adaptif sungguh dicoba dan gugur) — backoff berganda.
+    if (probing) _failProbe();
     Error.throwWithStackTrace(
         lastError ?? StateError('tangga muat kosong'), lastStack ?? StackTrace.current);
   }

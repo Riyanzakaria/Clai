@@ -13,7 +13,8 @@ import '../providers/ytmusic/innertube.dart' show artistNameFromByline;
 /// rekam yang SUDAH terlanjur kosong di perangkat pengguna (termasuk HP
 /// pemilik) tanpa hapus data: saat trek seperti itu ditampilkan/diputar,
 /// ia diselesaikan SATU KALI dari provider (resolve by ID), lalu baris
-/// lokalnya diperbarui.
+/// lokalnya diperbarui. Sejak Ronde 8094 "kosong" mencakup juga pengenal
+/// artis (`artistIds`) pada trek bernama sehat — lihat [needsHeal].
 ///
 /// Aturan main yang dijaga:
 /// - Kegagalan (offline / tidak ditemukan) = tampil apa adanya, tanpa
@@ -47,9 +48,17 @@ class TrackMetadataHealer {
 
   /// Hanya trek provider katalog yang bisa diselesaikan by ID; trek lokal
   /// dan impor tidak disentuh lapisan ini.
+  ///
+  /// Ronde 8094: pemicu diperluas ke **pengenal artis kosong pada trek
+  /// katalog bernama sehat** — kelas baris pra-v9 yang tidak pernah
+  /// disembuhkan pemicu lama (nama utuh + sampul ada → lolos terus),
+  /// padahal ketuk artisnya bergantung pada pengenal itu
+  /// (builds/bukti-artis-tidak-ditemukan/BEDAH.md §2b/§6).
   static bool needsHeal(Track t) =>
       t.providerId == 'ytmusic' &&
-      (artistBroken(t.artistNames) || t.artworkUrl == null);
+      (artistBroken(t.artistNames) ||
+          t.artworkUrl == null ||
+          t.artistIds.isEmpty);
 
   /// Kembalikan salinan yang sudah disembuhkan, atau null bila tidak perlu /
   /// tidak bisa disembuhkan sekarang. Tidak pernah melempar.
@@ -91,6 +100,12 @@ class TrackMetadataHealer {
       }
       if (healed.artworkUrl == null && resolved.artworkUrl != null) {
         healed = healed.copyWith(artworkUrl: resolved.artworkUrl);
+        changed = true;
+      }
+      // Ronde 8094: pengenal kosong (nama sehat) ikut disalin dari hasil
+      // resolusi — cabang nama-rusak di atas tidak menjangkau kelas ini.
+      if (t.artistIds.isEmpty && resolved.artistIds.isNotEmpty) {
+        healed = healed.copyWith(artistIds: resolved.artistIds);
         changed = true;
       }
       if (!changed) return null;

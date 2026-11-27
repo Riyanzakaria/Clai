@@ -9,6 +9,9 @@
 /// URL lokal (content://, file://, jalur MediaStore) dan host lain tidak disentuh.
 library;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
+
 /// Tangga ukuran unduh (px) — permukaan tampil dibulatkan NAIK ke anak tangga
 /// terdekat supaya dua permukaan berukuran mirip berbagi satu unduhan/cache.
 const artworkBuckets = [200, 544, 1080];
@@ -111,4 +114,79 @@ String? artworkFallbackUrl(String? sizedUrl) {
   }
 
   return null;
+}
+
+/// Registri URL sampul yang SEDANG gagal muat (Ronde 8092, paket S1–S4).
+///
+/// Latar (ANALISIS-SAMPUL K1+K2): widget sampul yang sudah masuk keadaan
+/// error hidup seumur proses di dalam `IndexedStack`, refresh Beranda
+/// hanya memuat ulang data dengan URL+kunci yang identik, dan tidak ada
+/// satu pun `imageCache.evict` di aplikasi — sekali gagal, tidak ada
+/// aksi pengguna yang meminta gambar itu lagi. Registri ini adalah
+/// simpul pemulihannya:
+///
+/// - [markFailed] mencatat URL final (sizedUrl) yang gagal. Nilai
+///   kembaliannya adalah GERBANG LOG S3: `true` hanya pada kegagalan
+///   pertama URL itu dalam satu sesi, sehingga Log insiden menerima
+///   tepat satu entri `sampul-gagal` per URL per sesi.
+/// - [evictOne]/[evictAllFailed] mengusir entri gambar dari
+///   `imageCache` (provider `NetworkImage(url)` — persis provider yang
+///   dibuat `Image.network` di CoverArt; `cacheWidth` bukan bagian
+///   kunci provider), menghapus URL dari daftar gagal, lalu
+///   `notifyListeners()` supaya widget yang HIDUP dan berlangganan
+///   (CoverArt / FallbackArtworkImage) mereset keadaan error-nya dan
+///   membangun Image generasi baru — permintaan benar-benar terbit
+///   lagi tanpa mulai-ulang proses.
+/// - Pengusiran TIDAK menghapus catatan log: URL yang gagal lagi
+///   sesudah di-evict tidak dicatat dua kali dalam sesi yang sama.
+class FailedArtworkRegistry extends ChangeNotifier {
+  FailedArtworkRegistry._();
+  static final FailedArtworkRegistry instance = FailedArtworkRegistry._();
+
+  final Set<String> _failed = <String>{};
+  final Set<String> _logged = <String>{};
+
+  /// Apakah [url] saat ini tercatat gagal (belum di-evict).
+  bool isFailed(String url) => _failed.contains(url);
+
+  /// Salinan daftar URL yang saat ini gagal (untuk uji/diagnosis).
+  Set<String> get failedUrls => Set<String>.unmodifiable(_failed);
+
+  /// Catat [url] sebagai gagal. Mengembalikan `true` HANYA bila URL ini
+  /// belum pernah dicatat ke log sesi ini — pemanggil memakai nilai ini
+  /// sebagai gerbang satu-satunya untuk menulis Log insiden.
+  bool markFailed(String url) {
+    _failed.add(url);
+    if (_logged.contains(url)) return false;
+    _logged.add(url);
+    return true;
+  }
+
+  /// Usir SATU [url] yang gagal dari cache gambar dan beri tahu para
+  /// pelanggan agar mencoba lagi. Bukan URL yang tercatat gagal →
+  /// tidak melakukan apa-apa (tidak ada notifikasi kosong).
+  void evictOne(String url) {
+    if (!_failed.contains(url)) return;
+    PaintingBinding.instance.imageCache.evict(NetworkImage(url));
+    _failed.remove(url);
+    notifyListeners();
+  }
+
+  /// Usir SEMUA URL yang tercatat gagal (jalur refresh Beranda, S1).
+  void evictAllFailed() {
+    if (_failed.isEmpty) return;
+    for (final url in _failed) {
+      PaintingBinding.instance.imageCache.evict(NetworkImage(url));
+    }
+    _failed.clear();
+    notifyListeners();
+  }
+
+  /// Kosongkan kedua daftar (hanya untuk uji; sesi produksi tidak
+  /// pernah mereset gerbang log di tengah jalan).
+  @visibleForTesting
+  void resetForTesting() {
+    _failed.clear();
+    _logged.clear();
+  }
 }

@@ -238,7 +238,15 @@ void main() {
       final body =
           bodyBetween('Future<void> _xfPreload(', 'void _xfStartRamp()');
       expect(body, contains('_ladder.run('));
-      expect(body, contains('_xfPreloadDegraded = wonRung != firstRung'));
+      expect(body, contains('_xfPreloadDegraded ='));
+      // Ronde 8093: penanda degradasi kini mengecualikan kemenangan masa
+      // percobaan tangga — preload yang memulihkan pemenang lengket ke
+      // anak adaptif menang di anak TERBAIK, bukan terdegradasi.
+      expect(
+          body,
+          contains(
+              'wonRung != firstRung && !_ladder.lastRunRecoveredToAdaptive'),
+          reason: 'kemenangan masa percobaan bukan degradasi');
       expect(body, contains("'crossfade-preload-degradasi'"));
       expect(body, contains('on _Superseded'),
           reason: 'kepala basi di tengah panjat bukan kegagalan preload');

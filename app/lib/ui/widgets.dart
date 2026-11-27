@@ -16,6 +16,8 @@ import '../core/tokens.dart';
 import 'glass.dart';
 import 'haptics.dart';
 import '../domain/models.dart';
+import '../services/observability.dart';
+import '../services/track_metadata_healer.dart';
 import '../services/waveform.dart';
 import '../l10n/l10n.dart';
 import 'content_screen.dart';
@@ -158,6 +160,22 @@ class _PressableScaleState extends State<PressableScale>
 /// pernah mewarisi keadaan cadangan lagu sebelumnya. Pada jalur sukses
 /// perilaku identik widget lama: [placeholder] selama memuat
 /// (loadingBuilder), gambar sesudahnya.
+/// S3 (Ronde 8092): catat kegagalan sampul ke Log insiden — host + ember +
+/// konteks saja, TANPA URL penuh. Gerbangnya registri: [markFailed] hanya
+/// mengembalikan `true` sekali per URL per sesi, jadi tepat satu entri
+/// `sampul-gagal` per URL per sesi. Pemanggilan fungsi ini sendiri selalu
+/// menandai URL sebagai gagal di registri (itu yang membuat evict S1/S2
+/// bisa menemukannya), berapa pun seringnya ia dipanggil.
+void _logArtworkFailure(String url, int bucket, String contextLabel) {
+  if (!FailedArtworkRegistry.instance.markFailed(url)) return;
+  final host = Uri.tryParse(url)?.host ?? '-';
+  final label = contextLabel.length > 24
+      ? contextLabel.substring(0, 24)
+      : contextLabel;
+  Observability.instance.log(
+      'sampul-gagal', 'host=$host ember=$bucket konteks=$label');
+}
+
 class FallbackArtworkImage extends StatefulWidget {
   final String primaryUrl;
   final String? fallbackUrl;
@@ -166,6 +184,12 @@ class FallbackArtworkImage extends StatefulWidget {
   final int cacheWidth;
   final int? fallbackCacheWidth;
   final Widget placeholder;
+
+  /// Placeholder KEADAAN ERROR (Ronde 8092, S2/S4): tampil HANYA bila
+  /// primer dan cadangan sama-sama gagal — dibedakan dari [placeholder]
+  /// keadaan memuat. Null → keadaan error memakai [placeholder] seperti
+  /// perilaku lama.
+  final Widget? errorPlaceholder;
 
   const FallbackArtworkImage({
     super.key,
@@ -176,6 +200,7 @@ class FallbackArtworkImage extends StatefulWidget {
     required this.cacheWidth,
     this.fallbackCacheWidth,
     required this.placeholder,
+    this.errorPlaceholder,
   });
 
   @override
@@ -186,10 +211,50 @@ class _FallbackArtworkImageState extends State<FallbackArtworkImage> {
   bool _usingFallback = false;
   bool _fallbackScheduled = false;
 
+  /// Keadaan error AKHIR (primer gagal tanpa cadangan, atau cadangan
+  /// ikut gagal) — mengaktifkan placeholder error + ketuk-coba-lagi.
+  bool _finalFailed = false;
+  bool _finalScheduled = false;
+
+  /// Penambah kunci Image: naik setiap reset lewat registri (S4), supaya
+  /// elemen gambar benar-benar lahir baru dan permintaan terbit lagi.
+  int _generation = 0;
+
   bool get _hasFallback =>
       widget.fallbackUrl != null &&
       widget.fallbackUrl!.isNotEmpty &&
       widget.fallbackUrl != widget.primaryUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    FailedArtworkRegistry.instance.addListener(_onRegistryChanged);
+  }
+
+  @override
+  void dispose() {
+    FailedArtworkRegistry.instance.removeListener(_onRegistryChanged);
+    super.dispose();
+  }
+
+  /// S4: evict lewat registri (refresh S1 / ketuk S2) mereset kait
+  /// satu-arah ini — BUKAN hanya ganti URL seperti perilaku lama. Reset
+  /// hanya bila widget sedang terdegradasi (cadangan/error akhir) dan
+  /// URL-nya sudah tidak tercatat gagal di registri.
+  void _onRegistryChanged() {
+    if (!(_usingFallback || _fallbackScheduled || _finalFailed)) return;
+    final registry = FailedArtworkRegistry.instance;
+    if (registry.isFailed(widget.primaryUrl)) return;
+    final fb = widget.fallbackUrl;
+    if (fb != null && registry.isFailed(fb)) return;
+    setState(() {
+      _usingFallback = false;
+      _fallbackScheduled = false;
+      _finalFailed = false;
+      _finalScheduled = false;
+      _generation++;
+    });
+  }
 
   @override
   void didUpdateWidget(FallbackArtworkImage oldWidget) {
@@ -198,6 +263,9 @@ class _FallbackArtworkImageState extends State<FallbackArtworkImage> {
         oldWidget.fallbackUrl != widget.fallbackUrl) {
       _usingFallback = false;
       _fallbackScheduled = false;
+      _finalFailed = false;
+      _finalScheduled = false;
+      _generation++;
     }
   }
 
@@ -212,13 +280,27 @@ class _FallbackArtworkImageState extends State<FallbackArtworkImage> {
     });
   }
 
+  /// Kegagalan AKHIR: catat lewat gerbang registri yang sama dengan
+  /// CoverArt (S3, konteks 'fallback', kunci = URL primer) dan jadwalkan
+  /// flag error akhir sesudah bingkai ini.
+  void _scheduleFinalFailure() {
+    _logArtworkFailure(widget.primaryUrl, widget.cacheWidth, 'fallback');
+    if (_finalFailed || _finalScheduled) return;
+    _finalScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _finalScheduled = false;
+      if (!mounted || _finalFailed) return;
+      setState(() => _finalFailed = true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final useFallback = _usingFallback && _hasFallback;
     final url = useFallback ? widget.fallbackUrl! : widget.primaryUrl;
-    return Image.network(
+    final image = Image.network(
       url,
-      key: ValueKey(url),
+      key: ValueKey('$url#$_generation'),
       width: widget.width,
       height: widget.height,
       fit: BoxFit.cover,
@@ -226,11 +308,29 @@ class _FallbackArtworkImageState extends State<FallbackArtworkImage> {
           ? (widget.fallbackCacheWidth ?? widget.cacheWidth)
           : widget.cacheWidth,
       errorBuilder: (_, __, ___) {
-        if (!useFallback) _scheduleFallback();
-        return widget.placeholder;
+        if (!useFallback && _hasFallback) {
+          _scheduleFallback();
+          return widget.placeholder;
+        }
+        _scheduleFinalFailure();
+        return widget.errorPlaceholder ?? widget.placeholder;
       },
       loadingBuilder: (c, child, prog) =>
           prog == null ? child : widget.placeholder,
+    );
+    // S4/S2: saat error akhir, ketuk pada ubin = coba lagi (evict URL
+    // primer lewat registri; notifikasinya mereset state ini juga).
+    // Pembungkus SELALU terpasang (onTap hanya aktif saat error akhir)
+    // supaya pohon elemen tidak berubah bentuk saat flag error naik —
+    // perubahan bentuk akan melahirkan ulang elemen Image dan memicu
+    // muatan ganda.
+    return GestureDetector(
+      behavior:
+          _finalFailed ? HitTestBehavior.opaque : HitTestBehavior.deferToChild,
+      onTap: _finalFailed
+          ? () => FailedArtworkRegistry.instance.evictOne(widget.primaryUrl)
+          : null,
+      child: image,
     );
   }
 }
@@ -238,7 +338,7 @@ class _FallbackArtworkImageState extends State<FallbackArtworkImage> {
 /// Sampul: gambar jaringan bila ada; placeholder berpola (inisial di atas surface-2) bila tidak (DS Bab 4).
 /// v4.4: URL ditulis ulang sadar ukuran tampil (core/artwork.dart) — permukaan
 /// besar meminta varian besar, baris daftar tetap varian kecil.
-class CoverArt extends StatelessWidget {
+class CoverArt extends StatefulWidget {
   final String? url;
   final double size;
   final String label;
@@ -250,8 +350,82 @@ class CoverArt extends StatelessWidget {
     required this.label,
     this.radius = ClaiRadius.cover,
   });
+
+  @override
+  State<CoverArt> createState() => _CoverArtState();
+}
+
+class _CoverArtState extends State<CoverArt> {
+  /// Keadaan error widget INI (S2): membedakan placeholder error dari
+  /// placeholder memuat dan mengaktifkan ketuk-untuk-coba-lagi.
+  bool _failed = false;
+  bool _errorScheduled = false;
+
+  /// Penambah kunci Image: naik setiap reset (evict registri / ganti
+  /// URL), supaya permintaan gambar benar-benar terbit lagi (S1).
+  int _generation = 0;
+
+  /// URL final terakhir yang dibangun — jembatan bagi pendengar
+  /// registri, yang notifikasinya tidak membawa URL.
+  String? _lastSizedUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    FailedArtworkRegistry.instance.addListener(_onRegistryChanged);
+  }
+
+  @override
+  void dispose() {
+    FailedArtworkRegistry.instance.removeListener(_onRegistryChanged);
+    super.dispose();
+  }
+
+  /// S1: URL widget ini baru saja di-evict (refresh Beranda atau ketuk
+  /// coba-lagi) → reset keadaan error dan bangun Image generasi baru.
+  void _onRegistryChanged() {
+    if (!_failed) return;
+    final url = _lastSizedUrl;
+    if (url == null) return;
+    if (FailedArtworkRegistry.instance.isFailed(url)) return;
+    setState(() {
+      _failed = false;
+      _generation++;
+    });
+  }
+
+  @override
+  void didUpdateWidget(CoverArt oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _failed = false;
+      _errorScheduled = false;
+      _generation++;
+    }
+  }
+
+  /// Transisi ke error (dipanggil dari errorBuilder, yaitu fase bangun):
+  /// catat kegagalan lewat gerbang registri (S3) dan jadwalkan flag
+  /// error SESUDAH bingkai — setState langsung di dalam builder tidak
+  /// sah. Placeholder error sendiri langsung dikembalikan errorBuilder,
+  /// jadi perbedaan visualnya tidak menunggu flag ini.
+  void _handleError(String sizedUrl, int bucket) {
+    _logArtworkFailure(sizedUrl, bucket, widget.label);
+    if (_failed || _errorScheduled) return;
+    _errorScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _errorScheduled = false;
+      if (!mounted || _failed) return;
+      setState(() => _failed = true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final size = widget.size;
+    final label = widget.label;
+    final radius = widget.radius;
+    final url = widget.url;
     // D-35 (DS 6.13): placeholder tanpa label memakai glif nada GAMBAR SENDIRI
     // (ClaiIcons.musicNote), bukan karakter teks '♪' — set ikon aplikasi
     // tidak boleh bocor glyph Unicode.
@@ -278,10 +452,28 @@ class CoverArt extends StatelessWidget {
               ),
             ),
     );
-    if (url == null || url!.isEmpty) return placeholder;
+    // S2: placeholder ERROR — berbeda dari placeholder memuat di atas:
+    // ikon awan-silang yang sama dengan layar galat konten (ErrorState:
+    // ClaiIcons.cloudOff) di atas surface2, warna tinta redup DS, TANPA
+    // teks penjelasan (DS §13.2). Ikon saja.
+    final errorPlaceholder = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: ClaiColors.surface2,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      alignment: Alignment.center,
+      child: ClaiIcon(
+        ClaiIcons.cloudOff,
+        size: math.min(size * 0.44, 72),
+        color: ClaiColors.inkFaint,
+      ),
+    );
+    if (url == null || url.isEmpty) return placeholder;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final bucket = artworkBucketFor(size, dpr);
-    final sizedUrl = artworkUrlForSize(url, bucket) ?? url!;
+    final sizedUrl = artworkUrlForSize(url, bucket) ?? url;
     // v4.4.1 (performa): decode DIBATASI seukuran tampil. Sumber persegi
     // (sampul album googleusercontent) di-decode tepat sebesar piksel tampil
     // (ceil(size × dpr), tidak melebihi ember URL) — daftar panjang tidak lagi
@@ -302,19 +494,26 @@ class CoverArt extends StatelessWidget {
         : fallbackUrl.contains('ytimg.com')
         ? 544
         : math.min(544, math.max((size * dpr).ceil(), 1));
-    return ClipRRect(
+    _lastSizedUrl = sizedUrl;
+    final Widget tile = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       // Kunci per-URL final (v4.3): ganti lagu = ganti elemen gambar secara tegas,
       // tidak ada peluang elemen lama tertahan menampilkan sampul trek sebelumnya.
+      // Ronde 8092: kunci membawa generasi — reset lewat registri (S1)
+      // menaikkan generasi sehingga elemen gambar lahir baru dan
+      // permintaan benar-benar terbit lagi pada URL yang sama.
       child: fallbackUrl == null
           ? Image.network(
               sizedUrl,
-              key: ValueKey(sizedUrl),
+              key: ValueKey('$sizedUrl#$_generation'),
               width: size,
               height: size,
               fit: BoxFit.cover,
               cacheWidth: decodeWidth,
-              errorBuilder: (_, __, ___) => placeholder,
+              errorBuilder: (_, __, ___) {
+                _handleError(sizedUrl, bucket);
+                return errorPlaceholder;
+              },
               loadingBuilder: (c, child, prog) =>
                   prog == null ? child : placeholder,
             )
@@ -326,7 +525,23 @@ class CoverArt extends StatelessWidget {
               cacheWidth: decodeWidth,
               fallbackCacheWidth: fallbackDecodeWidth,
               placeholder: placeholder,
+              errorPlaceholder: errorPlaceholder,
             ),
+    );
+    // S2: seluruh ubin dalam keadaan error bisa diketuk untuk mencoba
+    // lagi. GestureDetector opaque HANYA pada keadaan error —
+    // konsekuensinya, saat error ketuk ditelan coba-lagi dan tidak
+    // menembus ke pemanggil; saat tidak error onTap mati dan perilaku
+    // ketuk pemanggil utuh seperti sebelumnya. Pembungkus SELALU
+    // terpasang supaya pohon elemen tidak berubah bentuk saat flag
+    // error naik (perubahan bentuk melahirkan ulang elemen Image dan
+    // memicu muatan ganda).
+    return GestureDetector(
+      behavior: _failed ? HitTestBehavior.opaque : HitTestBehavior.deferToChild,
+      onTap: _failed
+          ? () => FailedArtworkRegistry.instance.evictOne(sizedUrl)
+          : null,
+      child: tile,
     );
   }
 }
@@ -1745,20 +1960,89 @@ String primaryArtistName(String artistNames) {
   return s;
 }
 
-/// Pilih artis hasil pencarian untuk [name]: kecocokan nama persis
-/// (abaikan huruf besar/kecil) didahulukan; bila tak ada, hasil artis
-/// pertama; daftar kosong → null (resolusi gagal).
+/// Pilih artis hasil pencarian untuk [name]: HANYA kecocokan nama persis
+/// (abaikan huruf besar/kecil) yang diterima. Tanpa kecocokan persis →
+/// null (resolusi gagal jujur ke snackbar pemanggil). Ronde 8092: cadang
+/// lama `results.first` DICABUT — terbukti membuka artis pertama yang sama
+/// sekali tidak berkaitan (daftar pencarian bisa tidak memuat artis yang
+/// dicari sama sekali), yang halamannya kosong dan berakhir di layar galat.
 Artist? pickArtistForName(List<Artist> results, String name) {
   final want = name.trim().toLowerCase();
   for (final a in results) {
     if (a.name.trim().toLowerCase() == want) return a;
   }
-  return results.isEmpty ? null : results.first;
+  return null;
+}
+
+/// Resolusi artis untuk trek TANPA `artistIds` (Ronde 8094; sumber
+/// kebenaran: builds/bukti-artis-tidak-ditemukan/BEDAH.md). Urutan yang
+/// dikunci bedah:
+///
+/// 1. **Resolusi dari id lagu itu sendiri** ([resolveById] =
+///    `YtMusicProvider.resolveTrackById`) — berkunci identitas trek,
+///    kebal komposisi rak pencarian yang terbukti TIDAK memuat artisnya
+///    untuk nama-nama sah (probe hidup: "magnolia celebration" 0/3,
+///    "rumahsakit" 0/3 — raknya artis asing / kanal rumah sakit). Bila
+///    hasil resolusi membawa pengenal, [onResolved] dipanggil dengan
+///    SALINAN trek asal yang disembuhkan (pola tulis-balik penyembuh
+///    metadata) agar baris basis datanya sembuh permanen.
+/// 2. **Pencarian nama padanan persis** (8092) sebagai upaya terakhir.
+///
+/// Mengembalikan (id, nama) artis, atau null bila semua jalur gagal —
+/// pemanggil menampilkan snackbar jujur. Tidak pernah melempar.
+Future<({String id, String name})?> resolveArtistForIdlessTrack(
+  Track track, {
+  required Future<Track?> Function(String videoId) resolveById,
+  required Future<List<Artist>> Function(String query) searchArtists,
+  Future<void> Function(Track healed)? onResolved,
+}) async {
+  if (track.providerId == 'ytmusic') {
+    try {
+      final resolved = await resolveById(track.id);
+      if (resolved != null && resolved.artistIds.isNotEmpty) {
+        if (onResolved != null) {
+          final healed = track.copyWith(
+            artistIds: resolved.artistIds,
+            artistNames:
+                (TrackMetadataHealer.artistBroken(track.artistNames) &&
+                        resolved.artistNames.trim().isNotEmpty &&
+                        !TrackMetadataHealer.artistBroken(resolved.artistNames))
+                    ? resolved.artistNames
+                    : null,
+          );
+          try {
+            await onResolved(healed);
+          } catch (_) {
+            // Tulis-balik gagal tidak boleh menggagalkan pembukaan artis.
+          }
+        }
+        return (
+          id: resolved.artistIds.first,
+          name: resolved.artistNames.trim().isNotEmpty
+              ? resolved.artistNames
+              : track.artistNames,
+        );
+      }
+    } catch (_) {
+      // Jatuh ke pencarian nama.
+    }
+  }
+  final name = primaryArtistName(track.artistNames);
+  if (name.isEmpty) return null;
+  try {
+    final artists = await searchArtists(name);
+    final artist = pickArtistForName(artists, name);
+    if (artist != null) return (id: artist.id, name: artist.name);
+  } catch (_) {
+    // Gagal jujur di pemanggil.
+  }
+  return null;
 }
 
 /// Buka halaman artis untuk [track] dari lembar konteks (Butir E):
-/// ID langsung bila ada; bila hanya nama, selesaikan lewat pencarian
-/// artis provider. Gagal total → keadaan jujur (snackbar), bukan diam.
+/// ID langsung bila ada; bila kosong, selesaikan lewat
+/// [resolveArtistForIdlessTrack] (resolusi by-id dulu, pencarian nama
+/// terakhir). Gagal total → keadaan jujur (snackbar), bukan diam.
 Future<void> openArtistFromTrack(
   BuildContext context,
   WidgetRef ref,
@@ -1774,17 +2058,16 @@ Future<void> openArtistFromTrack(
     );
     return;
   }
-  final name = primaryArtistName(track.artistNames);
-  Artist? artist;
-  try {
-    final res = await ref.read(ytMusicProvider).search(name);
-    artist = pickArtistForName(res.artists, name);
-  } catch (_) {
-    artist = null;
-  }
+  final provider = ref.read(ytMusicProvider);
+  final resolution = await resolveArtistForIdlessTrack(
+    track,
+    resolveById: provider.resolveTrackById,
+    searchArtists: (q) async => (await provider.search(q)).artists,
+    onResolved: (healed) => ref.read(appDbProvider).cacheTracks([healed]),
+  );
   if (!context.mounted) return;
-  if (artist != null) {
-    openContent(context, ref, 'artist', artist.id, artist.name);
+  if (resolution != null) {
+    openContent(context, ref, 'artist', resolution.id, resolution.name);
   } else {
     ScaffoldMessenger.of(
       context,

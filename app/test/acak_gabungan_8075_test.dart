@@ -312,8 +312,8 @@ void main() {
         'sesudah start dingin jalur L-16', () async {
       final db = AppDb();
       final d = await db.openAt(':memory:');
-      expect(await d.getVersion(), 8);
-      expect(AppDb.schemaVersion, 8);
+      expect(await d.getVersion(), AppDb.schemaVersion);
+      expect(AppDb.schemaVersion, 9);
       final tracks = [for (var i = 0; i < 20; i++) t('v$i')];
       final e = QueueEngine()..shuffle = ShuffleMode.pure;
       e.playContext(

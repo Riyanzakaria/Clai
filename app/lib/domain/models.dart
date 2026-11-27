@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 /// Kunci identitas trek: selalu gabungan (providerId, id) — PRD Bab 6 / Blueprint Bab 2.
@@ -61,6 +63,11 @@ class Track {
   Map<String, Object?> toDbRow() => {
         'provider_id': providerId, 'provider_track_id': id, 'title': title,
         'artist_names': artistNames, 'album_id': albumId,
+        // Ronde 8092 Paket Artis: artistIds kini persisten (kolom TEXT berisi
+        // JSON array string, pola jsonEncode yang sama seperti kolom
+        // *_json lain di AppDb) — sebelumnya dibuang di sini sehingga semua
+        // trek bersumber DB kehilangan pengenal artisnya secara permanen.
+        'artist_ids': jsonEncode(artistIds),
         'duration_ms': duration?.inMilliseconds, 'artwork_url': artworkUrl,
         'is_explicit': isExplicit ? 1 : 0, 'playable_ref': playableRef,
         'cached_at': DateTime.now().millisecondsSinceEpoch,
@@ -70,11 +77,26 @@ class Track {
         key: TrackKey(r['provider_id'] as String, r['provider_track_id'] as String),
         title: r['title'] as String, artistNames: r['artist_names'] as String,
         albumId: r['album_id'] as String?,
+        artistIds: _artistIdsFromDb(r['artist_ids']),
         duration: r['duration_ms'] == null ? null : Duration(milliseconds: r['duration_ms'] as int),
         artworkUrl: r['artwork_url'] as String?,
         isExplicit: (r['is_explicit'] as int? ?? 0) == 1,
         playableRef: r['playable_ref'] as String,
       );
+}
+
+/// Dekode kolom `tracks.artist_ids` (JSON array string). Toleran: baris
+/// lama (pra-v9, kolom belum ada), nilai kosong, atau JSON rusak dibaca
+/// sebagai daftar kosong — bukan crash saat memuat katalog.
+List<String> _artistIdsFromDb(Object? raw) {
+  if (raw is! String || raw.trim().isEmpty) return const [];
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is List) return decoded.whereType<String>().toList();
+  } catch (_) {
+    /* JSON rusak → tanpa pengenal artis, sama seperti rekam pra-v9 */
+  }
+  return const [];
 }
 
 @immutable

@@ -77,17 +77,26 @@ void main() {
     });
 
     test('titik komit: generasi usang gugur SEBELUM menyentuh pemutar', () {
-      expect(build,
-          contains('if (gen != null && gen != _playGen) throw const _Superseded();'));
+      // Ronde 8092 (F6): titik komit kini mencatat 'muat-dibatalkan-
+      // generasi' sebelum melempar — bentuk blok menggantikan baris
+      // tunggal 8057; kontraknya sama (lempar SEBELUM setAudioSource).
+      expect(build, contains('muat-dibatalkan-generasi'));
+      expect(build, contains('throw const _Superseded();'));
+      expect(
+          build.indexOf('throw const _Superseded();'),
+          lessThan(build.indexOf('setAudioSource')),
+          reason: 'lemparan komit mendahului sentuhan ke pemutar');
     });
 
     test('penjaga pasca-pasang: generasi usang tidak menyalakan putar', () {
       expect(build, contains('if (gen != null && gen != _playGen)'));
-      // Tepat dua penjaga != : titik komit (lempar _Superseded) +
-      // pasca-pasang (kembali tanpa play). stillWanted membaca arah
-      // sebaliknya (gen == _playGen) di dalam closure resolusi.
-      expect(count(build, 'gen != _playGen'), 2,
-          reason: 'titik komit + pasca-pasang, tidak lebih tidak kurang');
+      // Ronde 8092 (F2): kini TIGA penjaga != — cek di tengah loop
+      // pembangunan anak (baru, F2) + titik komit (lempar
+      // _Superseded) + pasca-pasang (kembali tanpa play). stillWanted
+      // membaca arah sebaliknya (gen == _playGen) di dalam closure
+      // resolusi.
+      expect(count(build, 'gen != _playGen'), 3,
+          reason: 'loop F2 + titik komit + pasca-pasang');
       expect(count(build, 'gen == _playGen'), greaterThanOrEqualTo(1),
           reason: 'closure stillWanted membaca generasi berjalan');
     });
@@ -185,7 +194,9 @@ void main() {
     test('diperiksa ulang sesudah seek & sisa jendela diisi di latar', () {
       expect(count(play, 'if (gen != _playGen) return;'), 2,
           reason: 'satu penjaga sesudah bangun, satu lagi sesudah seek');
-      final extendAt = play.indexOf('unawaited(_extendSourceToQueue())', callAt);
+      // Ronde 8092 (F2): perluasan kini membawa generasi situs ini.
+      final extendAt =
+          play.indexOf('unawaited(_extendSourceToQueue(gen: gen))', callAt);
       expect(extendAt, greaterThan(callAt),
           reason:
               'firstOnly memasang satu trek; tanpa pengisian latar sesi pulih '
@@ -227,22 +238,27 @@ void main() {
   });
 
   group('situs _rebuildTail per peran (Ronde 8057)', () {
-    test('skipToNext: klaim generasi baru, tanpa firstOnly, seek berpenjaga',
-        () {
+    test(
+        'skipToNext: klaim generasi baru, firstOnly + perluasan (F1 '
+        'Ronde 8092 menggantikan kontrak 8057), seek berpenjaga', () {
       final body = bodyBetween('Future<void> skipToNext() async',
           'Future<void> skipToPrevious() async');
       expect(count(body, '++_playGen'), 1,
           reason: 'Berikutnya = perintah manual: tepat satu klaim');
       expect(body.indexOf('final gen = ++_playGen;'),
-          lessThan(body.indexOf('_rebuildTail(gen: gen)')),
+          lessThan(body.indexOf('_rebuildTail(gen: gen, firstOnly: true)')),
           reason: 'klaim mendahului kedua bangun ekor');
-      expect(count(body, '_rebuildTail(gen: gen)'), 2,
+      expect(count(body, '_rebuildTail(gen: gen, firstOnly: true)'), 2,
           reason: 'kedua cabang bangun (antrean ada + sesudah isi ulang)');
-      expect(body, isNot(contains('firstOnly: true')),
-          reason:
-              'firstOnly akan membuat seekToNext tanpa tujuan — bangun di '
-              'sini justru mematerialkan trek berikutnya ke jendela');
-      expect(count(body, 'if (await _rebuildTail(gen: gen))'), 2,
+      // Ronde 8092 (F1): kontrak 8057 "tanpa firstOnly" DICABUT oleh
+      // perintah F1 — harga skip disamakan dengan jumpTo/playTracks:
+      // bangun 1 trek ketat, lalu perluasan mematerialkan trek
+      // berikutnya SEBELUM seekToNext (perluasan diawait di cabang
+      // ini, berbeda dari jumpTo yang unawaited).
+      expect(count(body, 'await _extendSourceToQueue(gen: gen);'), 2,
+          reason: 'perluasan bergenerasi mengikuti kedua bangun firstOnly');
+      expect(count(body, 'if (await _rebuildTail(gen: gen, firstOnly: true))'),
+          2,
           reason:
               'seekToNext hanya bila bangun terkomit; yang dikalahkan tidak '
               'boleh seek di atas sumber milik perintah lain');

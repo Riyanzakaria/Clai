@@ -28,40 +28,42 @@ import 'taste_control_screen.dart';
 /// milik gestur Kembali). Menutup: ✕, ketuk kerudung, atau Kembali.
 bool _claiMenuOpen = false;
 
-/// Atom wordmark Clai: titik Volt di kiri kata "Clai" Inter Tight —
-/// tanda tangan merek yang sama dengan kartu bagikan QR (satu-satunya
-/// bacaan pagar DS v5.0 Bab 12.2 butir 1; tombol markah di bawah
-/// membawa atom ini, bukan tempat Volt baru).
+/// Atom wordmark Clai: kata "Clai" Inter Tight ditutup TITIK VOLT di
+/// AKHIR — "Clai." (keputusan pemilik 26 Nov 2026; DS 6.6 Bab 12.2
+/// butir 1). Titiknya adalah glif titik milik font tampilan itu sendiri
+/// (span berwarna Volt): ukuran, jarak, dan garis dasarnya persis titik
+/// kalimat fontnya — bukan lingkaran gambar terpisah. Tanda tangan yang
+/// sama dirender kartu bagikan QR. Rumah atom ini: kepala laci di bawah
+/// + kartu bagikan QR (tombol markah TIDAK lagi membawanya — Ronde 8094).
 class ClaiWordmark extends StatelessWidget {
   final double fontSize;
   const ClaiWordmark({super.key, this.fontSize = 21});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Container(
-          width: fontSize * 0.34,
-          height: fontSize * 0.34,
-          decoration: const BoxDecoration(
-            color: ClaiColors.accent,
-            shape: BoxShape.circle,
+    return Text.rich(
+      TextSpan(
+        style: displayStyle(fontSize),
+        children: [
+          const TextSpan(text: 'Clai'),
+          TextSpan(
+            text: '.',
+            style: TextStyle(color: ClaiColors.accent),
           ),
-        ),
-        SizedBox(width: fontSize * 0.34),
-        Text('Clai', style: displayStyle(fontSize)),
-      ],
+        ],
+      ),
     );
   }
 }
 
 /// Tombol markah pengganti gir Pengaturan di kepala Beranda & Koleksi:
-/// lingkaran tonal surface-2 40dp berisi atom wordmark yang diperkecil
-/// ("C" Inter Tight tinta + titik Volt). Lingkaran tonal memberi
-/// daya tangkap ketuk yang tidak dimiliki logo polos (amendemen ayu
-/// yang dipertahankan riyan pada vonis L7/L8).
+/// lingkaran tonal surface-2 40dp berisi MARKAH LOGO Clai asli
+/// (busur C + segitiga putar, [ClaiMark]) dalam putih signal netral —
+/// keputusan pemilik 26 Nov 2026 menggantikan atom mini ("C" + titik
+/// Volt) ronde 8079. BUKAN abu redup, BUKAN Volt: pagar DS 6.6 Bab 12.2
+/// butir 1. Lingkaran tonal memberi daya tangkap ketuk yang tidak
+/// dimiliki logo polos (amendemen ayu yang dipertahankan riyan pada
+/// vonis L7/L8).
 class ClaiMarkButton extends StatelessWidget {
   final VoidCallback onPressed;
   const ClaiMarkButton({super.key, required this.onPressed});
@@ -82,27 +84,7 @@ class ClaiMarkButton extends StatelessWidget {
             width: 40,
             height: 40,
             child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: const BoxDecoration(
-                      color: ClaiColors.accent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    'C',
-                    style: displayStyle(
-                      19,
-                    ).copyWith(color: ClaiColors.ink, height: 1.0),
-                  ),
-                ],
-              ),
+              child: ClaiMark(size: 21, color: ClaiColors.ink),
             ),
           ),
         ),

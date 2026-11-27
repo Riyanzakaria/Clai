@@ -134,11 +134,11 @@ void main() {
     test('simpan → meta terhitung → snapshot utuh → hapus', () async {
       final db = AppDb();
       final d = await db.openAt(':memory:');
-      // Versi skema kini 8 sejak Ronde 8075 (kolom potret alami +
-      // siklus di queue_snapshots); asersi versi mengikuti skema
-      // berjalan, bukan angka ronde ini.
+      // Versi skema kini 9 sejak Ronde 8092 (kolom artist_ids di
+      // tracks); asersi versi mengikuti skema berjalan, bukan angka
+      // ronde ini.
       expect(await d.getVersion(), AppDb.schemaVersion);
-      expect(AppDb.schemaVersion, 8);
+      expect(AppDb.schemaVersion, 9);
       final snap = _snap(
         played: ['p1'],
         manual: ['m1'],

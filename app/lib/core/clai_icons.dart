@@ -61,6 +61,71 @@ class _ClaiIconPainter extends CustomPainter {
   bool shouldRepaint(_ClaiIconPainter old) => old.data != data || old.color != color;
 }
 
+/// Markah logo Clai (Ronde 8094): busur C geometris memegang segitiga
+/// putar solid — geometri PERSIS aset resmi `assets/logo/clai-mark.svg`
+/// (kisi 96, pusat 48, busur r=30 coretan 13 berujung bulat dengan celah
+/// di kanan, segitiga (42,35)-(64,48)-(42,61) isi + coretan 5 sambungan
+/// bulat). Dirender sebagai lukisan vektor satu warna datar — tajam di
+/// ukuran kecil (lembar logo membuktikan bentuknya tahan sampai 24 px).
+/// Warna ditentukan pemanggil; di tombol markah: putih signal netral.
+class ClaiMark extends StatelessWidget {
+  final double size;
+  final Color color;
+  const ClaiMark({super.key, this.size = 24, this.color = const Color(0xFFF4F6F1)});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _ClaiMarkPainter(color)),
+    );
+  }
+}
+
+class _ClaiMarkPainter extends CustomPainter {
+  final Color color;
+  const _ClaiMarkPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 96, size.height / 96);
+    // Busur C: dari titik akhir SVG (71.64, 29.53) menyapu jalan panjang
+    // (lewat kiri) ke (71.64, 66.47) — celah busur menghadap kanan.
+    final start = math.atan2(29.53 - 48, 71.64 - 48);
+    final sweep = -(2 * math.pi - 2 * start.abs());
+    canvas.drawArc(
+      Rect.fromCircle(center: const Offset(48, 48), radius: 30),
+      start,
+      sweep,
+      false,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 13
+        ..strokeCap = StrokeCap.round,
+    );
+    // Segitiga putar solid dengan sambungan membulat (coretan 5).
+    final tri = Path()
+      ..moveTo(42, 35)
+      ..lineTo(64, 48)
+      ..lineTo(42, 61)
+      ..close();
+    canvas.drawPath(tri, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawPath(
+      tri,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ClaiMarkPainter old) => old.color != color;
+}
+
 // ---------- pembangun jalur ----------
 Path _s(void Function(Path p) f) {
   final p = Path();

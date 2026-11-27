@@ -135,7 +135,7 @@ class _SharePickerSheet extends ConsumerWidget {
 }
 
 /// Render kartu bagikan QR sebagai PNG (Ronde 8071): kartu putih
-/// polos — wordmark Clai + titik Volt, nama playlist, hitungan lagu,
+/// polos — wordmark "Clai." (titik Volt di akhir, DS 6.6), nama playlist, hitungan lagu,
 /// kode QR besar, dan baris penutup untuk penerima. GAMBAR inilah
 /// yang berjalan lewat aplikasi chat (perilaku riyan: kode QR
 /// diunduh/dibagikan sebagai gambar), jadi keterpindaian adalah
@@ -184,14 +184,33 @@ Future<Uint8List> renderQrShareCardPng({
     return tp;
   }
 
-  final wordmark = lay(
-    'Clai',
-    const TextStyle(
-      fontFamily: kDisplayFontFamily,
-      fontSize: 58,
-      fontWeight: FontWeight.w600,
-      color: darkInk,
-      height: 1.1,
+  TextPainter laySpan(TextSpan span,
+      {double maxWidth = w - 2 * pad, int maxLines = 1}) {
+    final tp = TextPainter(
+      text: span,
+      textDirection: TextDirection.ltr,
+      maxLines: maxLines,
+      ellipsis: '…',
+    );
+    tp.layout(maxWidth: maxWidth);
+    return tp;
+  }
+
+  // Wordmark "Clai." — atom yang sama dengan ClaiWordmark (DS 6.6):
+  // titiknya glif titik font tampilan berwarna Volt, di akhir kata.
+  final wordmark = laySpan(
+    const TextSpan(
+      style: TextStyle(
+        fontFamily: kDisplayFontFamily,
+        fontSize: 58,
+        fontWeight: FontWeight.w600,
+        color: darkInk,
+        height: 1.1,
+      ),
+      children: [
+        TextSpan(text: 'Clai'),
+        TextSpan(text: '.', style: TextStyle(color: ClaiColors.accent)),
+      ],
     ),
   );
   final name = lay(
@@ -233,10 +252,9 @@ Future<Uint8List> renderQrShareCardPng({
   final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, w, h));
   canvas.drawRect(
       Rect.fromLTWH(0, 0, w, h), Paint()..color = const Color(0xFFFFFFFF));
-  // Titik Volt di kiri wordmark — tanda tangan merek pada kartu.
-  canvas.drawCircle(Offset(pad + 15, wordmarkY + wordmark.height / 2), 15,
-      Paint()..color = ClaiColors.accent);
-  wordmark.paint(canvas, Offset(pad + 50, wordmarkY));
+  // Wordmark "Clai." — titik Volt-nya sudah menyatu sebagai glif titik
+  // di akhir kata (di dalam painter wordmark); tanda tangan merek kartu.
+  wordmark.paint(canvas, Offset(pad, wordmarkY));
   name.paint(canvas, Offset(pad, nameY));
   count.paint(canvas, Offset(pad, countY));
   canvas.drawImage(qrImage, Offset((w - qrSize) / 2, qrY), Paint());

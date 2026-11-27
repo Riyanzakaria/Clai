@@ -344,6 +344,35 @@ List<Track> inheritPageArtist(List<Track> tracks,
   ];
 }
 
+/// Konteks artis sebuah rak, bila rak itu TERBUKTI rak artis: judul rak
+/// (musicCardShelfRenderer: field `title` langsung; shelf/carousel: judul
+/// di header) membawa run bernama artis dengan browseId kanal UC. Tanpa
+/// browseId UC di judul rak, rak dianggap campuran/tidak berkonteks dan
+/// tidak ada pewarisan — nama saja tidak cukup bukti. (Ronde 8092, pola
+/// yang sama dengan inheritPageArtist untuk halaman album/artis.)
+({String name, String id})? _shelfArtistContext(Map<String, dynamic> shelf) {
+  Object? titleNode = shelf['title'];
+  if (titleNode == null) {
+    final header = asMap(shelf['header']);
+    for (final key in [
+      'musicCarouselShelfBasicHeaderRenderer',
+      'musicShelfBasicHeaderRenderer',
+    ]) {
+      titleNode = asMap(header?[key])?['title'];
+      if (titleNode != null) break;
+    }
+  }
+  final titleMap = asMap(titleNode);
+  if (titleMap == null) return null;
+  final name = (runsText(titleMap) ?? simpleText(titleMap) ?? '').trim();
+  if (name.isEmpty) return null;
+  for (final r in asList(titleMap['runs'])) {
+    final id = browseIdOf(r);
+    if (id != null && id.startsWith('UC')) return (name: name, id: id);
+  }
+  return null;
+}
+
 /// Kumpulkan semua Track dari pohon respons apa pun (rekursif, toleran).
 List<Track> collectTracks(Object? node, {Set<String>? seen, String providerId = 'ytmusic'}) {
   final out = <Track>[];
@@ -357,6 +386,30 @@ List<Track> collectTracks(Object? node, {Set<String>? seen, String providerId = 
         } else if (e.key == 'playlistPanelVideoRenderer') {
           final t = parsePanelTrackItem(e.value, providerId: providerId);
           if (t != null && s.add(t.id)) out.add(t);
+        } else if (e.key == 'musicCardShelfRenderer' ||
+            e.key == 'musicShelfRenderer' ||
+            e.key == 'musicCarouselShelfRenderer') {
+          // Ronde 8092: item ringkas di rak artis (byline hanya
+          // "Song • durasi", tanpa run artis — terbukti dari probe hidup
+          // pencarian) mewarisi artis raknya lewat inheritPageArtist:
+          // hanya kolom kosong yang diisi, item berbentuk penuh tidak
+          // pernah tertimpa. Rak tanpa konteks artis terverifikasi
+          // (browseId UC di judul) diurai seperti biasa tanpa pewarisan.
+          final shelf = asMap(e.value);
+          final ctx = shelf == null ? null : _shelfArtistContext(shelf);
+          if (ctx == null) {
+            walk(e.value);
+          } else {
+            final start = out.length;
+            walk(e.value);
+            if (out.length > start) {
+              final filled = inheritPageArtist(out.sublist(start),
+                  artist: ctx.name, artistIds: [ctx.id]);
+              for (var i = 0; i < filled.length; i++) {
+                out[start + i] = filled[i];
+              }
+            }
+          }
         } else {
           walk(e.value);
         }

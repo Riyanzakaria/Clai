@@ -194,7 +194,8 @@ void main() {
       await tester.runAsync(() async {
         await tester.pumpWidget(tree());
         await openDrawer(tester);
-        expect(find.text('Clai'), findsOneWidget);
+        // Ronde 8094: atom wordmark kini "Clai." (titik Volt di akhir).
+        expect(find.text('Clai.'), findsOneWidget);
         expect(find.text('Semua fitur & pengaturan dalam satu tempat'),
             findsNothing,
             reason: 'keterangan laci tidak boleh kembali (8081)');

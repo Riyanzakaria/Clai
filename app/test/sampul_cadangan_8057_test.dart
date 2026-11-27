@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clai/core/clai_icons.dart';
 import 'package:clai/ui/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,8 +197,15 @@ void main() {
     await settle(tester);
     releaseMock();
     expect(find.byType(RawImage), findsNothing);
-    expect(find.text('G'), findsOneWidget,
-        reason: 'placeholder inisial adalah keadaan akhir bila keduanya gagal');
+    // Ronde 8092 (S2/S4): keadaan akhir keduanya-gagal kini placeholder
+    // ERROR (ikon cloudOff), BUKAN placeholder inisial keadaan memuat.
+    expect(
+        find.byWidgetPredicate(
+            (w) => w is ClaiIcon && w.data == ClaiIcons.cloudOff),
+        findsOneWidget,
+        reason: 'keduanya gagal → placeholder error cloudOff (8092)');
+    expect(find.text('G'), findsNothing,
+        reason: 'inisial adalah placeholder MEMUAT, tidak tampil saat error');
     expect(
       requested.where((u) => u.contains('coverC')).length,
       lessThanOrEqualTo(2),
@@ -218,7 +226,13 @@ void main() {
     ));
     await settle(tester);
     releaseMock();
-    expect(find.text('D'), findsOneWidget);
+    // Ronde 8092 (S2): permukaan kecil yang gagal kini menampilkan
+    // placeholder error cloudOff, bukan inisial placeholder memuat.
+    expect(
+        find.byWidgetPredicate(
+            (w) => w is ClaiIcon && w.data == ClaiIcons.cloudOff),
+        findsOneWidget);
+    expect(find.text('D'), findsNothing);
     expect(requested, ['https://lh3.googleusercontent.com/coverD=w200-h200-l90-rj'],
         reason: 'permukaan kecil tetap perilaku lama: satu muat w200, placeholder pada error');
   });

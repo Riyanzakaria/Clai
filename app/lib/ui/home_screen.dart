@@ -452,6 +452,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onRefresh: () async {
         await lib.load();
         await _load();
+        // S1 (Ronde 8092): refresh juga mengusir sampul yang tercatat
+        // gagal dari cache gambar — widget sampul yang hidup mereset
+        // keadaan error-nya dan meminta gambar itu lagi.
+        FailedArtworkRegistry.instance.evictAllFailed();
       },
       child: FiniteScrollPage(
         padding: EdgeInsets.only(bottom: bottomChromeClearance(context)),
@@ -668,6 +672,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onRefresh: () async {
         await lib.load();
         await _load();
+        // S1 (Ronde 8092): refresh juga mengusir sampul yang tercatat
+        // gagal dari cache gambar — widget sampul yang hidup mereset
+        // keadaan error-nya dan meminta gambar itu lagi.
+        FailedArtworkRegistry.instance.evictAllFailed();
       },
       // Ronde 8052: Beranda finite → FiniteScrollPage (extent eksak).
       child: FiniteScrollPage(

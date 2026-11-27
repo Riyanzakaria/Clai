@@ -15,7 +15,7 @@ import '../services/waveform.dart';
 /// cadangan pra-migrasi wajib, kegagalan migrasi membuka cadangan, data pengguna tidak boleh hilang.
 class AppDb {
   static const dbName = 'clai.db';
-  static const schemaVersion = 8;
+  static const schemaVersion = 9;
   Database? _db;
   Future<Database>? _opening;
 
@@ -233,6 +233,22 @@ class AppDb {
         await b.commit(noResult: true);
       }
     }
+    if (oldV < 9) {
+      // v9 (Ronde 8092, Paket Artis): kolom artist_ids di tracks (TEXT,
+      // JSON array string) — pengenal artis trek kini persisten. Sebelumnya
+      // Track.toDbRow membuangnya, sehingga semua trek bersumber DB
+      // (riwayat, rak personal, koleksi) selalu lahir dengan artistIds=[]
+      // dan buka-artis dari Player jatuh ke resolusi nama yang rapuh.
+      // Migrasi murni aditif: baris lama utuh, artist_ids-nya NULL dan
+      // dibaca fromDbRow sebagai daftar kosong. Penjaga keberadaan tabel
+      // sama seperti v8: migrasi tidak boleh meledak pada basis data parsial.
+      final tables = await d.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'",
+      );
+      if (tables.isNotEmpty) {
+        await d.execute('ALTER TABLE tracks ADD COLUMN artist_ids TEXT');
+      }
+    }
   }
 
   /// Tabel Ruang Kendali Selera (v7) — dipakai jalur buat-baru & migrasi v6→v7.
@@ -320,7 +336,7 @@ class AppDb {
     final b = d.batch();
     b.execute('''CREATE TABLE tracks (
       provider_id TEXT NOT NULL, provider_track_id TEXT NOT NULL, title TEXT NOT NULL,
-      artist_names TEXT NOT NULL, album_id TEXT, duration_ms INTEGER, artwork_url TEXT,
+      artist_names TEXT NOT NULL, album_id TEXT, artist_ids TEXT, duration_ms INTEGER, artwork_url TEXT,
       is_explicit INTEGER NOT NULL DEFAULT 0, playable_ref TEXT NOT NULL, cached_at INTEGER NOT NULL,
       PRIMARY KEY (provider_id, provider_track_id))''');
     b.execute('CREATE INDEX idx_tracks_title ON tracks (title)');
@@ -409,10 +425,14 @@ class AppDb {
       final old = await trackByKey(t.key);
       if (old != null) {
         if (m.artistNames.trim().isEmpty && old.artistNames.trim().isNotEmpty) {
-          m = m.copyWith(
-            artistNames: old.artistNames,
-            artistIds: m.artistIds.isEmpty ? old.artistIds : m.artistIds,
-          );
+          m = m.copyWith(artistNames: old.artistNames);
+        }
+        // Ronde 8092: pewarisan artistIds berdiri sendiri (dulu menumpang
+        // cabang nama kosong di atas, sehingga trek masuk bernama lengkap
+        // tetapi tanpa id tetap menghapus id tersimpan). Kini: id masuk
+        // kosong mewarisi id lama yang terisi; id masuk terisi memperbarui.
+        if (m.artistIds.isEmpty && old.artistIds.isNotEmpty) {
+          m = m.copyWith(artistIds: old.artistIds);
         }
         if (m.artworkUrl == null && old.artworkUrl != null) {
           m = m.copyWith(artworkUrl: old.artworkUrl);
